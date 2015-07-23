@@ -1,0 +1,47 @@
+.col {
+    float:left;
+    width:50%;
+}
+.col3 {
+    float:left;
+    width:32%;
+}
+
+.group:before,
+.group:after {
+    content: "";
+    display: table;
+}
+.group:after {
+    clear: both;
+}
+.group {
+    zoom: 1; /* For IE 6/7 (trigger hasLayout) */
+}
+
+.alert-info {
+  color: #31708f;
+  background-color: #d9edf7;
+  border-color: #bce8f1;
+}
+
+.alert {
+  padding: 15px;
+  margin-bottom: 20px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+
+.existing-locales {
+    min-height: 400px;
+    border-bottom: 1px solid #dedede;
+}
+
+.summary .col {
+    height: 280px;
+}
+
+.summary .overflow {
+    height: 260px;
+    overflow: auto;
+}
