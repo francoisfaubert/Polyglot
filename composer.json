@@ -1,0 +1,19 @@
+{
+    "name": "francoisfaubert/polyglot",
+    "description": "A translation plugin.",
+    "type": "wordpress-plugin",
+    "authors": [
+        {
+            "name": "Francois Faubert",
+            "email": "frank@francoisfaubert.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "Polyglot\\": "src"
+        }
+    }
+}
