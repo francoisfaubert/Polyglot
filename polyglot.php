@@ -8,6 +8,16 @@ Author: Francois Faubert
 Author URI: http://www.francoisfaubert.com
 License: GPL3
  */
+
+
+if (!class_exists("Strata\Strata")) {
+    throw new Exception("Polyglot Localization plugin is expected to be ran in a Strata environment.");
+}
+
+if (!class_exists("Strata\Middleware\Gettext_Parser\Initializer")) {
+    throw new Exception("Strata GetText middleware is expected to be installed.");
+}
+
 if (class_exists("Polyglot\Plugin\Polyglot") && class_exists("Polyglot\Plugin\Adaptor\WordpressAdaptor")) {
     $plugin = new Polyglot\Plugin\Adaptor\WordpressAdaptor();
     $plugin->register(__FILE__);

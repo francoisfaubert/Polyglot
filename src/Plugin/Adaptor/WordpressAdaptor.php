@@ -2,8 +2,7 @@
 
 namespace Polyglot\Plugin\Adaptor;
 
-use Polyglot\Admin\AdminController;
-use Polyglot\Admin\AdminAjaxController;
+use Polyglot\Admin\Router;
 
 class WordpressAdaptor {
 
@@ -38,10 +37,9 @@ class WordpressAdaptor {
 
     public function adminMenu()
     {
-        $ctrl = new AdminController();
-        $ctrl->contextualize($this);
-
-        add_options_page('Polyglot', 'Polyglot', 'manage_options', self::WP_UNIQUE_KEY, array($ctrl, 'index'));
+        $router = new Router();
+        $router->contextualize($this);
+        add_options_page('Localization', 'Localization', 'manage_options', self::WP_UNIQUE_KEY, array($router, 'autoroute'));
     }
 
     public function adminInit()
@@ -51,11 +49,11 @@ class WordpressAdaptor {
 
     public function enqueueScripts($suffix)
     {
-        if ($suffix === "settings_page_" . self::WP_UNIQUE_KEY) {
+        //if ($suffix === "settings_page_" . self::WP_UNIQUE_KEY) {
             wp_enqueue_script('polyglot_admin_js', $this->getAdminJsPath());
             wp_enqueue_style('polyglot_admin_css', $this->getAdminCSSPath());
             $this->requireJqueryUi();
-        }
+        //}
     }
 
     protected function addCallbacks()
@@ -74,14 +72,10 @@ class WordpressAdaptor {
 
         add_action('admin_enqueue_scripts', array($this, 'enqueueScripts'));
 
-        $ctrl = new AdminAjaxController();
-        $ctrl->contextualize($this);
-        add_action('wp_ajax_polyglot_ajax', array($ctrl, "autoroute"));
-    }
-
-    protected function addWebsiteCallbacks()
-    {
-
+        $router = new Router();
+        $router->contextualize($this);
+        add_action('wp_ajax_polyglot_ajax', array($router, "autoroute"));
+        add_filter('add_meta_boxes', array($router, "addMetaBox"), 1000000);
     }
 
     protected function addGlobalCallbacks()

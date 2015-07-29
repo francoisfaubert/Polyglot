@@ -9,16 +9,15 @@
     function registerEvents(scope)
     {
         if (scope) {
-            scope.find('*[data-ajax="click-popup"]').click(triggerPopupClickEventAjaxCall);
-            scope.find('*[data-ajax="click"]').click(triggerClickEventAjaxCall);
-            scope.find('*[data-ajax="submit"]').submit(triggerSubmitEventAjaxCall);
-            console.log(scope.find('*[data-ajax="submit"]'));
+            scope.find('*[data-polyglot-ajax="click-popup"]').click(triggerPopupClickEventAjaxCall);
+            scope.find('*[data-polyglot-ajax="click"]').click(triggerClickEventAjaxCall);
             scope.find('*[data-ajax="autoload"]').each(triggerAjaxCall);
+            //scope.find('*[data-polyglot-ajax="submit"]').submit(triggerSubmitEventAjaxCall);
         } else {
-            $('*[data-ajax="click-popup"]').click(triggerPopupClickEventAjaxCall);
-            $('*[data-ajax="click"]').click(triggerClickEventAjaxCall);
-            $('*[data-ajax="submit"]').submit(triggerSubmitEventAjaxCall);
-            $('*[data-ajax="autoload"]').each(triggerAjaxCall);
+            $('*[data-polyglot-ajax="click-popup"]').click(triggerPopupClickEventAjaxCall);
+            $('*[data-polyglot-ajax="click"]').click(triggerClickEventAjaxCall);
+            //$('*[data-ajax="submit"]').submit(triggerSubmitEventAjaxCall);
+            $('*[data-polyglot-ajax="autoload"]').each(triggerAjaxCall);
         }
     }
 
@@ -55,7 +54,7 @@
     function triggerPopupClickEventAjaxCall()
     {
         var el = $(this),
-            action = el.attr("data-ajax-action");
+            action = el.attr("data-polyglot-ajax-action");
 
         showSpinner(el);
         $.ajax({
@@ -64,6 +63,7 @@
             data: {
                 action: "polyglot_ajax",
                 polyglot_ajax_action: action,
+                param: el.data("ajax-param")
             }
         }).done(function(html) {
             hideSpinner(el);
@@ -84,8 +84,8 @@
         evt.preventDefault();
 
         var el = $(this),
-            action = el.attr("data-ajax-action"),
-            target = el.is("*[data-ajax-target]") ? $(el.attr("data-ajax-target")) : el;
+            action = el.attr("data-polyglot-ajax-action"),
+            target = el.is("*[data-polyglot-ajax-target]") ? $(el.attr("data-polyglot-ajax-target")) : el;
 
         var formData = el.serialize();
         if (formData != "") {
@@ -107,8 +107,8 @@
     function triggerAjaxCall()
     {
         var el = $(this),
-            action = el.data("ajax-action"),
-            target = el.is("*[data-ajax-target]") ? $(el.data("ajax-target")) : el;
+            action = el.data("polyglot-ajax-action"),
+            target = el.is("*[data-polyglot-ajax-target]") ? $(el.data("polyglot-ajax-target")) : el;
 
         target.html('<div class="loading">Loading...</div>');
 

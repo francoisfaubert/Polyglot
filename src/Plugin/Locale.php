@@ -2,21 +2,31 @@
 
 namespace Polyglot\Plugin;
 
+use Strata\Strata;
+
 class Locale {
 
-    protected $defaultName;
+    protected $nativeLabel;
     protected $code;
     protected $isDefault;
-    protected $uniqueId;
 
-    function __construct()
+    function __construct($code, $config = array())
     {
-        $this->create();
+        $this->code = $code;
+
+        // Apply defaults
+        $config += array(
+            "nativeLabel" => $code,
+            "default" => false
+        );
+
+        $this->nativeLabel = $config["nativeLabel"];
+        $this->isDefault = (bool)$config["default"];
     }
 
-    public function getDefaultName()
+    public function getNativeLabel()
     {
-        return $this->defaultName;
+        return $this->nativeLabel;
     }
 
     public function getCode()
@@ -29,56 +39,24 @@ class Locale {
         return (bool)$this->isDefault;
     }
 
-    public function isNew()
+    public function hasANativeLabel()
     {
-        // @todo : this doesn't work if I am supposed to support
-        // externally generated files.
-        return !($this->hasPo() && $this->hasMo());
+        return $this->nativeLabel !== $this->code;
     }
 
-    public function getId()
+    public function hasPoFile()
     {
-        return $this->uniqueId;
+        return file_exists($this->getPoFilePath());
     }
 
-    public function create($config = array())
+    public function getPoFilePath()
     {
-        $this->createEmpty();
-        foreach ($config as $key => $value) {
-            $this->{$key} = $value;
-        }
+        $localeDir = Strata::getLocalePath();
+        return $localeDir . $this->getCode() . '.po';
     }
 
-    public function hasMo()
+    public function getEditUrl()
     {
-        return file_exists($this->getMoPath());
-    }
-
-    public function getMoPath()
-    {
-        return WP_LANG_DIR . $this->getCode() . '.mo';
-    }
-
-    public function hasPo()
-    {
-        return file_exists($this->getPoPath());
-    }
-
-    public function getPoPath()
-    {
-        return WP_LANG_DIR . DIRECTORY_SEPARATOR . str_replace("-", "_", $this->getCode()) . '.po';
-    }
-
-    public function isValid()
-    {
-        return $this->getDefaultName() != "" && preg_match("/[a-z]{2}-[A-Z]{2}/", $this->getCode());
-    }
-
-    protected function createEmpty()
-    {
-        $this->uniqueId = uniqid("id-");
-        $this->defaultName = "";
-        $this->code = "";
-        $this->isDefault = false;
+        return admin_url('options-general.php?page=polyglot-plugin&polyglot_action=editLocale&locale='.$this->getCode());
     }
 }
