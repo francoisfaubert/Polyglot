@@ -65,6 +65,11 @@ class WordpressAdaptor {
         $this->addGlobalCallbacks();
     }
 
+    protected function addWebsiteCallbacks()
+    {
+
+    }
+
     protected function addAdminCallbacks()
     {
         add_action('admin_menu', array($this, 'adminMenu'));
