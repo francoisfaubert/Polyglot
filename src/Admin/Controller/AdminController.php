@@ -1,18 +1,11 @@
 <?php
 namespace Polyglot\Admin\Controller;
 
-use Polyglot\Plugin\Polyglot;
+use Exception;
+use Polyglot\Plugin\Db\Query;
 use Polyglot\Admin\Form\StringTranslationForm;
 
 class AdminController extends BaseController {
-
-    private $polyglot;
-
-    public function before()
-    {
-        $this->polyglot = new Polyglot();
-        $this->view->set("polyglot", $this->polyglot);
-    }
 
     public function index()
     {
@@ -68,6 +61,23 @@ class AdminController extends BaseController {
         $this->view->set("taxonomy", get_taxonomy($this->request->get("type")));
 
         $this->render("editPostTypeLabels");
+    }
+
+    public function createTranslationDuplicate()
+    {
+        try {
+            $query = new Query();
+            $newTranslationObjId = $query->addPostTranslation((int)$this->request->get("object"), $this->request->get("objectType"), $this->request->get("objectKind"), $this->request->get("locale"));
+            $this->view->set("translationId", $newTranslationObjId);
+            $this->view->set("targetLocale", $this->request->get("locale"));
+
+        } catch(Exception $e) {
+            $this->view->set("error", $e->getMessage());
+        }
+
+        $this->view->set("originalId", $this->request->get("object"));
+        $this->render("duplicating");
+
     }
 
 }

@@ -1,18 +1,9 @@
 <?php
 namespace Polyglot\Admin\Controller;
 
-use Polyglot\Plugin\Polyglot;
-use Polyglot\Admin\Form\StringTranslationForm;
+use Polyglot\Plugin\Db\Query;
 
 class AdminAjaxController extends BaseController {
-
-    private $polyglot;
-
-    public function before()
-    {
-        $this->polyglot = new Polyglot();
-        $this->view->set("polyglot", $this->polyglot);
-    }
 
     public function viewPostTypeList()
     {
@@ -34,6 +25,15 @@ class AdminAjaxController extends BaseController {
     {
         $this->polyglot->toggleTaxonomy($this->request->post("param"));
         $this->viewTaxonomyList();
+    }
+
+    public function switchTranslation()
+    {
+        $targetPost = get_post($this->request->post("param"));
+        $this->polyglot->assignMappingByPost($targetPost);
+
+        $this->view->set("originalPost", $this->polyglot->findOriginalPost($targetPost));
+        $this->render("switchTranslation");
     }
 
     protected function getTemplatePath()

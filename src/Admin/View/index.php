@@ -24,13 +24,6 @@
     <p><?php _e("No active locales have been found in your Strata configuration file."); ?></p>
 <?php endif; ?>
 
-<!--
-<div class="info">
-    <p><?php _e("To discover new translatable GetText string, use the following command for your Terminal from the root of your project:"); ?></p>
-    <pre><code>$ ./strata i18n extract</code></pre>
-</div>
--->
-
 <section class="dynamic-translations">
     <h2><?php _e("Dynamic translations", "polyglot"); ?></h2>
 

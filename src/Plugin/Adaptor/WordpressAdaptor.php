@@ -3,6 +3,7 @@
 namespace Polyglot\Plugin\Adaptor;
 
 use Polyglot\Admin\Router;
+use Polyglot\Plugin\Query\Query;
 
 class WordpressAdaptor {
 
@@ -14,7 +15,6 @@ class WordpressAdaptor {
     {
         $this->loaderPath = $loaderPath;
         $this->addRegistrationHooks();
-
         $this->addCallbacks();
     }
 
@@ -25,12 +25,13 @@ class WordpressAdaptor {
         }
     }
 
-    public function activate()
+    public static function activate()
     {
-
+        $query = new Query();
+        $query->createTable();
     }
 
-    public function deactivate()
+    public static function deactivate()
     {
 
     }
@@ -49,11 +50,9 @@ class WordpressAdaptor {
 
     public function enqueueScripts($suffix)
     {
-        //if ($suffix === "settings_page_" . self::WP_UNIQUE_KEY) {
-            wp_enqueue_script('polyglot_admin_js', $this->getAdminJsPath());
-            wp_enqueue_style('polyglot_admin_css', $this->getAdminCSSPath());
-            $this->requireJqueryUi();
-        //}
+        wp_enqueue_script('polyglot_admin_js', $this->getAdminJsPath());
+        wp_enqueue_style('polyglot_admin_css', $this->getAdminCSSPath());
+        $this->requireJqueryUi();
     }
 
     protected function addCallbacks()
@@ -130,6 +129,4 @@ class WordpressAdaptor {
         $paths = array('src', 'Admin', 'assets', 'polyglot.css');
         return  plugin_dir_url($this->loaderPath) . implode(DIRECTORY_SEPARATOR, $paths);
     }
-
-
 }

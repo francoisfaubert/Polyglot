@@ -1,17 +1,10 @@
 <?php
 namespace Polyglot\Admin\Controller;
 
-use Polyglot\Plugin\Polyglot;
 use Polyglot\Admin\Router;
+use Polyglot\Plugin\Db\Query;
 
 class CallbackController extends BaseController {
-
-    private $polyglot;
-
-    public function before()
-    {
-        $this->polyglot = new Polyglot();
-    }
 
     public function addMetaBox()
     {
@@ -23,8 +16,13 @@ class CallbackController extends BaseController {
 
     public function renderMetabox()
     {
-        $this->view->set("polyglot", $this->polyglot);
+        $this->polyglot->assignMappingByPost(get_post());
         $this->render("metaboxTranslator");
+    }
+
+    public function localeWrite()
+    {
+
     }
 
     private function getRouter()

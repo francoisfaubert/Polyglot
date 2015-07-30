@@ -4,21 +4,44 @@ namespace Polyglot\Plugin;
 
 use Strata\Strata;
 use Strata\Utility\Hash;
-use Polyglot\Plugin\Adaptor\WordpressAdaptor;
+
 use Polyglot\Plugin\Locale;
-use Polyglot\Plugin\Cache;
+use Polyglot\Plugin\Db\Query;
 
 use Exception;
-
 use Gettext\Translations;
 use Gettext\Translation;
 
-class Polyglot {
+/**
+ * Polyglot extends the default I18n class to add translation support
+ * of dynamic objects. Otherwise I18n would only translate strings.
+ */
+class Polyglot extends \Strata\I18n\I18n {
 
-    private $locales = array();
-    private $cache;
+    protected $configuration;
+
+    protected $queryCache = array();
 
     function __construct()
+    {
+        $this->initialize();
+    }
+
+    public function getCurrentLocale()
+    {
+        $currentPost = get_post();
+        if ($currentPost) {
+            return $this->getPostLocale($currentPost);
+        }
+
+        return parent::getCurrentLocale();
+    }
+    /**
+     * Override the default function in order to use
+     * our custom update functions.
+     * @return [type] [description]
+     */
+    protected function createLocalesFromConfig()
     {
         $locales = Hash::normalize(Strata::config("i18n.locales"));
 
@@ -27,56 +50,68 @@ class Polyglot {
         }
     }
 
-    public function hasActiveLocales()
+    public function assignMappingByPost(\WP_Post $post)
     {
-        return count($this->locales) > 0;
-    }
+        $translations = null;
 
-    public function getLocales()
-    {
-        return $this->locales;
-    }
+        if ($this->isTheOriginalPost($post)) {
+            $this->assignPostMap($post);
+            $translations = $this->findAllPostTranslations($post);
+        } else {
+            $originalPost = $this->findOriginalPost($post);
+            $this->assignPostMap($originalPost);
+            $translations = $this->findAllPostTranslations($originalPost);
+        }
 
-    public function getLocaleByCode($code)
-    {
-        if (array_key_exists($code, $this->locales)) {
-            return $this->locales[$code];
+        if (!is_null($translations)) {
+            $this->assignTranslationsMap($translations);
         }
     }
 
-    public function getTranslations($localeCode)
+    public function isTheOriginalPost($targetPost)
     {
-        $locale = $this->getLocaleByCode($localeCode);
-
-        if (!$locale->hasPoFile()) {
-            throw new Exception("$localeCode is not a supported locale.");
+        if (!$this->isCachedQuery("isTheOriginalPost", $targetPost->ID)) {
+            $query = new Query();
+            $this->cacheQuery("isTheOriginalPost", $targetPost->ID, $query->isOriginal($targetPost));
         }
 
-        return Translations::fromPoFile($locale->getPoFilePath());
+        return $this->queryCache["isTheOriginalPost"][$targetPost->ID];
     }
 
-    public function saveTranslations(Locale $locale, array $postedTranslations)
+    public function findOriginalPost($translatedPost)
     {
-        $poFile = $locale->getPoFilePath();
-        $originalTranslations = Translations::fromPoFile($poFile);
-        $newTranslations = new Translations();
 
-        foreach ($postedTranslations as $t) {
-            $original = html_entity_decode($t['original']);
-            $context = html_entity_decode($t['context']);
-
-            $translation = $originalTranslations->find($context, $original);
-            if ($translation === false) {
-                $translation = new Translation($context, $original, $t['plural']);
-            }
-
-            $translation->setTranslation($t['translation']);
-            $translation->setPluralTranslation($t['pluralTranslation']);
-            $newTranslations[] = $translation;
+        if ($this->isTheOriginalPost($translatedPost)) {
+            return $translatedPost;
         }
 
-        $originalTranslations->mergeWith($newTranslations, Translations::MERGE_HEADERS | Translations::MERGE_COMMENTS | Translations::MERGE_ADD | Translations::MERGE_LANGUAGE);
-        $originalTranslations->toPoFile($poFile);
+        if (!$this->isCachedQuery("findOriginalPost", $translatedPost->ID)) {
+            $query = new Query();
+            $this->cacheQuery("findOriginalPost", $translatedPost->ID, $query->findOriginal($translatedPost));
+        }
+
+        return $this->queryCache["findOriginalPost"][$translatedPost->ID];
+    }
+
+    public function findAllPostTranslations($targetPost)
+    {
+        if (!$this->isCachedQuery("findAllTranslationsByPost", $targetPost->ID)) {
+            $query = new Query();
+            $this->cacheQuery("findAllTranslationsByPost", $targetPost->ID, $query->findAllTranlationsOfOriginal($targetPost));
+        }
+
+        return $this->queryCache["findAllTranslationsByPost"][$targetPost->ID];
+    }
+
+    public function getPostLocale($post)
+    {
+        if (!$this->isCachedQuery("getPostLocale", $post->ID)) {
+            $query = new Query();
+            $result = $query->findPostLocale($post);
+            $this->cacheQuery("getPostLocale", $post->ID, $result ? $this->getLocaleByCode($result) : $this->getDefaultLocale());
+        }
+
+        return $this->queryCache["getPostLocale"][$post->ID];
     }
 
     public function isTypeEnabled($postType)
@@ -91,6 +126,10 @@ class Polyglot {
 
     public function toggleTaxonomy($taxonomy)
     {
+        if (is_null($taxonomy)) {
+            return;
+        }
+
         $config = $this->getConfiguration();
 
         if (!$this->isTaxonomyEnabled($taxonomy)) {
@@ -98,14 +137,19 @@ class Polyglot {
         }
         elseif(($key = array_search($taxonomy, $config["taxonomies"])) !== false) {
             unset($config["taxonomies"][$key]);
+            $config = array_filter($config);
         }
 
-        $this->cache["taxonomies"] = $config["taxonomies"];
+        $this->configuration["taxonomies"] = $config["taxonomies"];
         $this->updateConfiguration();
     }
 
     public function togglePostType($postType)
     {
+        if (is_null($postType)) {
+            return;
+        }
+
         $config = $this->getConfiguration();
 
         if (!$this->isTypeEnabled($postType)) {
@@ -113,25 +157,26 @@ class Polyglot {
         }
         elseif(($key = array_search($postType, $config["post-types"])) !== false) {
             unset($config["post-types"][$key]);
+            $config = array_filter($config);
         }
 
-        $this->cache["post-types"] = $config["post-types"];
+        $this->configuration["post-types"] = $config["post-types"];
         $this->updateConfiguration();
     }
 
 
     public function getConfiguration()
     {
-        if (is_null($this->cache)) {
-            $this->cache = get_option("polyglot_configuration", $this->getDefaultConfiguration());
+        if (is_null($this->configuration)) {
+            $this->configuration = get_option("polyglot_configuration", $this->getDefaultConfiguration());
         }
 
-        return $this->cache;
+        return $this->configuration;
     }
 
     protected function updateConfiguration()
     {
-        return update_option("polyglot_configuration", $this->cache);
+        return update_option("polyglot_configuration", $this->configuration);
     }
 
     public function getOptions()
@@ -168,15 +213,48 @@ class Polyglot {
         return get_taxonomies(array(), "objects");
     }
 
-    public function isCurrentlyActive(Locale $locale)
+    protected function assignTranslationsMap($rows)
     {
-        $current = $this->getCurrentLocale();
-        return $locale->getCode() === $current->getCode();
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $this->assignTranslationsRow($row);
+            }
+        }
     }
 
-    public function getCurrentLocale()
+    protected function assignPostMap($post)
     {
-        $locales = $this->getLocales();
-        return array_pop($locales);
+        if (!$this->isCachedQuery("assignPostMap", $post->ID)) {
+            $query = new Query();
+            $this->cacheQuery("assignPostMap", $post->ID, $query->findDetails($post));
+        }
+
+        $data = $this->queryCache["assignPostMap"][$post->ID];
+        $this->assignTranslationsRow($data);
+    }
+
+    protected function assignTranslationsRow($row)
+    {
+        $locale = $this->locales[$row->translation_locale];
+        $locale->setDbRow($row);
+    }
+
+    protected function isCachedQuery($function, $objectId)
+    {
+        return array_key_exists($function, $this->queryCache) && array_key_exists($objectId, $this->queryCache[$function]);
+    }
+
+    protected function cacheQuery($function, $objectId, $data)
+    {
+        if (!array_key_exists($function, $this->queryCache)) {
+            $this->queryCache[$function] = array();
+        }
+
+        if (!array_key_exists($objectId, $this->queryCache[$function])) {
+            $this->queryCache[$function][$objectId] = null;
+        }
+
+        // Placed outside of the previous If in case we need to reset the cache.
+        $this->queryCache[$function][$objectId] = $data;
     }
 }

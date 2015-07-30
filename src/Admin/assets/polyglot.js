@@ -12,30 +12,42 @@
             scope.find('*[data-polyglot-ajax="click-popup"]').click(triggerPopupClickEventAjaxCall);
             scope.find('*[data-polyglot-ajax="click"]').click(triggerClickEventAjaxCall);
             scope.find('*[data-ajax="autoload"]').each(triggerAjaxCall);
-            //scope.find('*[data-polyglot-ajax="submit"]').submit(triggerSubmitEventAjaxCall);
         } else {
             $('*[data-polyglot-ajax="click-popup"]').click(triggerPopupClickEventAjaxCall);
             $('*[data-polyglot-ajax="click"]').click(triggerClickEventAjaxCall);
-            //$('*[data-ajax="submit"]').submit(triggerSubmitEventAjaxCall);
             $('*[data-polyglot-ajax="autoload"]').each(triggerAjaxCall);
+
         }
     }
 
     function createDialogFromHtml(html)
     {
         var node = $(html);
+
+        var buttons = null;
+        if (node.find('form').length > 0) {
+            buttons = {
+                "Save": function() {
+                    showSpinner($(this).find(".ui-dialog-buttonset button:last"));
+                    $(this).find('form').submit();
+                }
+            };
+        } else {
+            buttons = {
+                "Close": function() {
+                    $(this).dialog("close");
+                }
+            };
+        }
+
+
         node.dialog({
             'dialogClass'   : 'wp-dialog',
             'modal'         : true,
             'closeOnEscape' : true,
             'width'         : 500,
             'height'        : 500,
-            'buttons'       : {
-                "Save": function() {
-                    showSpinner($(this).find(".ui-dialog-buttonset button:last"));
-                    $(this).find('form').submit();
-                }
-            }
+            'buttons'       : buttons
         });
 
         return node;
@@ -63,7 +75,7 @@
             data: {
                 action: "polyglot_ajax",
                 polyglot_ajax_action: action,
-                param: el.data("ajax-param")
+                param: el.data("polyglot-ajax-param")
             }
         }).done(function(html) {
             hideSpinner(el);
@@ -78,6 +90,18 @@
         evt.preventDefault();
         triggerAjaxCall.apply(this);
     }
+
+    function triggerClickEventCall(evt)
+    {
+        evt.preventDefault();
+        var el = $(this);
+
+        switch (el.data("polyglot-click")) {
+            case "switchTranslation" : return switchTranslation(el);
+
+        }
+    }
+
 
     function triggerSubmitEventAjaxCall(evt)
     {
@@ -118,13 +142,36 @@
             data: {
                 action: "polyglot_ajax",
                 polyglot_ajax_action: action,
-                param: el.data("ajax-param")
+                param: el.data("polyglot-ajax-param")
             },
         }).done(function(data) {
             target.html(data);
             registerEvents(target);
         });
     };
+
+    function switchTranslation(el)
+    {
+        showSpinner(el);
+        $.ajax({
+            url: ajaxurl,
+            method: 'POST',
+            data: {
+                action: "polyglot_ajax",
+                polyglot_ajax_action: "switchTranslation",
+                param: {
+                    locale : el.prev("select").val(),
+                    postId : el.data("polyglot-pid")
+                }
+            }
+        }).done(function(html) {
+            hideSpinner(el);
+            var node = $("<div class=\"polyglot-template\">" +html + "</div>");
+            createDialogFromHtml(node);
+            registerEvents(node);
+        });
+
+    }
 
     $(document).ready(polyglot);
 
