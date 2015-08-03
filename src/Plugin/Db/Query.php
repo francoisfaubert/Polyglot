@@ -149,6 +149,27 @@ class Query {
         return $locale;
     }
 
+    public function findAllIdsOfLocale($localeCode, $kind = "WP_Post")
+    {
+         global $wpdb;
+
+        $query = $wpdb->prepare("
+            SELECT obj_id
+            FROM {$wpdb->prefix}polyglot
+                WHERE obj_kind = %s
+                AND translation_locale = %s
+            ORDER BY id ASC",
+            $kind,
+            $localeCode
+        );
+
+        $this->logQueryStart();
+        $results = $wpdb->get_row($query);
+        $this->logQueryCompletion($wpdb->last_query);
+
+        return $results;
+    }
+
     public function addPostTranslation($originalId, $originalType, $originalKind, $targetLocale)
     {
         global $wpdb;

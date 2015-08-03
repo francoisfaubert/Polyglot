@@ -2,8 +2,10 @@
 
 namespace Polyglot\Plugin\Adaptor;
 
+use Strata\Strata;
 use Polyglot\Admin\Router;
-use Polyglot\Plugin\Query\Query;
+use Polyglot\Plugin\Db\Query;
+
 
 class WordpressAdaptor {
 
@@ -66,7 +68,8 @@ class WordpressAdaptor {
 
     protected function addWebsiteCallbacks()
     {
-
+        add_filter('page_link', array($this, 'pageLink'));
+        add_filter('post_link', array($this, 'postLink'));
     }
 
     protected function addAdminCallbacks()
@@ -85,6 +88,33 @@ class WordpressAdaptor {
     protected function addGlobalCallbacks()
     {
         add_action('plugins_loaded', array($this, 'load'));
+       // add_action('pre_get_posts', array($this, 'preGetPosts'));
+    }
+
+    public function pageLink($url)
+    {
+        return $this->addCurrentLanguageUrl($url);
+    }
+
+    public function postLink($url)
+    {
+        return $this->addCurrentLanguageUrl($url);
+    }
+
+    protected function addCurrentLanguageUrl($url)
+    {
+        $app = Strata::app();
+        $locale = $app->i18n->getCurrentLocale();
+
+        if (!$locale->isDefault()) {
+            $homeUrl = get_home_url();
+            if (strstr($url, $homeUrl . '/index.php/')) {
+                $homeUrl .= '/index.php';
+            }
+            return str_replace($homeUrl, $homeUrl . "/" . $locale->getUrl(), $url);
+        }
+
+        return $url;
     }
 
     protected function addRegistrationHooks()
@@ -105,6 +135,20 @@ class WordpressAdaptor {
         wp_enqueue_script('jquery-ui-dialog');
         wp_enqueue_script('jquery-ui-draggable');
         wp_enqueue_script('jquery-ui-droppable');
+    }
+
+    public function preGetPosts($query)
+    {
+        $app = Strata::app();
+        $locale = $app->i18n->getCurrentLocale();
+        $polyQuery = new Query();
+        $ids = array();
+
+        foreach ((array)$polyQuery->findAllIdsOfLocale($locale->getCode()) as $id) {
+            $ids[] = $id;
+        }
+
+        return $query->set("post__in", $ids);
     }
 
     protected function getPluginLocalePath()
