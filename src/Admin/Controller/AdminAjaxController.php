@@ -30,7 +30,7 @@ class AdminAjaxController extends BaseController {
     public function switchTranslation()
     {
         $targetPost = get_post($this->request->post("param"));
-        $this->polyglot->assignMappingByPost($targetPost);
+        $this->polyglot->getMapper()->assignMappingByPost($targetPost);
 
         $this->view->set("originalPost", $this->polyglot->findOriginalPost($targetPost));
         $this->render("switchTranslation");

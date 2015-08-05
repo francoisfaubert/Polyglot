@@ -5,7 +5,8 @@ namespace Polyglot\Plugin\Adaptor;
 use Strata\Strata;
 use Polyglot\Admin\Router;
 use Polyglot\Plugin\Db\Query;
-
+use Polyglot\Plugin\Polyglot;
+use Polyglot\Plugin\PolyglotRewriter;
 
 class WordpressAdaptor {
 
@@ -83,12 +84,19 @@ class WordpressAdaptor {
         $router->contextualize($this);
         add_action('wp_ajax_polyglot_ajax', array($router, "autoroute"));
         add_filter('add_meta_boxes', array($router, "addMetaBox"), 1000000);
+
+        $polyglot = new Polyglot();
+        foreach($polyglot->getEnabledPostTypes() as $type) {
+            add_filter('views_edit-' . $type, array($router, "addViewEditLocaleSelect"));
+        }
     }
 
     protected function addGlobalCallbacks()
     {
         add_action('plugins_loaded', array($this, 'load'));
-       // add_action('pre_get_posts', array($this, 'preGetPosts'));
+
+        $rewriter = new PolyglotRewriter();
+        $rewriter->registerHooks();
     }
 
     public function pageLink($url)

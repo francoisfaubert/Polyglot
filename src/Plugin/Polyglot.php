@@ -8,19 +8,22 @@ use Strata\Utility\Hash;
 use Polyglot\Plugin\Locale;
 use Polyglot\Plugin\Db\Query;
 
+use WP_Post;
 use Exception;
 use Gettext\Translations;
 use Gettext\Translation;
+
 
 /**
  * Polyglot extends the default I18n class to add translation support
  * of dynamic objects. Otherwise I18n would only translate strings.
  */
 class Polyglot extends \Strata\I18n\I18n {
-
     protected $configuration;
 
     protected $queryCache = array();
+    protected $postCache = array();
+    public $mapper = null;
 
     function __construct()
     {
@@ -29,71 +32,93 @@ class Polyglot extends \Strata\I18n\I18n {
 
     public function getCurrentLocale()
     {
-        $currentPost = get_post();
-        if ($currentPost) {
-            return $this->getPostLocale($currentPost);
+        $currentId = get_the_ID();
+        if ($currentId) {
+            $currentPost = $this->getCachedPostById($currentId);
+            if ($currentPost) {
+                return $this->findPostLocale($currentPost);
+            }
         }
 
         return parent::getCurrentLocale();
     }
+
     /**
-     * Override the default function in order to use
-     * our custom update functions.
+     * Overrides the default function in order to use
+     * our custom Locale object and update functions.
      * @return [type] [description]
      */
-    protected function createLocalesFromConfig()
+    protected function parseLocalesFromConfig()
     {
         $locales = Hash::normalize(Strata::config("i18n.locales"));
+        $newLocales = array();
 
         foreach ($locales as $key => $config) {
-            $this->locales[$key] = new Locale($key, $config);
+            $newLocales[$key] = new Locale($key, $config);
         }
+
+        return $newLocales;
     }
 
-    public function assignMappingByPost(\WP_Post $post)
+    /**
+     * Return an object that maps all the translations for a post.
+     * It is used when multiple corresponding object translations must
+     * be taken into account.
+     * @return Mapper
+     */
+    public function getMapper()
     {
-        $translations = null;
-
-        if ($this->isTheOriginalPost($post)) {
-            $this->assignPostMap($post);
-            $translations = $this->findAllPostTranslations($post);
-        } else {
-            $originalPost = $this->findOriginalPost($post);
-            $this->assignPostMap($originalPost);
-            $translations = $this->findAllPostTranslations($originalPost);
+        if (is_null($this->mapper)) {
+            $this->mapper = new Mapper($this);
         }
 
-        if (!is_null($translations)) {
-            $this->assignTranslationsMap($translations);
-        }
+        return $this->mapper;
     }
 
-    public function isTheOriginalPost($targetPost)
+    /**
+     * Specifies whether $target is the original untranslated version. This
+     * query is cached during the whole page rendering process.
+     * @param  mixed  $targetPost
+     * @return boolean
+     */
+    public function isTheOriginal($target)
     {
-        if (!$this->isCachedQuery("isTheOriginalPost", $targetPost->ID)) {
+        if (!$this->isCachedQuery("isTheOriginal", $target->ID)) {
             $query = new Query();
-            $this->cacheQuery("isTheOriginalPost", $targetPost->ID, $query->isOriginal($targetPost));
+            $this->cacheQuery("isTheOriginal", $target->ID, $query->isOriginal($target));
         }
 
-        return $this->queryCache["isTheOriginalPost"][$targetPost->ID];
+        return $this->queryCache["isTheOriginal"][$target->ID];
     }
 
-    public function findOriginalPost($translatedPost)
+    /**
+     * Loads up the original post of $translatedPost. The result of the
+     * query is cached during the whole page rendering process.
+     * @param  WP_Post  $targetPost [description]
+     * @return WP_Post
+     */
+    public function findOriginalPost(WP_Post $translatedPost)
     {
-
-        if ($this->isTheOriginalPost($translatedPost)) {
+        if ($this->isTheOriginal($translatedPost)) {
             return $translatedPost;
         }
 
         if (!$this->isCachedQuery("findOriginalPost", $translatedPost->ID)) {
             $query = new Query();
-            $this->cacheQuery("findOriginalPost", $translatedPost->ID, $query->findOriginal($translatedPost));
+            $originalPost = $this->getCachedPostById($query->findOriginal($translatedPost));
+            $this->cacheQuery("findOriginalPost", $translatedPost->ID, $originalPost);
         }
 
         return $this->queryCache["findOriginalPost"][$translatedPost->ID];
     }
 
-    public function findAllPostTranslations($targetPost)
+    /**
+     * Returns the list of all translations for a given object. The result of the
+     * query is cached during the whole page rendering process.
+     * @param  mixed $targetPost
+     * @return array
+     */
+    public function findAllTranslations($targetPost)
     {
         if (!$this->isCachedQuery("findAllTranslationsByPost", $targetPost->ID)) {
             $query = new Query();
@@ -103,15 +128,42 @@ class Polyglot extends \Strata\I18n\I18n {
         return $this->queryCache["findAllTranslationsByPost"][$targetPost->ID];
     }
 
-    public function getPostLocale($post)
+    public function findPostLocale($post)
     {
-        if (!$this->isCachedQuery("getPostLocale", $post->ID)) {
+        if (!$this->isCachedQuery("findPostLocale", $post->ID)) {
             $query = new Query();
             $result = $query->findPostLocale($post);
-            $this->cacheQuery("getPostLocale", $post->ID, $result ? $this->getLocaleByCode($result) : $this->getDefaultLocale());
+            $this->cacheQuery("findPostLocale", $post->ID, $result ? $this->getLocaleByCode($result) : $this->getDefaultLocale());
         }
 
-        return $this->queryCache["getPostLocale"][$post->ID];
+        return $this->queryCache["findPostLocale"][$post->ID];
+    }
+
+    public function findTranslationDetails($post)
+    {
+        if (!$this->isCachedQuery("findTranslationDetails", $post->ID)) {
+            $query = new Query();
+            $this->cacheQuery("findTranslationDetails", $post->ID, $query->findDetails($post));
+        }
+
+        return $this->queryCache["findTranslationDetails"][$post->ID];
+    }
+
+    public function hasTranslationDetails($post)
+    {
+        return !is_null($this->findTranslationDetails($post));
+    }
+
+    public function getCachedPostById($id)
+    {
+        if (!$this->isCachedPost($id)) {
+            $post = get_post($id);
+            if (!is_null($post)) {
+                $this->cachePost($id, $post);
+            }
+        }
+
+        return $this->postCache[$id];
     }
 
     public function isTypeEnabled($postType)
@@ -213,30 +265,14 @@ class Polyglot extends \Strata\I18n\I18n {
         return get_taxonomies(array(), "objects");
     }
 
-    protected function assignTranslationsMap($rows)
+    protected function isCachedPost($postId)
     {
-        if (is_array($rows)) {
-            foreach ($rows as $row) {
-                $this->assignTranslationsRow($row);
-            }
-        }
+        return array_key_exists($postId, $this->postCache);
     }
 
-    protected function assignPostMap($post)
+    protected function cachePost($postId, WP_Post $post)
     {
-        if (!$this->isCachedQuery("assignPostMap", $post->ID)) {
-            $query = new Query();
-            $this->cacheQuery("assignPostMap", $post->ID, $query->findDetails($post));
-        }
-
-        $data = $this->queryCache["assignPostMap"][$post->ID];
-        $this->assignTranslationsRow($data);
-    }
-
-    protected function assignTranslationsRow($row)
-    {
-        $locale = $this->locales[$row->translation_locale];
-        $locale->setDbRow($row);
+        $this->postCache[$postId] = $post;
     }
 
     protected function isCachedQuery($function, $objectId)

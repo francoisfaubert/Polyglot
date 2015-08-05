@@ -16,13 +16,18 @@ class CallbackController extends BaseController {
 
     public function renderMetabox()
     {
-        $this->polyglot->assignMappingByPost(get_post());
+        if (get_post_status() == "auto-draft") {
+            $this->view->set("invalidStatus", true);
+        } else {
+            $this->polyglot->getMapper()->assignMappingByPost(get_post());
+        }
         $this->render("metaboxTranslator");
     }
 
-    public function localeWrite()
+    public function addViewEditLocaleSelect($views)
     {
-
+        $views["langfilter"] = $this->render("localeSelect");
+        return $views;
     }
 
     private function getRouter()

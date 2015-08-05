@@ -47,20 +47,34 @@ class Query {
         add_option('polyglot_db_version', self::DB_VERSION);
     }
 
+    public function unlinkTranslationFor($objectId, $objectKind)
+    {
+        global $wpdb;
+        return $wpdb->delete($wpdb->prefix . 'polyglot', array(
+            "obj_id" => $objectId,
+            "obj_kind" => $objectKind
+        ));
+    }
+
     public function findAllTranlationsOfOriginal($object)
+    {
+        return $this->findAllTranlationsOfOriginalId($object->ID, get_class($object));
+    }
+
+    public function findAllTranlationsOfOriginalId($id, $kind = "WP_Post")
     {
         global $wpdb;
 
         $query = $wpdb->prepare("
             SELECT *
             FROM {$wpdb->prefix}polyglot
-                WHERE translation_of = %s
+                LEFT JOIN {$wpdb->prefix}posts on {$wpdb->prefix}posts.ID = {$wpdb->prefix}polyglot.obj_id
+            WHERE translation_of = %s
                 AND obj_kind = %s
-            ORDER BY id ASC",
-            $object->ID,
-            get_class($object)
+            ORDER BY {$wpdb->prefix}polyglot.id ASC",
+            $id,
+            $kind
         );
-
 
         $this->logQueryStart();
         $result = $wpdb->get_results($query);
@@ -111,7 +125,7 @@ class Query {
         );
 
         $this->logQueryStart();
-        $originalPost = get_post($wpdb->get_var($query));
+        $originalPost = $wpdb->get_var($query);
         $this->logQueryCompletion($wpdb->last_query);
 
         return $originalPost;
@@ -176,7 +190,14 @@ class Query {
         $originalPostTitle = get_the_title($originalId);
         $translationTitle = $originalPostTitle . " ($targetLocale)";
 
-        $associationId = wp_insert_post(array("post_title" => $translationTitle));
+        if ($originalKind == "WP_Post") {
+            $associationId = wp_insert_post(array(
+                "post_title" => $translationTitle,
+                "post_type" => $originalType
+            ));
+        } else {
+            throw new Exception("We don't know how to duplicate $originalKind.");
+        }
 
         if ((int)$associationId > 0) {
 
