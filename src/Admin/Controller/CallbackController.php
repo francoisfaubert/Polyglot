@@ -2,10 +2,13 @@
 namespace Polyglot\Admin\Controller;
 
 use Polyglot\Admin\Router;
-use Polyglot\Plugin\Db\Query;
 
 class CallbackController extends BaseController {
 
+    /**
+     * Adds the metabox registration hook.
+     * @see Polyglot\Plugin\Adaptor\WordpressAdaptor
+     */
     public function addMetaBox()
     {
         $type = get_post_type();
@@ -14,22 +17,36 @@ class CallbackController extends BaseController {
         }
     }
 
+    /**
+     * Renders the metabox that displays tranlation statuses.
+     */
     public function renderMetabox()
     {
         if (get_post_status() == "auto-draft") {
             $this->view->set("invalidStatus", true);
         } else {
-            $this->polyglot->getMapper()->assignMappingByPost(get_post());
+            $this->polyglot->contextualizeMappingByPost(get_post());
         }
         $this->render("metaboxTranslator");
     }
 
+    /**
+     * Adds the locale selection box to the post edit page.
+     * @see Polyglot\Plugin\Adaptor\WordpressAdaptor
+     * @param array $views
+     * @return array
+     */
     public function addViewEditLocaleSelect($views)
     {
         $views["langfilter"] = $this->render("localeSelect");
         return $views;
     }
 
+    /**
+     * Returns a router object that is aware of the current plugin context
+     * for routing urls.
+     * @return Router
+     */
     private function getRouter()
     {
         $router = new Router();

@@ -2,17 +2,8 @@
 
 namespace Polyglot\Plugin;
 
-use Strata\Strata;
-use Strata\Utility\Hash;
-
-use Polyglot\Plugin\Locale;
-use Polyglot\Plugin\Db\Query;
-
+use Polyglot\Plugin\TranslationEntity;
 use WP_Post;
-use Exception;
-use Gettext\Translations;
-use Gettext\Translation;
-
 
 /**
  * Mainly used by the admin area, this class helps map the full translation tree
@@ -27,22 +18,50 @@ class Mapper  {
         $this->polyglot = $polyglot;
     }
 
+    /**
+     * From a post, builds up the whole translation hierarchy
+     * so that every locale are populated with their translation information.
+     * @param  WP_Post $post
+     */
     public function assignMappingByPost(WP_Post $post)
     {
-        $translations = null;
+        $originalDetails = $this->getOriginalDetails($post);
 
-        if ($this->polyglot->isTheOriginal($post)) {
-            $this->assignPostMap($post);
-            $translations = $this->polyglot->findAllTranslations($post);
+        if (is_array($originalDetails) && count($originalDetails)) {
+            $this->assignTranslationsMap($originalDetails);
+            $originalPostId = $originalDetails[0]->translation_of;
         } else {
-            $originalPost = $this->polyglot->findOriginalPost($post);
-            $this->assignPostMap($originalPost);
-            $translations = $this->polyglot->findAllTranslations($originalPost);
+            $this->assignTranslationsRow($originalDetails);
+            $originalPostId = $originalDetails->translation_of;
         }
 
-        if (!is_null($translations)) {
+        // When the process does not return an original id, then
+        // we assume $post was the original version.
+        if (is_null($originalPostId)) {
+            return $this->buildAppendMissingOriginalPostDetails($post);
+        }
+
+        $originalPost = $this->polyglot->getCachedPostById($originalPostId);
+        $this->buildAppendMissingOriginalPostDetails($originalPost);
+        return $originalPost;
+    }
+
+    protected function buildAppendMissingOriginalPostDetails(WP_Post $post)
+    {
+        $this->assignOriginalToDefaultLocale($post);
+        $translations = $this->polyglot->findAllTranslationsOf($post);
+
+        if (is_array($translations) && count($translations)) {
             $this->assignTranslationsMap($translations);
         }
+
+        return $post;
+    }
+
+    protected function getOriginalDetails(WP_Post $post)
+    {
+        $details = $this->polyglot->findTranslationDetails($post);
+        return $details->isOriginal() ? $details : $this->polyglot->findOriginalTranslationDetails($post);
     }
 
     protected function assignTranslationsMap($rows)
@@ -51,18 +70,29 @@ class Mapper  {
             foreach ($rows as $row) {
                 $this->assignTranslationsRow($row);
             }
+        } else {
+            throw new Exception("Must map an array of TranslationEntities");
         }
     }
 
-    protected function assignPostMap($post)
+    protected function assignTranslationsRow(TranslationEntity $entity)
     {
-        $this->assignTranslationsRow($this->polyglot->findTranslationDetails($post));
+        $locale = $this->polyglot->getLocaleByCode($entity->translation_locale);
+        $locale->setDetails($entity);
     }
 
-    protected function assignTranslationsRow($row)
+    /**
+     * The default locale is always blank because it has no translations.
+     * @param WP_Post
+     * @return TranslationEntity Original translation
+     */
+    protected function assignOriginalToDefaultLocale(WP_Post $post)
     {
-        $locale = $this->polyglot->getLocaleByCode($row->translation_locale);
-        $locale->setDbRow($row);
+        $defaultLocale = $this->polyglot->getDefaultLocale();
+        $translation = $this->polyglot->generateTranslationEntity($post);
+        $defaultLocale->setDetails($translation);
+
+        return $translation;
     }
 
 }

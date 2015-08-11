@@ -4,14 +4,15 @@ namespace Polyglot\Plugin;
 
 use Strata\Strata;
 use Strata\Utility\Hash;
+use Strata\Controller\Request;
 
 use Polyglot\Plugin\Locale;
+use Polyglot\Plugin\TranslationEntity;
+
 use Polyglot\Plugin\Db\Query;
 
 use WP_Post;
 use Exception;
-use Gettext\Translations;
-use Gettext\Translation;
 
 
 /**
@@ -19,45 +20,27 @@ use Gettext\Translation;
  * of dynamic objects. Otherwise I18n would only translate strings.
  */
 class Polyglot extends \Strata\I18n\I18n {
+
+    public static function instance()
+    {
+        global $polyglot;
+        return is_null($polyglot) ? new self() : $polyglot;
+    }
+
     protected $configuration;
 
     protected $queryCache = array();
     protected $postCache = array();
-    public $mapper = null;
+
+    protected $mapper = null;
 
     function __construct()
     {
+        $this->throwIfGlobalExists();
         $this->initialize();
-    }
 
-    public function getCurrentLocale()
-    {
-        $currentId = get_the_ID();
-        if ($currentId) {
-            $currentPost = $this->getCachedPostById($currentId);
-            if ($currentPost) {
-                return $this->findPostLocale($currentPost);
-            }
-        }
-
-        return parent::getCurrentLocale();
-    }
-
-    /**
-     * Overrides the default function in order to use
-     * our custom Locale object and update functions.
-     * @return [type] [description]
-     */
-    protected function parseLocalesFromConfig()
-    {
-        $locales = Hash::normalize(Strata::config("i18n.locales"));
-        $newLocales = array();
-
-        foreach ($locales as $key => $config) {
-            $newLocales[$key] = new Locale($key, $config);
-        }
-
-        return $newLocales;
+        add_action('wp', array($this, "setCurrentLocaleByPostContext"));
+        add_action('wp_head', array($this, "appendHeaderHtml"));
     }
 
     /**
@@ -75,42 +58,50 @@ class Polyglot extends \Strata\I18n\I18n {
         return $this->mapper;
     }
 
-    /**
-     * Specifies whether $target is the original untranslated version. This
-     * query is cached during the whole page rendering process.
-     * @param  mixed  $targetPost
-     * @return boolean
-     */
-    public function isTheOriginal($target)
+    public function appendHeaderHtml()
     {
-        if (!$this->isCachedQuery("isTheOriginal", $target->ID)) {
-            $query = new Query();
-            $this->cacheQuery("isTheOriginal", $target->ID, $query->isOriginal($target));
+        $metatags = array();
+
+        // Loop alternate versions
+        foreach ($this->getLocales() as $locale) {
+            if ($locale->hasTranslation()) {
+                $metatags[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $locale->getTranslationPermalink());
+            }
         }
 
-        return $this->queryCache["isTheOriginal"][$target->ID];
+        echo implode("\n", $metatags) . "\n";
+    }
+
+
+    /**
+     * Contextualize all the locale translation details based on
+     * the post variable
+     * @param  WP_Post $post
+     * @return TranslationEntity        The original post translation info
+     */
+    public function contextualizeMappingByPost(WP_Post $post)
+    {
+        return $this->getMapper()->assignMappingByPost($post);
     }
 
     /**
-     * Loads up the original post of $translatedPost. The result of the
-     * query is cached during the whole page rendering process.
-     * @param  WP_Post  $targetPost [description]
-     * @return WP_Post
+     * Sets the current locale based on a loaded post, either
      */
-    public function findOriginalPost(WP_Post $translatedPost)
+    public function setCurrentLocaleByPostContext()
     {
-        if ($this->isTheOriginal($translatedPost)) {
-            return $translatedPost;
+        if (is_admin()) {
+            $request = new Request();
+            if ($request->hasGet("post")) {
+                return $this->setLocaleByPostId($request->get("post"));
+            }
         }
 
-        if (!$this->isCachedQuery("findOriginalPost", $translatedPost->ID)) {
-            $query = new Query();
-            $originalPost = $this->getCachedPostById($query->findOriginal($translatedPost));
-            $this->cacheQuery("findOriginalPost", $translatedPost->ID, $originalPost);
+        $postId = get_the_ID();
+        if ($postId) {
+            return $this->setLocaleByPostId($postId);
         }
-
-        return $this->queryCache["findOriginalPost"][$translatedPost->ID];
     }
+
 
     /**
      * Returns the list of all translations for a given object. The result of the
@@ -118,7 +109,7 @@ class Polyglot extends \Strata\I18n\I18n {
      * @param  mixed $targetPost
      * @return array
      */
-    public function findAllTranslations($targetPost)
+    public function findAllTranslationsOf($targetPost)
     {
         if (!$this->isCachedQuery("findAllTranslationsByPost", $targetPost->ID)) {
             $query = new Query();
@@ -142,12 +133,21 @@ class Polyglot extends \Strata\I18n\I18n {
     public function findTranslationDetails($post)
     {
         if (!$this->isCachedQuery("findTranslationDetails", $post->ID)) {
-            $query = new Query();
-            $this->cacheQuery("findTranslationDetails", $post->ID, $query->findDetails($post));
+            $this->cacheQuery("findTranslationDetails", $post->ID, $this->query()->findDetails($post));
         }
 
         return $this->queryCache["findTranslationDetails"][$post->ID];
     }
+
+    public function findOriginalTranslationDetails($post)
+    {
+        if (!$this->isCachedQuery("findOriginalTranslationDetails", $post->ID)) {
+            $this->cacheQuery("findOriginalTranslationDetails", $post->ID, $this->query()->findOriginalTranslationDetails($post));
+        }
+
+        return $this->queryCache["findOriginalTranslationDetails"][$post->ID];
+    }
+
 
     public function hasTranslationDetails($post)
     {
@@ -265,6 +265,39 @@ class Polyglot extends \Strata\I18n\I18n {
         return get_taxonomies(array(), "objects");
     }
 
+    public function generateTranslationEntity(WP_Post $post)
+    {
+        return $this->query()->createTranslationEntity($post);
+    }
+
+    protected function query()
+    {
+        return new Query();
+    }
+
+    protected function registerHooks()
+    {
+        parent::registerHooks();
+        add_action('wp', array($this, "setCurrentLocaleByPostContext"));
+    }
+
+    /**
+     * Overrides the default function in order to use
+     * our custom Locale object and its update functions.
+     * @return array
+     */
+    protected function parseLocalesFromConfig()
+    {
+        $locales = Hash::normalize(Strata::config("i18n.locales"));
+        $newLocales = array();
+
+        foreach ($locales as $key => $config) {
+            $newLocales[$key] = new Locale($key, $config);
+        }
+
+        return $newLocales;
+    }
+
     protected function isCachedPost($postId)
     {
         return array_key_exists($postId, $this->postCache);
@@ -292,5 +325,50 @@ class Polyglot extends \Strata\I18n\I18n {
 
         // Placed outside of the previous If in case we need to reset the cache.
         $this->queryCache[$function][$objectId] = $data;
+    }
+
+    private function setLocaleByPostId($postId)
+    {
+        $post = $this->getCachedPostById($postId);
+        $originalPost = $this->getMapper()->assignMappingByPost($post);
+
+        $locale = $this->findPostLocale($post);
+        if (!is_null($locale)) {
+            $this->setLocale($locale);
+            return $locale;
+        }
+
+    }
+
+    /**
+     * If there are multiple instances of Polyglot running at the same time,
+     * an exception should be raised.
+     * @throws Exception
+     */
+    private function throwIfGlobalExists()
+    {
+        /**
+         *  Hello,
+         *
+         *  If this exception is an hindrance to you, please go to our GitHub and
+         *  explain what you which to accomplish by creating a second instance of
+         *  the Polyglot object.
+         *
+         *  I am writing this throw early in the life of the plugin and I am still on the
+         *  fence on whether it should exist.
+         *
+         *  I am adding the throw because I think it would slow the website to a crawl
+         *  if I allow multiple instances of Polyglot that maintain their own separate caches. I would
+         *  rather have an optimized list of API functions available on the global $polyglot object.
+         *
+         *  That's the idea anyways.
+         *  Cheers,
+         *
+         *  - Frank.
+         */
+        global $polyglot;
+        if (!is_null($polyglot)) {
+            throw new Exception("There should only be one active reference to Polyglot. Please use global \$polyglot to get the instance.");
+        }
     }
 }

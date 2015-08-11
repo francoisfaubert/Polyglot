@@ -1,6 +1,12 @@
 <?php
 namespace Polyglot\Plugin\Db;
 
+
+use Polyglot\Plugin\TranslationEntity;
+
+
+use WP_Post;
+use StdClass;
 use Strata\Strata;
 use Strata\Logger\Logger;
 
@@ -17,10 +23,18 @@ class Query {
         $this->configureLogger();
     }
 
-    private function configureLogger()
+    public function createTranslationEntity($object)
     {
-        $this->logger = new Logger();
-        $this->logger->color = "\e[0;35m";
+        $app = Strata::app();
+
+        $entity = new TranslationEntity();
+        $entity->obj_id = $object->ID;
+        $entity->obj_kind = get_class($object);
+        $entity->obj_type = $object->post_type;
+        $entity->translation_locale = $app->i18n->getDefaultLocale()->getCode();
+        $entity->translation_of = null;
+
+        return $entity;
     }
 
     public function createTable()
@@ -30,13 +44,13 @@ class Query {
         $charset = $wpdb->get_charset_collate();
 
         $sql = "CREATE TABLE $tableName (
-            id mediumint(9) NOT NULL AUTO_INCREMENT,
+            polyglot_ID mediumint(9) NOT NULL AUTO_INCREMENT,
             obj_kind varchar(10) NOT NULL,
             obj_type tinytext NOT NULL,
             obj_id mediumint(9) NOT NULL,
             translation_of mediumint(9) NOT NULL,
             translation_locale varchar(10),
-            UNIQUE KEY id (id)
+            UNIQUE KEY polyglot_ID (polyglot_ID)
         ) $charset;";
 
         require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
@@ -66,33 +80,63 @@ class Query {
         global $wpdb;
 
         $query = $wpdb->prepare("
-            SELECT *
+            SELECT {$wpdb->prefix}polyglot.*,
+                {$wpdb->prefix}posts.post_name
             FROM {$wpdb->prefix}polyglot
                 LEFT JOIN {$wpdb->prefix}posts on {$wpdb->prefix}posts.ID = {$wpdb->prefix}polyglot.obj_id
             WHERE translation_of = %s
                 AND obj_kind = %s
-            ORDER BY {$wpdb->prefix}polyglot.id ASC",
+            ORDER BY polyglot_ID ASC",
             $id,
             $kind
         );
 
         $this->logQueryStart();
-        $result = $wpdb->get_results($query);
+        $result = array();
+        foreach ($wpdb->get_results($query) as $row) {
+            $result[] = new TranslationEntity($row);
+        }
         $this->logQueryCompletion($wpdb->last_query);
 
         return $result;
     }
 
+    // public function translationTree(WP_Post $post)
+    // {
+    //     global $wpdb;
+
+    //     $query = $wpdb->prepare("
+    //         SELECT *
+    //         FROM {$wpdb->prefix}polyglot
+    //             LEFT JOIN {$wpdb->prefix}posts on {$wpdb->prefix}posts.ID = {$wpdb->prefix}polyglot.obj_id
+    //         WHERE translation_of = %s
+    //             AND obj_kind = %s
+    //         ORDER BY polyglot_ID ASC",
+    //         $post->ID,
+    //         get_class($post)
+    //     );
+
+    //     $this->logQueryStart();
+    //     $result = $wpdb->get_results($query);
+    //     $this->logQueryCompletion($wpdb->last_query);
+
+    //     return $result;
+    // }
+
+    /**
+     * Queries for the translation details of an object.
+     * @param  mixed $object
+     * @return TranslationEntity
+     */
     public function findDetails($object)
     {
         global $wpdb;
-
         $query = $wpdb->prepare("
             SELECT *
             FROM {$wpdb->prefix}polyglot
                 WHERE obj_id = %s
                 AND obj_kind = %s
-            ORDER BY id ASC
+            ORDER BY polyglot_ID ASC
             LIMIT 1",
             $object->ID,
             get_class($object)
@@ -103,86 +147,100 @@ class Query {
         $this->logQueryCompletion($wpdb->last_query);
 
         if (is_null($result) && $this->isInDefaultLocale($object)) {
-            return $this->createFakeRow($object);
+            return $this->createTranslationEntity($object);
         }
 
-        return $result;
+        return new TranslationEntity($result);
     }
 
-    public function findOriginal($translatedPost)
+
+    /**
+     * Fetches all the known translation details of an object's original parent.
+     * Best for cases where you have a translation and need to build the list of
+     * all locale possibilities.
+     * @param  mixed $object
+     * @return TranslationEntity
+     */
+    public function findOriginalTranslationDetails($object)
     {
         global $wpdb;
         $app = Strata::app();
 
         $query = $wpdb->prepare("
-            SELECT translation_of
+            SELECT *
             FROM {$wpdb->prefix}polyglot
-                WHERE obj_id = %s
-                AND obj_kind = %s
-            ORDER BY id ASC",
-            $translatedPost->ID,
-            get_class($translatedPost)
+            WHERE translation_of =
+                (
+                    SELECT translation_of
+                    FROM {$wpdb->prefix}polyglot
+                        WHERE obj_id = %s
+                        AND obj_kind = %s
+                )",
+            $object->ID,
+            get_class($object)
         );
 
         $this->logQueryStart();
-        $originalPost = $wpdb->get_var($query);
-        $this->logQueryCompletion($wpdb->last_query);
-
-        return $originalPost;
-    }
-
-    public function isOriginal($obj)
-    {
-        $original = $this->findOriginal($obj);
-        return is_null($original) && $this->isInDefaultLocale($obj);
-    }
-
-    public function findPostLocale($translatedPost)
-    {
-        global $wpdb;
-
-        $query = $wpdb->prepare("
-            SELECT translation_locale
-            FROM {$wpdb->prefix}polyglot
-                WHERE obj_id = %s
-                AND obj_kind = %s
-            ORDER BY id ASC",
-            $translatedPost->ID,
-            get_class($translatedPost)
-        );
-
-        $this->logQueryStart();
-        $locale = $wpdb->get_var($query);
-        $this->logQueryCompletion($wpdb->last_query);
-
-        if (is_null($locale)) {
-            $app = Strata::app();
-            return $app->i18n->getDefaultLocale()->getCode();
+        $result = array();
+        foreach ($wpdb->get_results($query) as $row) {
+            $result[] = new TranslationEntity($row);
         }
-
-        return $locale;
-    }
-
-    public function findAllIdsOfLocale($localeCode, $kind = "WP_Post")
-    {
-         global $wpdb;
-
-        $query = $wpdb->prepare("
-            SELECT obj_id
-            FROM {$wpdb->prefix}polyglot
-                WHERE obj_kind = %s
-                AND translation_locale = %s
-            ORDER BY id ASC",
-            $kind,
-            $localeCode
-        );
-
-        $this->logQueryStart();
-        $results = $wpdb->get_row($query);
         $this->logQueryCompletion($wpdb->last_query);
 
-        return $results;
+        return $result;
     }
+
+
+    // public function findOriginal($mixed)
+    // {
+    //     global $wpdb;
+    //     $app = Strata::app();
+
+    //     $query = $wpdb->prepare("
+    //         SELECT translation_of
+    //         FROM {$wpdb->prefix}polyglot
+    //             WHERE obj_id = %s
+    //             AND obj_kind = %s
+    //         ORDER BY polyglot_ID ASC",
+    //         $mixed->ID,
+    //         get_class($mixed)
+    //     );
+
+    //     $this->logQueryStart();
+    //     $originalPost = $wpdb->get_var($query);
+    //     $this->logQueryCompletion($wpdb->last_query);
+
+    //     return $originalPost;
+    // }
+
+    // public function isOriginal($obj)
+    // {
+    //     $original = $this->findOriginal($obj);
+    //     return is_null($original) && $this->isInDefaultLocale($obj);
+    // }
+
+
+
+    // public function findAllIdsOfLocale($localeCode, $kind = "WP_Post")
+    // {
+    //      global $wpdb;
+
+    //     $query = $wpdb->prepare("
+    //         SELECT obj_id
+    //         FROM {$wpdb->prefix}polyglot
+    //             WHERE obj_kind = %s
+    //             AND translation_locale = %s
+    //         ORDER BY polyglot_ID ASC",
+    //         $kind,
+    //         $localeCode
+    //     );
+
+    //     $this->logQueryStart();
+    //     $results = $wpdb->get_row($query);
+    //     $this->logQueryCompletion($wpdb->last_query);
+
+    //     return $results;
+    // }
 
     public function addPostTranslation($originalId, $originalType, $originalKind, $targetLocale)
     {
@@ -241,15 +299,35 @@ class Query {
         return $this->findPostLocale($obj) === $app->i18n->getDefaultLocale()->getCode();
     }
 
-    private function createFakeRow($object)
+    public function findPostLocale(WP_Post $translatedPost)
     {
-        $app = Strata::app();
-        $row = new \StdClass();
-        $row->obj_id = $object->ID;
-        $row->obj_kind = get_class($object);
-        $row->obj_type = $object->post_type;
-        $row->translation_locale = $app->i18n->getDefaultLocale()->getCode();
-        $row->translation_of = null;
-        return $row;
+        global $wpdb;
+
+        $query = $wpdb->prepare("
+            SELECT translation_locale
+            FROM {$wpdb->prefix}polyglot
+                WHERE obj_id = %s
+                AND obj_kind = %s
+            ORDER BY polyglot_ID ASC",
+            $translatedPost->ID,
+            get_class($translatedPost)
+        );
+
+        $this->logQueryStart();
+        $locale = $wpdb->get_var($query);
+        $this->logQueryCompletion($wpdb->last_query);
+
+        if (is_null($locale)) {
+            $app = Strata::app();
+            return $app->i18n->getDefaultLocale()->getCode();
+        }
+
+        return $locale;
+    }
+
+    private function configureLogger()
+    {
+        $this->logger = new Logger();
+        $this->logger->color = "\e[0;35m";
     }
 }

@@ -10,17 +10,46 @@ use Polyglot\Plugin\PolyglotRewriter;
 
 class WordpressAdaptor {
 
-    const WP_UNIQUE_KEY = "polyglot-plugin";
+    /**
+     * Plugin activation trigger
+     */
+    public static function activate()
+    {
+        $query = new Query();
+        $query->createTable();
+    }
+    /**
+     * Plugin deactivation trigger
+     */
+    public static function deactivate()
+    {
 
+    }
+
+    /** @var string Path to the plugin's launcher file. */
     public $loaderPath;
 
+    /** @var Polyglot A local reference to the global polyglot object. */
+    private $polyglot;
+
+    /**
+     * Registers the plugin and saved the context in which
+     * the plugin will run.
+     * @param  string $loaderPath The plugin path
+     */
     public function register($loaderPath)
     {
         $this->loaderPath = $loaderPath;
+        $this->polyglot = Polyglot::instance();
+
         $this->addRegistrationHooks();
         $this->addCallbacks();
     }
 
+    /**
+     * Kicks of the adaptor
+     * @see plugins_loaded
+     */
     public function load()
     {
         if (is_admin()) {
@@ -28,29 +57,27 @@ class WordpressAdaptor {
         }
     }
 
-    public static function activate()
-    {
-        $query = new Query();
-        $query->createTable();
-    }
-
-    public static function deactivate()
-    {
-
-    }
-
+    /**
+     * Registers the option menu entry.
+     */
     public function adminMenu()
     {
         $router = new Router();
         $router->contextualize($this);
-        add_options_page('Localization', 'Localization', 'manage_options', self::WP_UNIQUE_KEY, array($router, 'autoroute'));
+        add_options_page('Localization', 'Localization', 'manage_options', 'polyglot-plugin', array($router, 'autoroute'));
     }
 
+    /**
+     * @see admin_init
+     */
     public function adminInit()
     {
 
     }
 
+    /**
+     * @see admin_enqueue_scripts
+     */
     public function enqueueScripts($suffix)
     {
         wp_enqueue_script('polyglot_admin_js', $this->getAdminJsPath());
@@ -58,6 +85,9 @@ class WordpressAdaptor {
         $this->requireJqueryUi();
     }
 
+    /**
+     * Registers callbacks based on the current Wordpress context.
+     */
     protected function addCallbacks()
     {
         is_admin() ?
@@ -67,12 +97,17 @@ class WordpressAdaptor {
         $this->addGlobalCallbacks();
     }
 
+    /**
+     * Registers callbacks on the frontend
+     */
     protected function addWebsiteCallbacks()
     {
-        add_filter('page_link', array($this, 'pageLink'));
-        add_filter('post_link', array($this, 'postLink'));
+
     }
 
+    /**
+     * Registers callbacks on the backend
+     */
     protected function addAdminCallbacks()
     {
         add_action('admin_menu', array($this, 'adminMenu'));
@@ -85,57 +120,44 @@ class WordpressAdaptor {
         add_action('wp_ajax_polyglot_ajax', array($router, "autoroute"));
         add_filter('add_meta_boxes', array($router, "addMetaBox"), 1000000);
 
-        $polyglot = new Polyglot();
-        foreach($polyglot->getEnabledPostTypes() as $type) {
+        foreach($this->polyglot->getEnabledPostTypes() as $type) {
             add_filter('views_edit-' . $type, array($router, "addViewEditLocaleSelect"));
         }
     }
 
+    /**
+     * Registers callbacks required by both the backend and frontend.
+     */
     protected function addGlobalCallbacks()
     {
         add_action('plugins_loaded', array($this, 'load'));
+        add_action('the_post', array($this->polyglot, 'contextualizeMappingByPost'));
 
         $rewriter = new PolyglotRewriter();
         $rewriter->registerHooks();
     }
 
-    public function pageLink($url)
-    {
-        return $this->addCurrentLanguageUrl($url);
-    }
-
-    public function postLink($url)
-    {
-        return $this->addCurrentLanguageUrl($url);
-    }
-
-    protected function addCurrentLanguageUrl($url)
-    {
-        $app = Strata::app();
-        $locale = $app->i18n->getCurrentLocale();
-
-        if (!$locale->isDefault()) {
-            $homeUrl = get_home_url();
-            if (strstr($url, $homeUrl . '/index.php/')) {
-                $homeUrl .= '/index.php';
-            }
-            return str_replace($homeUrl, $homeUrl . "/" . $locale->getUrl(), $url);
-        }
-
-        return $url;
-    }
-
+    /**
+     * Adds plugin registration hooks
+     */
     protected function addRegistrationHooks()
     {
         register_activation_hook($this->loaderPath, array($this, 'activate'));
         register_deactivation_hook($this->loaderPath, array($this, 'deactivate'));
     }
 
+
+    /**
+     * Loads the plugin text domain.
+     */
     protected function loadPluginTextdomain()
     {
-        load_plugin_textdomain(self::WP_UNIQUE_KEY, false, $this->getPluginLocalePath());
+        load_plugin_textdomain('polyglot-plugin', false, $this->getPluginLocalePath());
     }
 
+    /**
+     * Loads up the scripts and styles required to display our popup.
+     */
     public function requireJqueryUi()
     {
         wp_enqueue_style('wp-jquery-ui-dialog');
@@ -145,29 +167,24 @@ class WordpressAdaptor {
         wp_enqueue_script('jquery-ui-droppable');
     }
 
-    public function preGetPosts($query)
-    {
-        $app = Strata::app();
-        $locale = $app->i18n->getCurrentLocale();
-        $polyQuery = new Query();
-        $ids = array();
+    // public function preGetPosts($query)
+    // {
+    //     $app = Strata::app();
+    //     $locale = $app->i18n->getCurrentLocale();
+    //     $polyQuery = new Query();
+    //     $ids = array();
 
-        foreach ((array)$polyQuery->findAllIdsOfLocale($locale->getCode()) as $id) {
-            $ids[] = $id;
-        }
+    //     foreach ((array)$polyQuery->findAllIdsOfLocale($locale->getCode()) as $id) {
+    //         $ids[] = $id;
+    //     }
 
-        return $query->set("post__in", $ids);
-    }
+    //     return $query->set("post__in", $ids);
+    // }
+
 
     protected function getPluginLocalePath()
     {
         return dirname($this->loaderPath) . DIRECTORY_SEPARATOR . 'locale';
-    }
-
-    public function getAdminViewPath()
-    {
-        $paths = array(dirname($this->loaderPath), 'src', 'Admin', 'View');
-        return  implode(DIRECTORY_SEPARATOR, $paths);
     }
 
     protected function getAdminJsPath()

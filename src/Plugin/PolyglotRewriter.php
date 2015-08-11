@@ -13,80 +13,65 @@ use Exception;
 
 class PolyglotRewriter {
 
-
-    private $i18n = null;
     private $polyglot = null;
 
     function __construct()
     {
-        $app = Strata::app();
-        $this->i18n = $app->i18n;
-        $this->polyglot = new Polyglot();
+        global $polyglot;
+        $this->polyglot = $polyglot;
     }
 
     public function registerHooks()
     {
         add_filter('post_link', array($this, 'postLink'), 1, 3);
         add_filter('page_link', array($this, 'postLink'), 1, 3);
-        add_filter('home_url', array($this, 'homeUrl'), 1, 4 );
-        add_filter('query_vars', array($this, 'addQueryVars'));
+        // add_filter('home_url', array($this, 'homeUrl'), 1, 4 );
+         add_filter('query_vars', array($this, 'addQueryVars'));
 
         add_action('init', array($this, 'addLocaleRewrites'));
         add_action('wp_trash_post', array($this, 'onTrash'));
     }
 
-    function addQueryVars($qv)
+    /**
+     * Declares the query parameter for the locale.
+     * @see query_vars
+     * @param array $qv
+     * @return array
+     */
+    public function addQueryVars($qv)
     {    $qv[] = 'locale';
         return $qv;
     }
 
-    function addLocaleRewrites()
+    /**
+     * Adds all the rewrites required by the current setup of the locale configuration.
+     */
+    public function addLocaleRewrites()
     {
+        $regex = $this->getLocaleUrlsRegex();
+
+        // Translate the default slugs
         $this->openRewriteForTranslations();
 
-        $regex = implode("|", $this->getLocaleUrls());
-
         // Pages
-        add_rewrite_rule('index.php/('.$regex.')/(.?.+?)/?$', 'index.php?pagename=$matches[2]&locale=$matches[1]', "top");
+        add_rewrite_rule('('.$regex.')/(.?.+?)/?$', 'index.php?pagename=$matches[2]&locale=$matches[1]', "top");
+        add_rewrite_rule('index.php('.$regex.')/(.?.+?)/?$', 'index.php?pagename=$matches[2]&locale=$matches[1]', "top");
 
         // Posts
+        add_rewrite_rule('('.$regex.')/([^/]+)/?$', 'index.php?name=$matches[2]&locale=$matches[1]', "top");
         add_rewrite_rule('index.php/('.$regex.')/([^/]+)/?$', 'index.php?name=$matches[2]&locale=$matches[1]', "top");
 
-        $homeUrls = $this->generateLocaleHomeUrlList();
-        foreach ($this->i18n->getLocales() as $locale) {
-            // Rewrite for localized homepages
-            if (array_key_exists($locale->getCode(), $homeUrls)) {
-                add_rewrite_rule('index.php/(' . $locale->getUrl() . ')/?$', 'index.php?name='.$homeUrls[$locale->getCode()].'&locale=$matches[1]', "top");
-            }
-        }
+        // Rewrite for localized homepages.
+        $this->addHomepagesRules();
 
         // @todo : trigger intelligently
         flush_rewrite_rules();
     }
 
-    public function onTrash($postId) {
-        $query = new Query();
-        $query->unlinkTranslationFor($postId, "WP_Post");
-    }
-
-    private function generateLocaleHomeUrlList()
+    public function onTrash($postId)
     {
-        $slugs = array();
-
-        // We only care if a page is on the front page
-        if (get_option('show_on_front') == "page") {
-            $defaultHomeId = (int)get_option('page_on_front');
-            if ($defaultHomeId > 0) {
-                $translatedPages = $this->polyglot->findAllTranslations($this->polyglot->getCachedPostById($defaultHomeId));
-                foreach ($translatedPages as $page) {
-                    $slugs[$page->translation_locale] = $page->post_name;
-                }
-            }
-        }
-
-        return $slugs;
+        $this->query()->unlinkTranslationFor($postId, "WP_Post");
     }
-
 
     /**
      * Appends the current language URL identifier to the
@@ -105,7 +90,7 @@ class PolyglotRewriter {
 
         if ($this->isATranslatedPost($post)) {
             $details = $this->polyglot->findTranslationDetails($post);
-            $locale = $this->i18n->getLocaleByCode($details->translation_locale);
+            $locale = $this->polyglot->getLocaleByCode($details->translation_locale);
 
             if (!$locale->isDefault()) {
                 // Don't replace already formatted urls.
@@ -120,33 +105,69 @@ class PolyglotRewriter {
         return $postLink;
     }
 
-    public function homeUrl($url)
-    {
-        $locale = $this->i18n->getCurrentLocale();
-        if (!$locale->isDefault()) {
-            $home = str_replace("//", "\/\/", preg_quote(WP_HOME));
-            $regex = "$home\/(index.php\/)?(.*)?";
+    // public function homeUrl($url, $pageId = '')
+    // {
+    //     if (!empty($pageId)) {
+    //         $post = $this->polyglot->getCachedPostById((int)$pageId);
+    //         $locale = $this->polyglot->findPostLocale($post);
+    //     } else {
+    //         $locale = $this->i18n->getCurrentLocale();
+    //     }
 
-            if (!preg_match("/(index.php)?\/".$locale->getUrl()."\//", $url)) {
-                return preg_replace("/$regex/", WP_HOME . "/$1" . $locale->getUrl() . "/$2", $url);
-            }
-        }
-        return $url;
-    }
+    //     if (!$locale->isDefault()) {
+    //         $home = str_replace("//", "\/\/", preg_quote(WP_HOME));
+    //         $regex = "$home\/(index.php\/)?(.*)?";
+
+    //         if (!preg_match("/(index.php)?\/".$locale->getUrl()."\//", $url)) {
+    //             return preg_replace("/$regex/", WP_HOME . "/$1" . $locale->getUrl() . "/$2", $url);
+    //         }
+    //     }
+    //     return $url;
+    // }
 
     private function getLocaleUrls()
     {
-        $urls = array();
-        foreach ($this->i18n->getLocales() as $locale) {
-            $urls[] = $locale->getUrl();
+        return array_map(function($locale) { return $locale->getUrl(); }, $this->polyglot->getLocales());
+    }
+
+    private function getLocaleUrlsRegex()
+    {
+        return implode("|", $this->getLocaleUrls());
+    }
+
+    private function generateLocaleHomeUrlList()
+    {
+        $slugs = array();
+        $defaultHomeId = $this->getDefaultHomepageId();
+
+        // We only care if a page is on the front page
+        if ($defaultHomeId > 0) {
+            $translatedPages = $this->polyglot->findAllTranslationsOf($this->polyglot->getCachedPostById($defaultHomeId));
+            foreach ($translatedPages as $page) {
+                $slugs[$page->translation_locale] = $page->post_name;
+            }
         }
-        return $urls;
+
+        return $slugs;
+    }
+
+    private function hasHomePage()
+    {
+        return get_option('show_on_front') == "page";
+    }
+
+    private function getDefaultHomepageId()
+    {
+        if ($this->hasHomePage()) {
+            return (int)get_option('page_on_front');
+        }
+
+        return -1;
     }
 
     private function isATranslatedPost(WP_Post $post)
     {
         return  !is_null($post)
-                && get_class($post) == "WP_Post"
                 && $this->polyglot->isTypeEnabled($post->post_type)
                 && $this->polyglot->hasTranslationDetails($post);
     }
@@ -163,6 +184,24 @@ class PolyglotRewriter {
         $wp_rewrite->search_base = __('search', I18n::DOMAIN);
         $wp_rewrite->set_category_base( __('category', I18n::DOMAIN) . "/");
         $wp_rewrite->set_tag_base( __('tag', I18n::DOMAIN) . "/" );
+    }
+
+    /**
+     * Adds the basic rules for pointing the default locale
+     * directory to the translated version of the homepage.
+     */
+    private function addHomepagesRules()
+    {
+        $homeUrls = $this->generateLocaleHomeUrlList();
+        foreach ($this->polyglot->getLocales() as $locale) {
+            $code = $locale->getCode();
+            if (array_key_exists($code, $homeUrls)) {
+                $pagename = $homeUrls[$code];
+                $url = $locale->getUrl();
+                add_rewrite_rule("$url/?$", "index.php?pagename=$pagename", "top");
+                add_rewrite_rule("index.php/$url/?$", "index.php?pagename=$pagename", "top");
+            }
+        }
     }
 
 }

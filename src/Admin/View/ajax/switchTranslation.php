@@ -1,27 +1,36 @@
-<h3><?php echo sprintf(__("Translations of %s", 'polyglot'), $originalPost->post_title); ?></h3>
+<h3><?php echo sprintf(__("Translations of '%s'", 'polyglot'), $originalPost->post_title); ?></h3>
 
 <table class="widefat">
-<?php foreach ($polyglot->getLocales() as $idx => $locale) : ?>
+<?php $idx = 0; foreach ($polyglot->getLocales() as $code => $locale) : ?>
+
     <tr class="<?php echo ($idx % 2) === 0 ? "even" : "odd" ?>">
         <td>
+            <?php if ($locale->isDefault()) : ?>
+                <strong>
+            <?php endif; ?>
+
             <code><?php echo $locale->getCode(); ?></code>
+
             <?php if ($locale->hasANativeLabel()) : ?>
                  <?php echo $locale->getNativeLabel(); ?>
             <?php endif; ?>
+
+
+            <?php if ($locale->isDefault()) : ?>
+                </strong>
+            <?php endif; ?>
         </td>
         <td>
-            <?php if ($locale->wasLocalized() || $locale->isDefault()) : ?>
-
+            <?php if ($locale->hasTranslation() || $locale->isDefault()) : ?>
                 <a class="button default-button" href="<?php echo $locale->getObjectEditUrl(); ?>">
                     <?php _e('Edit', 'polyglot'); ?>
                 </a>
-
             <?php else : ?>
-                <a class="button default-button" href="<?php echo $locale->getObjectTranslateUrl($originalPost); ?>">
+                <a class="button default-button" href="<?php echo $locale->getObjectTranslateUrl(); ?>">
                     <?php _e('Translate', 'polyglot'); ?>
                 </a>
             <?php endif; ?>
         </td>
     </tr>
-<?php endforeach; ?>
+<?php $idx++; endforeach; ?>
 </table>
