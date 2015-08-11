@@ -149,9 +149,17 @@ class PolyglotRewriter {
 
     private function isATranslatedPost(WP_Post $post)
     {
-        return  !is_null($post)
-                && $this->polyglot->isTypeEnabled($post->post_type)
-                && count($this->polyglot->query()->findDetails($post));
+        if (!is_null($post)) {
+            return false;
+        }
+
+        $configuration = $this->polyglot->getConfiguration();
+        if (!$configuration->isTypeEnabled($post->post_type)) {
+            return false;
+        }
+
+        $query = $this->polyglot->query();
+        return count($query->findDetails($post)) > 0;
     }
 
     // Allows renaming of the global slugs

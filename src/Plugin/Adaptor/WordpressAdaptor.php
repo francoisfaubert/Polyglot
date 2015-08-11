@@ -120,11 +120,12 @@ class WordpressAdaptor {
         add_action('wp_ajax_polyglot_ajax', array($router, "autoroute"));
         add_filter('add_meta_boxes', array($router, "addMetaBox"), 1000000);
 
-        foreach($this->polyglot->getEnabledPostTypes() as $type) {
+        $configuration = $this->polyglot->getConfiguration();
+        foreach($configuration->getEnabledPostTypes() as $type) {
             add_filter('views_edit-' . $type, array($router, "addViewEditLocaleSelect"));
         }
 
-        foreach($this->polyglot->getEnabledTaxonomies() as $tax) {
+        foreach($configuration->getEnabledTaxonomies() as $tax) {
             add_action ($tax . '_edit_form_fields', array($router, "addTaxonomyLocaleSelect"));
         }
     }

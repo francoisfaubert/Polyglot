@@ -7,23 +7,27 @@ class AdminAjaxController extends BaseController {
 
     public function viewPostTypeList()
     {
+        $this->view->set("configuration", $this->polyglot->getConfiguration());
         $this->render("postTypeList");
     }
 
     public function viewTaxonomyList()
     {
+        $this->view->set("configuration", $this->polyglot->getConfiguration());
         $this->render("taxonomyList");
     }
 
     public function togglePostType()
     {
-        $this->polyglot->togglePostType($this->request->post("param"));
+        $configuration = $this->polyglot->getConfiguration();
+        $configuration->togglePostType($this->request->post("param"));
         $this->viewPostTypeList();
     }
 
     public function toggleTaxonomy()
     {
-        $this->polyglot->toggleTaxonomy($this->request->post("param"));
+        $configuration = $this->polyglot->getConfiguration();
+        $configuration->toggleTaxonomy($this->request->post("param"));
         $this->viewTaxonomyList();
     }
 

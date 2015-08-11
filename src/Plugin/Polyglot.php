@@ -7,13 +7,12 @@ use Strata\Utility\Hash;
 use Strata\Controller\Request;
 
 use Polyglot\Plugin\Locale;
+use Polyglot\Plugin\Configuration;
 use Polyglot\Plugin\TranslationEntity;
-
 use Polyglot\Plugin\Db\Query;
 
 use WP_Post;
 use Exception;
-
 
 /**
  * Polyglot extends the default I18n class to add translation support
@@ -27,19 +26,14 @@ class Polyglot extends \Strata\I18n\I18n {
         return is_null($polyglot) ? new self() : $polyglot;
     }
 
-    protected $configuration;
-
-    protected $queryCache = array();
-    protected $postCache = array();
-
     protected $mapper = null;
     protected $query = null;
+    protected $configuration = null;
 
     function __construct()
     {
         $this->throwIfGlobalExists();
         $this->initialize();
-        $this->query = new Query();
     }
 
     /**
@@ -57,6 +51,37 @@ class Polyglot extends \Strata\I18n\I18n {
         return $this->mapper;
     }
 
+    /**
+     * Returns a object than handles and caches queries
+     * @return Query
+     */
+    public function query()
+    {
+        if (is_null($this->query)) {
+            $this->query = new Query($this);
+        }
+
+        return $this->query;
+    }
+
+    /**
+     * Returns an object that maps all the configuration values
+     * @return Configuration
+     */
+    public function getConfiguration()
+    {
+        if (is_null($this->configuration)) {
+            $this->configuration = new Configuration();
+        }
+
+        return $this->configuration;
+    }
+
+    /**
+     * Appends meta tags with additional localization information and links to localized versions.
+     * @return html (it actually echoes it)
+     * @see wp_head
+     */
     public function appendHeaderHtml()
     {
         $metatags = array();
@@ -86,9 +111,14 @@ class Polyglot extends \Strata\I18n\I18n {
 
     public function contextualizeMappingByTaxonomy()
     {
-
+        //todo
     }
 
+    /**
+     * Triggered in the backend to learn the locale based on the type
+     * of object the user is browsing. Prevents a user from seeing
+     * a object in another locale than the one the object is supposed to be in.
+     */
     public function setCurrentLocaleByAdminContext()
     {
         $request = new Request();
@@ -99,8 +129,6 @@ class Polyglot extends \Strata\I18n\I18n {
         if ($request->hasGet("taxonomy") && $request->hasGet("tag_ID")) {
             return $this->setLocaleByTaxonomyId($request->get("taxonomy"), $request->get("tag_ID"));
         }
-
-
     }
 
     /**
@@ -114,113 +142,14 @@ class Polyglot extends \Strata\I18n\I18n {
         }
     }
 
-    public function isTypeEnabled($postType)
-    {
-        return in_array($postType, $this->getEnabledPostTypes());
-    }
-
-    public function isTaxonomyEnabled($taxonomy)
-    {
-        return in_array($taxonomy, $this->getEnabledTaxonomies());
-    }
-
-    public function toggleTaxonomy($taxonomy)
-    {
-        if (is_null($taxonomy)) {
-            return;
-        }
-
-        $config = $this->getConfiguration();
-
-        if (!$this->isTaxonomyEnabled($taxonomy)) {
-            $config["taxonomies"][] = $taxonomy;
-        }
-        elseif(($key = array_search($taxonomy, $config["taxonomies"])) !== false) {
-            unset($config["taxonomies"][$key]);
-            $config = array_filter($config);
-        }
-
-        $this->configuration["taxonomies"] = $config["taxonomies"];
-        $this->updateConfiguration();
-    }
-
-    public function togglePostType($postType)
-    {
-        if (is_null($postType)) {
-            return;
-        }
-
-        $config = $this->getConfiguration();
-
-        if (!$this->isTypeEnabled($postType)) {
-            $config["post-types"][] = $postType;
-        }
-        elseif(($key = array_search($postType, $config["post-types"])) !== false) {
-            unset($config["post-types"][$key]);
-            $config = array_filter($config);
-        }
-
-        $this->configuration["post-types"] = $config["post-types"];
-        $this->updateConfiguration();
-    }
-
-
-    public function getConfiguration()
-    {
-        if (is_null($this->configuration)) {
-            $this->configuration = get_option("polyglot_configuration", $this->getDefaultConfiguration());
-        }
-
-        return $this->configuration;
-    }
-
-    protected function updateConfiguration()
-    {
-        return update_option("polyglot_configuration", $this->configuration);
-    }
-
-    public function getOptions()
-    {
-        return $this->getConfiguration()['options'];
-    }
-
-    public function getEnabledPostTypes()
-    {
-        return $this->getConfiguration()['post-types'];
-    }
-
-    public function getEnabledTaxonomies()
-    {
-        return $this->getConfiguration()['taxonomies'];
-    }
-
-    public function getDefaultConfiguration()
-    {
-        return array(
-            "options" => array(),
-            "post-types" => array(),
-            "taxonomies" => array()
-        );
-    }
-
-    public function getPostTypes()
-    {
-        return get_post_types(array(), "object");
-    }
-
-    public function getTaxonomies()
-    {
-        return get_taxonomies(array(), "objects");
-    }
-
+    /**
+     * Generates a TranslationEntity wrapper around a post.
+     * @param  WP_Post $post
+     * @return TranslationEntity
+     */
     public function generateTranslationEntity(WP_Post $post)
     {
         return $this->query()->createTranslationEntity($post);
-    }
-
-    public function query()
-    {
-        return $this->query;
     }
 
     protected function registerHooks()

@@ -12,7 +12,10 @@ class CallbackController extends BaseController {
     public function addMetaBox()
     {
         $type = get_post_type();
-        if (!is_null($type) && $this->polyglot->isTypeEnabled($type)) {
+
+        $configuration = $this->polyglot->getConfiguration();
+
+        if (!is_null($type) && $configuration->isTypeEnabled($type)) {
             add_meta_box("polyglot-localization-metabox", __('Localization', "polyglot"), array($this, 'renderMetabox'), $type, 'side', 'high');
         }
     }
@@ -35,7 +38,9 @@ class CallbackController extends BaseController {
      */
     public function addTaxonomyLocaleSelect($taxonomy)
     {
-        if (!is_null($taxonomy) && $this->polyglot->isTaxonomyEnabled($taxonomy->taxonomy)) {
+        $configuration = $this->polyglot->getConfiguration();
+
+        if (!is_null($taxonomy) && $configuration->isTaxonomyEnabled($taxonomy->taxonomy)) {
             $this->polyglot->contextualizeMappingByTaxonomy($taxonomy);
             $this->render("metaboxTranslator");
         }
