@@ -14,9 +14,10 @@ if (!class_exists("Strata\Strata")) {
 }
 
 if (class_exists("Polyglot\Plugin\Polyglot") && class_exists("Polyglot\Plugin\Adaptor\WordpressAdaptor")) {
+    $polyglot = new Polyglot\Plugin\Polyglot();
     $plugin = new Polyglot\Plugin\Adaptor\WordpressAdaptor();
     $plugin->register(__FILE__);
 } else {
-    $app = \Strata\Strata::app();
+    $app = Strata\Strata::app();
     $app->log("Though Polyglot is enabled, it could not be loaded.", "[Plugins::Polyglot]");
 }

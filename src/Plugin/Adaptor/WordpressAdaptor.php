@@ -123,6 +123,10 @@ class WordpressAdaptor {
         foreach($this->polyglot->getEnabledPostTypes() as $type) {
             add_filter('views_edit-' . $type, array($router, "addViewEditLocaleSelect"));
         }
+
+        foreach($this->polyglot->getEnabledTaxonomies() as $tax) {
+            add_action ($tax . '_edit_form_fields', array($router, "addTaxonomyLocaleSelect"));
+        }
     }
 
     /**

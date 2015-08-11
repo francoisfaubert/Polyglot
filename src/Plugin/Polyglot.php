@@ -33,14 +33,13 @@ class Polyglot extends \Strata\I18n\I18n {
     protected $postCache = array();
 
     protected $mapper = null;
+    protected $query = null;
 
     function __construct()
     {
         $this->throwIfGlobalExists();
         $this->initialize();
-
-        add_action('wp', array($this, "setCurrentLocaleByPostContext"));
-        add_action('wp_head', array($this, "appendHeaderHtml"));
+        $this->query = new Query();
     }
 
     /**
@@ -84,86 +83,35 @@ class Polyglot extends \Strata\I18n\I18n {
         return $this->getMapper()->assignMappingByPost($post);
     }
 
-    /**
-     * Sets the current locale based on a loaded post, either
-     */
-    public function setCurrentLocaleByPostContext()
+
+    public function contextualizeMappingByTaxonomy()
     {
-        if (is_admin()) {
-            $request = new Request();
-            if ($request->hasGet("post")) {
-                return $this->setLocaleByPostId($request->get("post"));
-            }
+
+    }
+
+    public function setCurrentLocaleByAdminContext()
+    {
+        $request = new Request();
+        if ($request->hasGet("post")) {
+            return $this->setLocaleByPostId($request->get("post"));
         }
 
+        if ($request->hasGet("taxonomy") && $request->hasGet("tag_ID")) {
+            return $this->setLocaleByTaxonomyId($request->get("taxonomy"), $request->get("tag_ID"));
+        }
+
+
+    }
+
+    /**
+     *
+     */
+    public function setCurrentLocaleByFrontContext()
+    {
         $postId = get_the_ID();
         if ($postId) {
             return $this->setLocaleByPostId($postId);
         }
-    }
-
-
-    /**
-     * Returns the list of all translations for a given object. The result of the
-     * query is cached during the whole page rendering process.
-     * @param  mixed $targetPost
-     * @return array
-     */
-    public function findAllTranslationsOf($targetPost)
-    {
-        if (!$this->isCachedQuery("findAllTranslationsByPost", $targetPost->ID)) {
-            $query = new Query();
-            $this->cacheQuery("findAllTranslationsByPost", $targetPost->ID, $query->findAllTranlationsOfOriginal($targetPost));
-        }
-
-        return $this->queryCache["findAllTranslationsByPost"][$targetPost->ID];
-    }
-
-    public function findPostLocale($post)
-    {
-        if (!$this->isCachedQuery("findPostLocale", $post->ID)) {
-            $query = new Query();
-            $result = $query->findPostLocale($post);
-            $this->cacheQuery("findPostLocale", $post->ID, $result ? $this->getLocaleByCode($result) : $this->getDefaultLocale());
-        }
-
-        return $this->queryCache["findPostLocale"][$post->ID];
-    }
-
-    public function findTranslationDetails($post)
-    {
-        if (!$this->isCachedQuery("findTranslationDetails", $post->ID)) {
-            $this->cacheQuery("findTranslationDetails", $post->ID, $this->query()->findDetails($post));
-        }
-
-        return $this->queryCache["findTranslationDetails"][$post->ID];
-    }
-
-    public function findOriginalTranslationDetails($post)
-    {
-        if (!$this->isCachedQuery("findOriginalTranslationDetails", $post->ID)) {
-            $this->cacheQuery("findOriginalTranslationDetails", $post->ID, $this->query()->findOriginalTranslationDetails($post));
-        }
-
-        return $this->queryCache["findOriginalTranslationDetails"][$post->ID];
-    }
-
-
-    public function hasTranslationDetails($post)
-    {
-        return !is_null($this->findTranslationDetails($post));
-    }
-
-    public function getCachedPostById($id)
-    {
-        if (!$this->isCachedPost($id)) {
-            $post = get_post($id);
-            if (!is_null($post)) {
-                $this->cachePost($id, $post);
-            }
-        }
-
-        return $this->postCache[$id];
     }
 
     public function isTypeEnabled($postType)
@@ -270,15 +218,21 @@ class Polyglot extends \Strata\I18n\I18n {
         return $this->query()->createTranslationEntity($post);
     }
 
-    protected function query()
+    public function query()
     {
-        return new Query();
+        return $this->query;
     }
 
     protected function registerHooks()
     {
         parent::registerHooks();
-        add_action('wp', array($this, "setCurrentLocaleByPostContext"));
+
+        if (is_admin()) {
+            add_action('admin_init', array($this, "setCurrentLocaleByAdminContext"));
+        }
+
+        add_action('wp', array($this, "setCurrentLocaleByFrontContext"));
+        add_action('wp_head', array($this, "appendHeaderHtml"));
     }
 
     /**
@@ -298,47 +252,31 @@ class Polyglot extends \Strata\I18n\I18n {
         return $newLocales;
     }
 
-    protected function isCachedPost($postId)
-    {
-        return array_key_exists($postId, $this->postCache);
-    }
-
-    protected function cachePost($postId, WP_Post $post)
-    {
-        $this->postCache[$postId] = $post;
-    }
-
-    protected function isCachedQuery($function, $objectId)
-    {
-        return array_key_exists($function, $this->queryCache) && array_key_exists($objectId, $this->queryCache[$function]);
-    }
-
-    protected function cacheQuery($function, $objectId, $data)
-    {
-        if (!array_key_exists($function, $this->queryCache)) {
-            $this->queryCache[$function] = array();
-        }
-
-        if (!array_key_exists($objectId, $this->queryCache[$function])) {
-            $this->queryCache[$function][$objectId] = null;
-        }
-
-        // Placed outside of the previous If in case we need to reset the cache.
-        $this->queryCache[$function][$objectId] = $data;
-    }
-
     private function setLocaleByPostId($postId)
     {
-        $post = $this->getCachedPostById($postId);
-        $originalPost = $this->getMapper()->assignMappingByPost($post);
+        $post = $this->query()->findCachedPostById($postId);
+        $this->getMapper()->assignMappingByPost($post);
 
-        $locale = $this->findPostLocale($post);
+        return $this->setLocaleByObject($post);
+    }
+
+    private function setLocaleByTaxonomyId($taxonomyType, $taxonomyId)
+    {
+        $taxonomy = $this->query()->findCachedTaxonomyById($taxonomyType, $taxonomyId);
+        $this->getMapper()->assignMappingByTaxonomies($taxonomy);
+
+        return $this->setLocaleByObject($taxonomy);
+    }
+
+    private function setLocaleByObject($mixed)
+    {
+        $locale = $this->getLocaleByCode($this->query()->findObjectLocale($mixed));
         if (!is_null($locale)) {
             $this->setLocale($locale);
             return $locale;
         }
-
     }
+
 
     /**
      * If there are multiple instances of Polyglot running at the same time,

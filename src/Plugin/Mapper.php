@@ -41,15 +41,27 @@ class Mapper  {
             return $this->buildAppendMissingOriginalPostDetails($post);
         }
 
-        $originalPost = $this->polyglot->getCachedPostById($originalPostId);
+        $originalPost = $this->polyglot->query()->findCachedPostById($originalPostId);
         $this->buildAppendMissingOriginalPostDetails($originalPost);
         return $originalPost;
     }
 
+
+/**
+ * From an array of taxonomies, map their translations
+ * @param  array  $taxonomies [description]
+ * @return [type]             [description]
+ */
+    public function assignMappingByTaxonomies(array $taxonomies)
+    {
+        //debug($taxonomy);
+    }
+
+
     protected function buildAppendMissingOriginalPostDetails(WP_Post $post)
     {
         $this->assignOriginalToDefaultLocale($post);
-        $translations = $this->polyglot->findAllTranslationsOf($post);
+        $translations = $this->polyglot->query()->findAllTranlationsOfOriginal($post);
 
         if (is_array($translations) && count($translations)) {
             $this->assignTranslationsMap($translations);
@@ -60,8 +72,9 @@ class Mapper  {
 
     protected function getOriginalDetails(WP_Post $post)
     {
-        $details = $this->polyglot->findTranslationDetails($post);
-        return $details->isOriginal() ? $details : $this->polyglot->findOriginalTranslationDetails($post);
+        $query = $this->polyglot->query();
+        $details = $query->findDetails($post);
+        return $details->isOriginal() ? $details : $query->findOriginalTranslationDetails($post);
     }
 
     protected function assignTranslationsMap($rows)

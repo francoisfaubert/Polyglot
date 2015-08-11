@@ -13,7 +13,7 @@ class CallbackController extends BaseController {
     {
         $type = get_post_type();
         if (!is_null($type) && $this->polyglot->isTypeEnabled($type)) {
-            add_meta_box("polyglot-localization-metabox", __('Localization', "polyglot"), array($this->getRouter(), 'renderMetabox'), $type, 'side', 'high');
+            add_meta_box("polyglot-localization-metabox", __('Localization', "polyglot"), array($this, 'renderMetabox'), $type, 'side', 'high');
         }
     }
 
@@ -29,6 +29,18 @@ class CallbackController extends BaseController {
         }
         $this->render("metaboxTranslator");
     }
+
+    /**
+     * Adds the metabox registration on taxonomies
+     */
+    public function addTaxonomyLocaleSelect($taxonomy)
+    {
+        if (!is_null($taxonomy) && $this->polyglot->isTaxonomyEnabled($taxonomy->taxonomy)) {
+            $this->polyglot->contextualizeMappingByTaxonomy($taxonomy);
+            $this->render("metaboxTranslator");
+        }
+    }
+
 
     /**
      * Adds the locale selection box to the post edit page.

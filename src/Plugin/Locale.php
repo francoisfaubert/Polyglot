@@ -9,7 +9,6 @@ use Polyglot\Plugin\TranslationEntity;
 
 class Locale extends \Strata\I18n\Locale  {
 
-
     protected $details;
 
     public function setDetails(TranslationEntity $details)
@@ -48,6 +47,18 @@ class Locale extends \Strata\I18n\Locale  {
     public function getTranslationPermalink()
     {
         $object = $this->getAssociatedObject();
+
+        // When this localized object is a page confirm
+        // wether it's a translation of the home page before
+        // returning the permalink. If it is, then return it's home url.
+        if ($this->details->obj_type === "page") {
+            global $polyglot;
+            $homeId = (int)$polyglot->query()->getDefaultHomepageId();
+            if ($homeId > 0 && (int)$this->details->translation_of === $homeId) {
+                return $this->getHomeUrl();
+            }
+        }
+
         return get_the_permalink($object->ID);
     }
 
