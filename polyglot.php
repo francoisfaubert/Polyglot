@@ -14,7 +14,7 @@ if (!class_exists("Strata\Strata")) {
 }
 
 if (class_exists("Polyglot\Plugin\Polyglot") && class_exists("Polyglot\Plugin\Adaptor\WordpressAdaptor")) {
-    $polyglot = new Polyglot\Plugin\Polyglot();
+    $polyglot = Polyglot\Plugin\Polyglot::instance();
     $plugin = new Polyglot\Plugin\Adaptor\WordpressAdaptor();
     $plugin->register(__FILE__);
 } else {

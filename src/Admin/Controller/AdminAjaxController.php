@@ -33,10 +33,25 @@ class AdminAjaxController extends BaseController {
 
     public function switchTranslation()
     {
-        $targetPost = get_post($this->request->post("param"));
-        $originalPost = $this->polyglot->contextualizeMappingByPost($targetPost);
+        $params = $this->parseComplexParams();
+        $objId = (int)$params[0];
 
-        $this->view->set("originalPost", $originalPost);
+        if ($params[1] == "post") {
+            $defaultLocale = $this->polyglot->getDefaultLocale();
+            $orignalPost = $defaultLocale->getTranslatedPost($objId);
+
+            $this->view->set("originalTitle", $orignalPost->post_title);
+            $this->view->set("objId", $objId);
+            $this->view->set("mode", "post");
+
+        } else {
+            // $taxonomies = $this->polyglot->query()->findCachedTaxonomyById($params[1], $params[0]);
+            // $taxonomy = $taxonomies[0];
+            // $originalObject = $this->polyglot->contextualizeMappingByTaxonomy($taxonomy);
+            // $this->view->set("originalTitle", $taxonomy->name);
+            // $this->view->set("mode", "term");
+        }
+
         $this->render("switchTranslation");
     }
 
@@ -47,6 +62,12 @@ class AdminAjaxController extends BaseController {
     protected function getTemplatePath()
     {
         return parent::getTemplatePath() . "ajax" . DIRECTORY_SEPARATOR;
+    }
+
+    protected function parseComplexParams()
+    {
+        $param = $this->request->post("param");
+        return explode("#", $param);
     }
 
 }

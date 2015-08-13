@@ -1,4 +1,4 @@
-<h3><?php echo sprintf(__("Translations of '%s'", 'polyglot'), $originalPost->post_title); ?></h3>
+<h3><?php echo sprintf(__("Translations of '%s'", 'polyglot'), $originalTitle); ?></h3>
 
 <table class="widefat">
 <?php $idx = 0; foreach ($polyglot->getLocales() as $code => $locale) : ?>
@@ -21,14 +21,20 @@
             <?php endif; ?>
         </td>
         <td>
-            <?php if ($locale->hasTranslation() || $locale->isDefault()) : ?>
-                <a class="button default-button" href="<?php echo $locale->getObjectEditUrl(); ?>">
-                    <?php _e('Edit', 'polyglot'); ?>
-                </a>
+            <?php if ($mode === "post") : ?>
+                <?php if ($locale->hasPostTranslation($objId)) : ?>
+                    <a class="button default-button" href="<?php echo $locale->getEditPostUrl($objId); ?>">
+                        <?php _e('Edit', 'polyglot'); ?>
+                    </a>
+                <?php else : ?>
+                    <a class="button default-button" href="<?php echo $locale->getTranslatePostUrl($objId); ?>">
+                        <?php _e('Translate', 'polyglot'); ?>
+                    </a>
+                <?php endif; ?>
             <?php else : ?>
-                <a class="button default-button" href="<?php echo $locale->getObjectTranslateUrl(); ?>">
-                    <?php _e('Translate', 'polyglot'); ?>
-                </a>
+                <?php debug($locale); ?>
+
+                Pas un post
             <?php endif; ?>
         </td>
     </tr>

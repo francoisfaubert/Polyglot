@@ -5,20 +5,20 @@ namespace Polyglot\Plugin;
 use Strata\Strata;
 use Strata\I18n\I18n;
 
+use Polyglot\Plugin\Polyglot;
 use Polyglot\Plugin\Locale;
 use Polyglot\Plugin\Db\Query;
 
 use WP_Post;
 use Exception;
 
-class PolyglotRewriter {
+class UrlRewriter {
 
     private $polyglot = null;
 
     function __construct()
     {
-        global $polyglot;
-        $this->polyglot = $polyglot;
+        $this->polyglot = Polyglot::instance();
     }
 
     public function registerHooks()
@@ -27,11 +27,8 @@ class PolyglotRewriter {
         add_filter('page_link', array($this, 'postLink'), 1, 3);
         add_filter('query_vars', array($this, 'addQueryVars'));
 
-        add_action('init', array($this, 'addLocaleRewrites'));
-        add_action('init', array($this, 'forwardCanonicalUrls'));
-        add_action('wp_trash_post', array($this, 'onTrash'));
-
-
+        add_action('widgets_init', array($this, 'addLocaleRewrites'));
+        add_action('widgets_init', array($this, 'forwardCanonicalUrls'));
 
         add_filter('redirect_canonical', array($this, 'redirectCanonical'), 10, 2);
     }
@@ -86,16 +83,14 @@ class PolyglotRewriter {
 
     public function forwardCanonicalUrls()
     {
-        $homeUrls = $this->polyglot->query()->generateLocaleHomeUrlList();
-        foreach ($this->polyglot->getLocales() as $locale) {
-            $code = $locale->getCode();
-            if (array_key_exists($code, $homeUrls)) {
-                $pagename = $homeUrls[$code];
-                $url = $locale->getUrl();
-                if ($_SERVER['REQUEST_URI'] === '/' . $url . '/' .$pagename . '/') {
-                    wp_redirect(WP_HOME . '/' . $url . '/', 301);
-                    exit;
-                }
+        $homepageId = $this->polyglot->query()->getDefaultHomepageId();
+        $currentLocale = $this->polyglot->getCurrentLocale();
+
+        if ($currentLocale->isTranslationOfPost($homepageId)) {
+            $localizedPage = $currentLocale->getTranslatedPost();
+            if ($_SERVER['REQUEST_URI'] === '/' . $locale->getUrl() . '/' .$localizedPage->page_name . '/') {
+                wp_redirect(WP_HOME . '/' . $locale->getUrl() . '/', 301);
+                exit;
             }
         }
     }
@@ -114,14 +109,10 @@ class PolyglotRewriter {
      */
     public function postLink($postLink, $mixed = 0)
     {
-        if (is_object($mixed)) {
-            $post = $mixed;
-        } else {
-            $post = $this->polyglot->query()->findCachedPostById((int)$mixed);
-        }
+        $post = is_object($mixed) ? $mixed : $this->polyglot->query()->findPostById((int)$mixed);
 
         if ($this->isATranslatedPost($post)) {
-            $details = $this->polyglot->query()->findDetails($post);
+            $details = $this->polyglot->query()->findDetailsById($post->ID);
             $locale = $this->polyglot->getLocaleByCode($details->translation_locale);
 
             if (!$locale->isDefault()) {
@@ -147,9 +138,9 @@ class PolyglotRewriter {
         return implode("|", $this->getLocaleUrls());
     }
 
-    private function isATranslatedPost(WP_Post $post)
+    private function isATranslatedPost($post)
     {
-        if (!is_null($post)) {
+        if (is_null($post)) {
             return false;
         }
 
@@ -158,8 +149,7 @@ class PolyglotRewriter {
             return false;
         }
 
-        $query = $this->polyglot->query();
-        return count($query->findDetails($post)) > 0;
+        return count($this->polyglot->query()->findDetailsById($post->ID)) > 0;
     }
 
     // Allows renaming of the global slugs
@@ -182,11 +172,12 @@ class PolyglotRewriter {
      */
     private function addHomepagesRules()
     {
-        $homeUrls = $this->polyglot->query()->generateLocaleHomeUrlList();
+        $homepageId = $this->polyglot->query()->getDefaultHomepageId();
+
         foreach ($this->polyglot->getLocales() as $locale) {
-            $code = $locale->getCode();
-            if (array_key_exists($code, $homeUrls)) {
-                $pagename = $homeUrls[$code];
+            $localizedPage = $locale->getTranslatedPost($homepageId);
+            if (!is_null($localizedPage)) {
+                $pagename = $localizedPage->post_name;
                 $url = $locale->getUrl();
                 add_rewrite_rule("$url/?$", "index.php?pagename=$pagename", "top");
                 add_rewrite_rule("index.php/$url/?$", "index.php?pagename=$pagename", "top");

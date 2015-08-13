@@ -6,12 +6,19 @@
     <div class="active-locales">
     <?php foreach ($polyglot->getLocales() as $locale) : ?>
         <div class="box">
-            <?php echo $locale->getCode(); ?>
-            <?php if ($locale->hasANativeLabel()) : ?>
-                 - <strong><?php echo $locale->getNativeLabel(); ?></strong>
-            <?php endif; ?>
+
             <?php if ($locale->isDefault()) : ?>
-                 * Default
+                 <strong>
+            <?php endif; ?>
+
+            <code><?php echo $locale->getCode(); ?></code>
+
+            <?php if ($locale->hasANativeLabel()) : ?>
+                 <?php echo $locale->getNativeLabel(); ?>
+            <?php endif; ?>
+
+            <?php if ($locale->isDefault()) : ?>
+                 </strong>
             <?php endif; ?>
 
             <br>

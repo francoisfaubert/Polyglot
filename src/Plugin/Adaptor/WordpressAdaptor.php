@@ -6,7 +6,8 @@ use Strata\Strata;
 use Polyglot\Admin\Router;
 use Polyglot\Plugin\Db\Query;
 use Polyglot\Plugin\Polyglot;
-use Polyglot\Plugin\PolyglotRewriter;
+use Polyglot\Plugin\UrlRewriter;
+use Polyglot\Plugin\ContextualSwitcher;
 
 class WordpressAdaptor {
 
@@ -102,7 +103,7 @@ class WordpressAdaptor {
      */
     protected function addWebsiteCallbacks()
     {
-
+        add_action('wp_head', array($this, "appendHeaderHtml"));
     }
 
     /**
@@ -136,9 +137,11 @@ class WordpressAdaptor {
     protected function addGlobalCallbacks()
     {
         add_action('plugins_loaded', array($this, 'load'));
-        add_action('the_post', array($this->polyglot, 'contextualizeMappingByPost'));
 
-        $rewriter = new PolyglotRewriter();
+        $switcher = new ContextualSwitcher();
+        $switcher->registerHooks();
+
+        $rewriter = new UrlRewriter();
         $rewriter->registerHooks();
     }
 
@@ -170,6 +173,25 @@ class WordpressAdaptor {
         wp_enqueue_script('jquery-ui-dialog');
         wp_enqueue_script('jquery-ui-draggable');
         wp_enqueue_script('jquery-ui-droppable');
+    }
+
+    /**
+     * Appends meta tags with additional localization information and links to localized versions.
+     * @return html (it actually echoes it)
+     * @see wp_head
+     */
+    public function appendHeaderHtml()
+    {
+        $metatags = array();
+
+        foreach ($this->polyglot->getLocales() as $locale) {
+            if ($locale->hasPostTranslation()) {
+                $translatedPost = $locale->getTranslatedPost();
+                $metatags[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), get_the_permalink($translatedPost->ID));
+            }
+        }
+
+        echo implode("\n", $metatags) . "\n";
     }
 
     // public function preGetPosts($query)

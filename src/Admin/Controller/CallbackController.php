@@ -12,23 +12,23 @@ class CallbackController extends BaseController {
     public function addMetaBox()
     {
         $type = get_post_type();
-
         $configuration = $this->polyglot->getConfiguration();
 
         if (!is_null($type) && $configuration->isTypeEnabled($type)) {
-            add_meta_box("polyglot-localization-metabox", __('Localization', "polyglot"), array($this, 'renderMetabox'), $type, 'side', 'high');
+            add_meta_box("polyglot-localization-metabox", __('Localization', "polyglot"), array($this, 'renderPostMetabox'), $type, 'side', 'high');
         }
     }
 
     /**
      * Renders the metabox that displays tranlation statuses.
      */
-    public function renderMetabox()
+    public function renderPostMetabox()
     {
         if (get_post_status() == "auto-draft") {
             $this->view->set("invalidStatus", true);
         } else {
-            $this->polyglot->contextualizeMappingByPost(get_post());
+            $this->view->set("obj_id", get_the_ID());
+            $this->view->set("obj_type", "post");
         }
         $this->render("metaboxTranslator");
     }
@@ -42,6 +42,9 @@ class CallbackController extends BaseController {
 
         if (!is_null($taxonomy) && $configuration->isTaxonomyEnabled($taxonomy->taxonomy)) {
             $this->polyglot->contextualizeMappingByTaxonomy($taxonomy);
+
+            $this->view->set("obj_id", $taxonomy->term_id);
+            $this->view->set("obj_type", $taxonomy->taxonomy);
             $this->render("metaboxTranslator");
         }
     }

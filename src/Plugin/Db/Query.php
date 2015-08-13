@@ -1,7 +1,9 @@
 <?php
 namespace Polyglot\Plugin\Db;
 
-use Polyglot\Plugin\TranslationEntity;
+use Polyglot\Plugin\TranslationEntity\PostTranslationEntity;
+use Polyglot\Plugin\TranslationEntity\TranslationEntity;
+use Polyglot\Plugin\TranslationTree;
 use Polyglot\Plugin\Db\Cache;
 use Polyglot\Plugin\Db\Logger;
 
@@ -22,19 +24,19 @@ class Query {
         $this->cache = new Cache();
     }
 
-    public function createTranslationEntity($object)
-    {
-        $app = Strata::app();
+    // public function createTranslationEntity($object)
+    // {
+    //     $app = Strata::app();
 
-        $entity = new TranslationEntity();
-        $entity->obj_id = $object->ID;
-        $entity->obj_kind = get_class($object);
-        $entity->obj_type = $object->post_type;
-        $entity->translation_locale = $app->i18n->getDefaultLocale()->getCode();
-        $entity->translation_of = null;
+    //     $entity = new TranslationEntity();
+    //     $entity->obj_id = $this->getMixedObjId($object);
+    //     $entity->obj_kind = get_class($object);
+    //     $entity->obj_type = $this->getMixedObjType($object);
+    //     $entity->translation_locale = $app->i18n->getDefaultLocale()->getCode();
+    //     $entity->translation_of = null;
 
-        return $entity;
-    }
+    //     return $entity;
+    // }
 
     public function createTable()
     {
@@ -69,7 +71,7 @@ class Query {
         ));
     }
 
-    public function addPostTranslation($originalId, $originalType, $originalKind, $targetLocale)
+    public function addTranslation($originalId, $originalType, $originalKind, $targetLocale)
     {
         global $wpdb;
         $originalPostTitle = get_the_title($originalId);
@@ -85,7 +87,6 @@ class Query {
         }
 
         if ((int)$associationId > 0) {
-
             $row = array(
                 'obj_kind' => $originalKind,
                 'obj_type' => $originalType,
@@ -97,7 +98,6 @@ class Query {
             if ($wpdb->insert("{$wpdb->prefix}polyglot", $row)) {
                 return $associationId;
             }
-
             throw new Exception("Could not save translation data.");
         }
         throw new Exception("Could not duplicate post.");
@@ -112,7 +112,8 @@ class Query {
 
         if ($this->cache->has($query)) {
             $queryResults = $this->cache->get($query);
-            $this->logger->logQueryCompletion($wpdb->last_query, true);
+            // This generates a scary amount of logs entries.
+            //$this->logger->logQueryCompletion($wpdb->last_query, true);
         } else {
             $queryResults = $wpdb->{$queryType}($query);
             $this->cache->set($query, $queryResults);
@@ -122,15 +123,16 @@ class Query {
         return $queryResults;
     }
 
-    public function findAllTranlationsOfOriginal($object)
+    public function findAllTranlationsOfOriginal(TranslationEntity $object)
     {
-        return $this->findAllTranlationsOfOriginalId($object->ID, get_class($object));
+        return $this->findAllTranlationsOfOriginalId($object->getObjectId(), $object->getObjectKind());
     }
 
     public function findAllTranlationsOfOriginalId($id, $kind = "WP_Post")
     {
         global $wpdb;
-        return $this->rowsToEntities($this->runCachableQuery($wpdb->prepare("
+
+        $results = $this->runCachableQuery($wpdb->prepare("
             SELECT {$wpdb->prefix}polyglot.*,
                 {$wpdb->prefix}posts.post_name
             FROM {$wpdb->prefix}polyglot
@@ -140,11 +142,15 @@ class Query {
             ORDER BY polyglot_ID ASC",
             $id,
             $kind
-        )));
+        ));
+
+        if (!is_null($results) && count($results)) {
+            return new TranslationTree($this->rowsToEntities($results));
+        }
     }
 
 
-    public function findCachedPostById($id)
+    public function findPostById($id)
     {
         $this->logger->logQueryStart();
 
@@ -152,17 +158,17 @@ class Query {
 
         if ($this->cache->has($query)) {
             $queryResults = $this->cache->get($query);
-            $this->logger->logQueryCompletion("Loaded post ID #$id", true);
+            //$this->logger->logQueryCompletion("Loaded post ID #$id", true);
         } else {
-            $queryResults = get_post($id);
+            $queryResults = new PostTranslationEntity(get_post($id));
             $this->cache->set($query, $queryResults);
-            $this->logger->logQueryCompletion("Loaded post ID #$id");
+            //$this->logger->logQueryCompletion("Loaded post ID #$id");
         }
 
         return $queryResults;
     }
 
-    public function findCachedTaxonomyById($type, $id)
+    public function findTaxonomyById($type, $id)
     {
         $this->logger->logQueryStart();
 
@@ -170,11 +176,11 @@ class Query {
 
         if ($this->cache->has($query)) {
             $queryResults = $this->cache->get($query);
-            $this->logger->logQueryCompletion("Loaded taxonomy ID #$id", true);
+           // $this->logger->logQueryCompletion("Loaded taxonomy ID #$id", true);
         } else {
             $queryResults = get_the_terms($id, $type);
             $this->cache->set($query, $queryResults);
-            $this->logger->logQueryCompletion("Loaded taxonomy ID #$id");
+            //$this->logger->logQueryCompletion("Loaded taxonomy ID #$id");
         }
 
         return $queryResults;
@@ -186,7 +192,12 @@ class Query {
      * @param  mixed $object
      * @return TranslationEntity
      */
-    public function findDetails($object)
+    public function findDetails(TranslationEntity $object)
+    {
+        return $this->findDetailsById($object->getObjectId(), $object->getObjectKind());
+    }
+
+    public function findDetailsById($id, $kind = "WP_Post")
     {
         global $wpdb;
         $result = $this->runCachableQuery($wpdb->prepare("
@@ -196,17 +207,14 @@ class Query {
                 AND obj_kind = %s
             ORDER BY polyglot_ID ASC
             LIMIT 1",
-            $object->ID,
-            get_class($object)
+            $id,
+            $kind
         ), "get_row");
 
-        if (is_null($result) && $this->isInDefaultLocale($object)) {
-            return $this->createTranslationEntity($object);
+        if (!is_null($result)) {
+            return TranslationEntity::factory($result);
         }
-
-        return new TranslationEntity($result);
     }
-
 
     /**
      * Fetches all the known translation details of an object's original parent.
@@ -217,8 +225,14 @@ class Query {
      */
     public function findOriginalTranslationDetails($object)
     {
+        return $this->findOriginalTranslationDetailsId($object->getObjectId(), $object->getObjectKind());
+    }
+
+    public function findOriginalTranslationDetailsId($id, $kind = "WP_Post")
+    {
         global $wpdb;
-        return $this->rowsToEntities($this->runCachableQuery($wpdb->prepare("
+
+        $results = $this->runCachableQuery($wpdb->prepare("
             SELECT *
             FROM {$wpdb->prefix}polyglot
             WHERE translation_of =
@@ -228,53 +242,47 @@ class Query {
                         WHERE obj_id = %s
                         AND obj_kind = %s
                 )",
-            $object->ID,
-            get_class($object)
-        )));
+            $id,
+            $kind
+        ));
+
+        if (!is_null($results) && count($results)) {
+            return new TranslationTree($this->rowsToEntities($results));
+        }
     }
 
     /**
-     * Find the
-     * @param  WP_Post $translatedPost [description]
-     * @return [type]                  [description]
+     *
+     * @param  mixed $translatedObj
+     * @return Locale
      */
     public function findObjectLocale($translatedObj)
     {
-        global $wpdb;
-        $locale = $this->runCachableQuery($wpdb->prepare("
-            SELECT translation_locale
-            FROM {$wpdb->prefix}polyglot
-                WHERE obj_id = %s
-                AND obj_kind = %s
-            ORDER BY polyglot_ID ASC",
-            $translatedObj->ID,
-            get_class($translatedObj)
-        ), "get_var");
+        global $polyglot;
+        $details = $this->findDetails($translatedObj);
 
-
-        if (is_null($locale)) {
-            $app = Strata::app();
-            return $app->i18n->getDefaultLocale()->getCode();
+        if (is_null($details)) {
+            return $polyglot->getDefaultLocale();
         }
 
-        return $locale;
+        return $polyglot->getLocaleByCode($details->translation_locale);
     }
 
-    public function generateLocaleHomeUrlList()
-    {
-        $slugs = array();
-        $defaultHomeId = $this->getDefaultHomepageId();
+    // public function generateLocaleHomeUrlList()
+    // {
+    //     $slugs = array();
+    //     $defaultHomeId = $this->getDefaultHomepageId();
 
-        // We only care if a page is on the front page
-        if ($defaultHomeId > 0) {
-            $translatedPages = $this->findAllTranlationsOfOriginalId($defaultHomeId);
-            foreach ($translatedPages as $page) {
-                $slugs[$page->translation_locale] = $page->post_name;
-            }
-        }
+    //     // We only care if a page is on the front page
+    //     if ($defaultHomeId > 0) {
+    //         $translatedPages = $this->findAllTranlationsOfOriginalId($defaultHomeId);
+    //         foreach ($translatedPages as $page) {
+    //             $slugs[$page->translation_locale] = $page->post_name;
+    //         }
+    //     }
 
-        return $slugs;
-    }
+    //     return $slugs;
+    // }
 
     public function getDefaultHomepageId()
     {
@@ -300,7 +308,7 @@ class Query {
     {
         $results = array();
         foreach ($rows as $row) {
-            $results[] = new TranslationEntity($row);
+            $results[] = TranslationEntity::factory($row);
         }
         return $results;
     }
@@ -317,5 +325,6 @@ class Query {
         $app = Strata::app();
         return $this->findObjectLocale($obj) === $app->i18n->getDefaultLocale()->getCode();
     }
+
 
 }
