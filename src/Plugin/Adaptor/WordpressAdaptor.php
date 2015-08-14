@@ -138,12 +138,27 @@ class WordpressAdaptor {
     {
         add_action('plugins_loaded', array($this, 'load'));
 
+        add_action('wp_trash_post', array($this, 'onTrashPost'));
+        add_action('delete_term_taxonomy', array($this, 'onTrashTerm'));
+
         $switcher = new ContextualSwitcher();
         $switcher->registerHooks();
 
         $rewriter = new UrlRewriter();
         $rewriter->registerHooks();
     }
+
+
+    public function onTrashTerm($termId)
+    {
+        Polyglot::instance()->query()->unlinkTranslationFor($termId, "Term");
+    }
+
+    public function onTrashPost($postId)
+    {
+        Polyglot::instance()->query()->unlinkTranslationFor($postId, "WP_Post");
+    }
+
 
     /**
      * Adds plugin registration hooks

@@ -27,10 +27,12 @@ class UrlRewriter {
         add_filter('page_link', array($this, 'postLink'), 1, 3);
         add_filter('query_vars', array($this, 'addQueryVars'));
 
-        add_action('widgets_init', array($this, 'addLocaleRewrites'));
-        add_action('widgets_init', array($this, 'forwardCanonicalUrls'));
+        if (!is_admin()) {
+            add_action('widgets_init', array($this, 'addLocaleRewrites'));
+            add_action('widgets_init', array($this, 'forwardCanonicalUrls'));
 
-        add_filter('redirect_canonical', array($this, 'redirectCanonical'), 10, 2);
+            add_filter('redirect_canonical', array($this, 'redirectCanonical'), 10, 2);
+        }
     }
 
     /**
@@ -95,11 +97,6 @@ class UrlRewriter {
         }
     }
 
-    public function onTrash($postId)
-    {
-        $this->query()->unlinkTranslationFor($postId, "WP_Post");
-    }
-
     /**
      * Appends the current language URL identifier to the
      * post link.
@@ -114,6 +111,8 @@ class UrlRewriter {
         if ($this->isATranslatedPost($post)) {
             $details = $this->polyglot->query()->findDetailsById($post->ID);
             $locale = $this->polyglot->getLocaleByCode($details->translation_locale);
+
+
 
             if (!$locale->isDefault()) {
                 // Don't replace already formatted urls.

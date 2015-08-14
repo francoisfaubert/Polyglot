@@ -13,15 +13,6 @@ use Polyglot\Plugin\TranslationEntity;
 
 class Locale extends StrataLocale {
 
-    protected $translations = null;
-    private $polyglot;
-
-    function __construct($code, $config = array())
-    {
-        parent::__construct($code, $config);
-        $this->polyglot = Polyglot::instance();
-    }
-
     /**
      * [getTranslations description]
      * @param  [type] $mixedId   [description]
@@ -31,29 +22,29 @@ class Locale extends StrataLocale {
     private function getTranslationTree($mixedId, $mixedKind = "WP_Post")
     {
         $originalId = $this->getOriginalObjectId($mixedId, $mixedKind);
-        $translations = $this->polyglot->query()->findOriginalTranslationDetailsId($originalId, $mixedKind);
+        return Polyglot::instance()->query()->findTranlationsOfId($originalId, $mixedKind);
 
-        if (is_null($translations)) {
-            $translations = $this->polyglot->query()->findAllTranlationsOfOriginalId($originalId, $mixedKind);
-        }
+// debug($translations);
+        // $translations = $this->polyglot->query()->findOriginalTranslationsOfId($originalId, $mixedKind);
 
-        return $translations;
+
+        // debug($originalId);
+        // if (is_null($translations)) {
+        //     $translations = $this->polyglot->query()->findTranlationsOfId($mixedId, $mixedKind);
+        // }
+
+        // return $translations;
     }
 
     private function getOriginalObjectId($mixedId, $mixedKind)
     {
-        switch ($mixedKind) {
-            case "WP_Post" : $obj = $this->polyglot->query()->findPostById($mixedId); break;
-            case "stdClass" : $obj = $this->polyglot->query()->findTaxonomyById($mixedId, $mixedKind); break;
-        }
-
-        $localizedDetails = $this->polyglot->query()->findDetails($obj);
+        $localizedDetails = Polyglot::instance()->query()->findDetailsById($mixedId, $mixedKind);
         if ($localizedDetails && !is_null($localizedDetails->translation_of)) {
-            return $localizedDetails->translation_of;
+            return (int)$localizedDetails->translation_of;
         }
 
         // Assume this object is the original since it had no translation
-        return $mixedId;
+        return (int)$mixedId;
     }
 
     private function proofId($postId = null)
@@ -70,6 +61,11 @@ class Locale extends StrataLocale {
         $postId = $this->proofId($postId);
         $tree = $this->getTranslationTree($postId);
 
+        // Tree will be null when a new post is being created.
+        if (is_null($tree)) {
+            return $this->isDefault();
+        }
+
         return !is_null($this->getTranslatedPost($postId));
     }
 
@@ -77,36 +73,84 @@ class Locale extends StrataLocale {
     {
         $postId = $this->proofId($postId);
         $tree = $this->getTranslationTree($postId);
-        return $tree->isTranslationSetOf($postId, "WP_Post");
+        return !is_null($tree) && $tree->isTranslationSetOf($postId, "WP_Post");
     }
 
     public function getTranslatedPost($postId = null)
     {
-        $postId = $this->proofId($postId);
-        $tree = $this->getTranslationTree($postId);
+        $id = (int)$this->findTranslatedId($this->proofId($postId), "WP_Post");
+        if ($id > 0) {
+            return Polyglot::instance()->query()->findPostById($id);
+        }
+    }
+
+    public function hasTermTranslation($termId, $taxname)
+    {
+        $tree = $this->getTranslationTree($termId, "Term");
+
+        // Tree will be null when a new post is being created.
+        if (is_null($tree)) {
+            return $this->isDefault();
+        }
+
+        return !is_null($this->getTranslatedTerm($termId, $taxname));
+    }
+
+    public function isTranslationOfTerm($termId, $taxname)
+    {
+        $tree = $this->getTranslationTree($termId, $taxname);
+        return !is_null($tree) && $tree->isTranslationSetOf($postId, $taxname);
+    }
+
+    public function getTranslatedTerm($termId, $taxName)
+    {
+        $id = (int)$this->findTranslatedId($termId, "Term");
+        if ($id > 0) {
+            return Polyglot::instance()->query()->findTermById($id, $taxName);
+        }
+    }
+
+    protected function findTranslatedId($objectId, $objectKind)
+    {
+        $tree = $this->getTranslationTree($objectId, $objectKind);
+
+        // Tree will be null when a new post is being created.
+        if (is_null($tree)) {
+            return $this->isDefault() ? $objectId : null;
+        }
 
         // Load the translation when it exists
-        if ($tree->hasTranslationFor($this)) {
-            $postTranslationEntity = $tree->getTranslationFor($this);
-            return $this->polyglot->query()->findPostById($postTranslationEntity->obj_id);
+        if (!$this->isDefault() && $tree->hasTranslationFor($this)) {
+            $translationEntity = $tree->getTranslationFor($this);
+            return $translationEntity->getObjectId();
         }
+        // Where there is no translation but this is the default locale
+        // load up the base id of the translation tree which maps to the
+        // base original object id.
+        if ($this->isDefault() && $tree->getId() > 0) {
+            return $tree->getId();
+        }
+
 
         // Load the post if it happens that this post is
         // the owner of this translation set. (@todo I don't think this
-        // is every true since we don't save translation of the default locale)
-        if ($tree->isTranslationSetOf($postId, "WP_Post")) {
-            return $this->polyglot->query()->findPostById($postId);
-        }
+        // // is every true since we don't save translation of the default locale)
+        // if ($tree->isTranslationSetOf($objectId, $objectKind)) {
+        //     return $objectId;
+        // }
 
-        // When all else failed but the tree is loaded, assume it because the translated post is the
-        // original owner of the set.
-        if ($tree->getId() > 0) {
-            return $this->polyglot->query()->findPostById($tree->getId());
-        }
+
+        // debug($tree);
+        // // When all else failed but the tree is loaded, assume it because the translated post is the
+        // // original owner of the set.
+        // if ($tree->getId() > 0) {
+        //     return $tree->getId();
+        // }
 
         // When a tree couldn't be loaded, then the current post is the original
-        return $this->polyglot->query()->findPostById($postId);
+        // return $objectId;
     }
+
 
     public function getHomeUrl()
     {
@@ -122,10 +166,10 @@ class Locale extends StrataLocale {
         return admin_url('options-general.php?page=polyglot-plugin&polyglot_action=editLocale&locale='.$this->getCode());
     }
 
-    public function getTranslatePostUrl($postId = null)
+
+    public function getTranslatePostUrl($originalPost)
     {
-        $object = $this->getTranslatedPost($postId);
-        return admin_url('options-general.php?page=polyglot-plugin&polyglot_action=createTranslationDuplicate&object='.$object->getObjectId().'&objectKind='.$object->getObjectKind().'&objectType='.$object->getObjectType().'&locale='.$this->getCode());
+        return admin_url('options-general.php?page=polyglot-plugin&polyglot_action=createTranslationDuplicate&object='.$originalPost->ID.'&objectKind='.$originalPost->getObjectKind().'&objectType='.$originalPost->post_type.'&locale='.$this->getCode());
     }
 
     public function getEditPostUrl($postId = null)
@@ -137,6 +181,16 @@ class Locale extends StrataLocale {
         }
 
         return admin_url('post.php?post='.$object->ID.'&action=edit&locale=' . $this->getCode());
+    }
 
+    public function getTranslateTermUrl($originalTerm)
+    {
+        return admin_url('options-general.php?page=polyglot-plugin&polyglot_action=createTranslationDuplicate&object='.$originalTerm->term_id.'&objectKind='.$originalTerm->getObjectKind().'&objectType='.$originalTerm->taxonomy.'&locale='.$this->getCode());
+    }
+
+    public function getEditTermUrl($termId, $taxonomy)
+    {
+        $object = $this->getTranslatedTerm($termId, $taxonomy);
+        return admin_url('edit-tags.php?action=edit&taxonomy='.$object->getObjectType().'&tag_ID='.$object->getObjectId().'&post_type=post');
     }
 }

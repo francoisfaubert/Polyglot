@@ -35,12 +35,12 @@ class ContextualSwitcher {
     public function setCurrentLocaleByAdminContext()
     {
         $request = new Request();
-        if ($request->hasGet("post")) {
+        if ($request->hasGet("post") && !is_array($request->get("post"))) { // trashing posts will generate an array
             return $this->setLocaleByPostId($request->get("post"));
         }
 
         if ($request->hasGet("taxonomy") && $request->hasGet("tag_ID")) {
-            return $this->setLocaleByTaxonomyId($request->get("taxonomy"), $request->get("tag_ID"));
+            return $this->setLocaleByTaxonomyId($request->get("tag_ID"), $request->get("taxonomy"));
         }
     }
 
@@ -66,17 +66,16 @@ class ContextualSwitcher {
     private function setLocaleByPostId($postId)
     {
         $post = Polyglot::instance()->query()->findPostById($postId);
-        return $this->setLocaleByObject($post);
+        if (isset($post->ID)) {
+            return $this->setLocaleByObject($post);
+        }
     }
 
-    private function setLocaleByTaxonomyId($taxonomyType, $taxonomyId)
+    private function setLocaleByTaxonomyId($taxonomyId, $taxonomyType)
     {
-        $taxonomies = Polyglot::instance()->findTaxonomyById($taxonomyType, $taxonomyId);
-
-        if (count($taxonomies)) {
-            // Always build using the first taxonomy in the array. It would be too
-            // resource exhaustive to validate against every possible return.
-            return $this->setLocaleByObject($taxonomies[0]);
+        $term = Polyglot::instance()->query()->findTermById($taxonomyId, $taxonomyType);
+        if (isset($term->term_id)) {
+            return $this->setLocaleByObject($term);
         }
     }
 

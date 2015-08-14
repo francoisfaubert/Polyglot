@@ -66,10 +66,22 @@ class AdminController extends BaseController {
     public function createTranslationDuplicate()
     {
         try {
-            $query = new Query();
-            $newTranslationObjId = $query->addPostTranslation((int)$this->request->get("object"), $this->request->get("objectType"), $this->request->get("objectKind"), $this->request->get("locale"));
-            $this->view->set("translationId", $newTranslationObjId);
-            $this->view->set("targetLocale", $this->request->get("locale"));
+            $newTranslationObjId = $this->polyglot->query()->addTranslation((int)$this->request->get("object"), $this->request->get("objectType"), $this->request->get("objectKind"), $this->request->get("locale"));
+            $locale = $this->polyglot->getLocaleByCode($this->request->get("locale"));
+
+            switch ($this->request->get("objectKind")) {
+                case 'WP_Post':
+                    $post = $this->polyglot->query()->findPostById($newTranslationObjId);
+                    $this->view->set("translationObj", $post);
+                    $this->view->set("destinationLink", $locale->getEditPostUrl($newTranslationObjId));
+                    break;
+                case 'Term' :
+
+                    $term = $this->polyglot->query()->findTermById($newTranslationObjId, $this->request->get("objectKind"));
+                    $this->view->set("translationObj", $term);
+                    $this->view->set("destinationLink", $locale->getEditTermUrl($newTranslationObjId, $this->request->get("objectType")));
+                    break;
+            }
 
         } catch(Exception $e) {
             $this->view->set("error", $e->getMessage());
@@ -77,7 +89,6 @@ class AdminController extends BaseController {
 
         $this->view->set("originalId", $this->request->get("object"));
         $this->render("duplicating");
-
     }
 
 }

@@ -35,24 +35,12 @@ class AdminAjaxController extends BaseController {
     {
         $params = $this->parseComplexParams();
         $objId = (int)$params[0];
+        $this->view->set("objId", $objId);
 
-        if ($params[1] == "post") {
-            $defaultLocale = $this->polyglot->getDefaultLocale();
-            $orignalPost = $defaultLocale->getTranslatedPost($objId);
+        return ($params[1] == "post") ?
+            $this->switchPostTranslation($objId) :
+            $this->switchTermTranslation($objId, $params[1]);
 
-            $this->view->set("originalTitle", $orignalPost->post_title);
-            $this->view->set("objId", $objId);
-            $this->view->set("mode", "post");
-
-        } else {
-            // $taxonomies = $this->polyglot->query()->findCachedTaxonomyById($params[1], $params[0]);
-            // $taxonomy = $taxonomies[0];
-            // $originalObject = $this->polyglot->contextualizeMappingByTaxonomy($taxonomy);
-            // $this->view->set("originalTitle", $taxonomy->name);
-            // $this->view->set("mode", "term");
-        }
-
-        $this->render("switchTranslation");
     }
 
     /**
@@ -68,6 +56,23 @@ class AdminAjaxController extends BaseController {
     {
         $param = $this->request->post("param");
         return explode("#", $param);
+    }
+
+    protected function switchPostTranslation($objId)
+    {
+        $defaultLocale = $this->polyglot->getDefaultLocale();
+        $orignalPost = $defaultLocale->getTranslatedPost($objId);
+
+        $this->view->set("originalPost", $orignalPost);
+        $this->render("switchPostTranslation");
+    }
+
+    protected function switchTermTranslation($objId, $objType)
+    {
+        $term = $this->polyglot->query()->findTermById($objId, $objType);
+
+        $this->view->set("originalTerm", $term);
+        $this->render("switchTermTranslation");
     }
 
 }

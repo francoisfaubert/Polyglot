@@ -40,13 +40,13 @@
             };
         }
 
-
         node.dialog({
             'dialogClass'   : 'wp-dialog',
             'modal'         : true,
             'closeOnEscape' : true,
             'width'         : 500,
             'height'        : 500,
+            'title'         : 'Polyglot',
             'buttons'       : buttons
         });
 

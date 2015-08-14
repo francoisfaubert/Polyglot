@@ -11,9 +11,8 @@ class TranslationEntity extends ModelEntity {
     {
         switch($translation->obj_kind) {
             case "WP_Post" :
-            case "WP_Page" : return new PostTranslationEntity($translation);
-            // Tags & taxonomies
-            case "stdClass" : return new TermTranslationEntity($translation);
+            case "WP_Page" :return new PostTranslationEntity($translation);
+            case "Term" : return new TermTranslationEntity($translation);
         }
 
         throw new Exception("Unknown translation object type.");

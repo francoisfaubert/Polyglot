@@ -41,8 +41,6 @@ class CallbackController extends BaseController {
         $configuration = $this->polyglot->getConfiguration();
 
         if (!is_null($taxonomy) && $configuration->isTaxonomyEnabled($taxonomy->taxonomy)) {
-            $this->polyglot->contextualizeMappingByTaxonomy($taxonomy);
-
             $this->view->set("obj_id", $taxonomy->term_id);
             $this->view->set("obj_type", $taxonomy->taxonomy);
             $this->render("metaboxTranslator");

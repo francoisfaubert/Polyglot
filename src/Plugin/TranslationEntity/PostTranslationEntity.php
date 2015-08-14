@@ -1,7 +1,6 @@
 <?php
 namespace Polyglot\Plugin\TranslationEntity;
 
-use Strata\Model\CustomPostType\ModelEntity;
 use Exception;
 
 class PostTranslationEntity extends TranslationEntity {
@@ -17,7 +16,15 @@ class PostTranslationEntity extends TranslationEntity {
 
     public function getObjectId()
     {
-        return $this->ID;
+        // Accesss the property like a function because
+        // of the get/set internals of the Translation entity.
+
+        $id = $this->ID;
+        if (!empty($id)) {
+            return $id;
+        }
+
+        return $this->obj_id;
     }
 
     public function getObjectKind()
@@ -27,7 +34,15 @@ class PostTranslationEntity extends TranslationEntity {
 
     public function getObjectType()
     {
-        return $this->post_type;
+        // Accesss the property like a function because
+        // of the get/set internals of the Translation entity.
+        $post_type = $this->post_type;
+
+        if (!empty($post_type)) {
+            return $post_type;
+        }
+
+        return $this->obj_type;
     }
 
 }

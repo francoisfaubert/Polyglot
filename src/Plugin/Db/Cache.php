@@ -20,4 +20,8 @@ class Cache  {
         $this->cacheDump[md5($longKey)] = $value;
     }
 
+    public function remove($longKey)
+    {
+        unset($this->cacheDump[md5($longKey)]);
+    }
 }

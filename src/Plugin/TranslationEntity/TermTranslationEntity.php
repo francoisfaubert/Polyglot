@@ -1,11 +1,8 @@
 <?php
-
 namespace Polyglot\Plugin\TranslationEntity;
 
-use Strata\Model\CustomPostType\ModelEntity;
 use Exception;
 
- // Tags & taxonomies
 class TermTranslationEntity extends TranslationEntity {
 
     public function loadAssociated()
@@ -17,13 +14,23 @@ class TermTranslationEntity extends TranslationEntity {
         throw new Exception("TermTranslationEntity was not associated to a term.");
     }
 
-    public function getObjId()
+
+    public function getObjectId()
     {
+        if (isset($this->obj_id)) {
+            return $this->obj_id;
+        }
+
         return $this->term_id;
     }
 
-    public function getKind()
+    public function getObjectKind()
     {
         return "Term";
+    }
+
+    public function getObjectType()
+    {
+        return $this->taxonomy;
     }
 }
