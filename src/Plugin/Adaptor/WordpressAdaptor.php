@@ -146,6 +146,9 @@ class WordpressAdaptor {
 
         $rewriter = new UrlRewriter();
         $rewriter->registerHooks();
+
+
+        add_action('widgets_init', array("\Polyglot\\Widget\\LanguageMenu", "register"));
     }
 
 

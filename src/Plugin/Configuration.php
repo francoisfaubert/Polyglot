@@ -109,12 +109,25 @@ class Configuration {
 
     public function getPostTypes()
     {
-        return get_post_types(array(), "object");
+        $unsupported = array("nav_menu_item", "revision");
+        return $this->filterKeys($unsupported, get_post_types(array(), "objects"));
     }
 
     public function getTaxonomies()
     {
-        return get_taxonomies(array(), "objects");
+        $unsupported = array('nav_menu', 'link_category', 'post_format');
+        return $this->filterKeys($unsupported, get_taxonomies(array(), "objects"));
+    }
+
+    private function filterKeys($remove, $originalSet)
+    {
+        $filtered = array();
+        foreach ($originalSet as $key => $value) {
+            if (!in_array($key, $remove)) {
+                $filtered[$key] = $value;
+            }
+        }
+        return $filtered;
     }
 
 }

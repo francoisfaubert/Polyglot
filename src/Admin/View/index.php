@@ -23,7 +23,7 @@
 
             <br>
 
-            <a class="button default-button" href="<?php echo $locale->getEditUrl(); ?>"><?php _e("Translate", "polyglot"); ?></a>
+            <a class="button default-button" href="<?php echo $locale->getEditUrl(); ?>"><?php _e("Edit dictionary", "polyglot"); ?></a>
         </div>
     <?php endforeach; ?>
     </div>
