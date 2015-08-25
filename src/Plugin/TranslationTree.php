@@ -36,8 +36,6 @@ class TranslationTree  {
 
     public function isTranslationSetOf($mixedId, $mixedKind)
     {
-        // debug(array($mixedId, $mixedKind));
-
         return $mixedId === $this->translationObjId && $mixedKind === $this->translationObjKind;
     }
 
@@ -56,7 +54,5 @@ class TranslationTree  {
 
         return null;
     }
-
-
 
 }

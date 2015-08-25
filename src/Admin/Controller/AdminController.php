@@ -66,8 +66,15 @@ class AdminController extends BaseController {
     public function createTranslationDuplicate()
     {
         try {
-            $newTranslationObjId = $this->polyglot->query()->addTranslation((int)$this->request->get("object"), $this->request->get("objectType"), $this->request->get("objectKind"), $this->request->get("locale"));
             $locale = $this->polyglot->getLocaleByCode($this->request->get("locale"));
+
+
+            $newTranslationObjId = $this->polyglot->query()->addTranslation(
+                (int)$this->request->get("object"),
+                $this->request->get("objectType"),
+                $this->request->get("objectKind"),
+                $locale->getCode()
+            );
 
             switch ($this->request->get("objectKind")) {
                 case 'WP_Post':
@@ -75,12 +82,14 @@ class AdminController extends BaseController {
                     $this->view->set("translationObj", $post);
                     $this->view->set("destinationLink", $locale->getEditPostUrl($newTranslationObjId));
                     break;
-                case 'Term' :
 
+                case 'Term' :
                     $term = $this->polyglot->query()->findTermById($newTranslationObjId, $this->request->get("objectKind"));
                     $this->view->set("translationObj", $term);
                     $this->view->set("destinationLink", $locale->getEditTermUrl($newTranslationObjId, $this->request->get("objectType")));
                     break;
+
+                default : throw new Exception("Polyglot does not know how to translate this.");
             }
 
         } catch(Exception $e) {

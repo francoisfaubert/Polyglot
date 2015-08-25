@@ -7,6 +7,7 @@ use Polyglot\Admin\Router;
 use Polyglot\Plugin\Db\Query;
 use Polyglot\Plugin\Polyglot;
 use Polyglot\Plugin\UrlRewriter;
+use Polyglot\Plugin\QueryRewriter;
 use Polyglot\Plugin\ContextualSwitcher;
 
 class WordpressAdaptor {
@@ -118,18 +119,16 @@ class WordpressAdaptor {
 
         $router = new Router();
         $router->contextualize($this);
+
         add_action('wp_ajax_polyglot_ajax', array($router, "autoroute"));
         add_filter('add_meta_boxes', array($router, "addMetaBox"), 1000000);
 
         $configuration = $this->polyglot->getConfiguration();
-        foreach($configuration->getEnabledPostTypes() as $type) {
-            add_filter('views_edit-' . $type, array($router, "addViewEditLocaleSelect"));
-        }
-
         foreach($configuration->getEnabledTaxonomies() as $tax) {
             add_action ($tax . '_edit_form_fields', array($router, "addTaxonomyLocaleSelect"));
         }
     }
+
 
     /**
      * Registers callbacks required by both the backend and frontend.
@@ -147,10 +146,11 @@ class WordpressAdaptor {
         $rewriter = new UrlRewriter();
         $rewriter->registerHooks();
 
+        $querier = new QueryRewriter();
+        $querier->registerHooks();
 
         add_action('widgets_init', array("\Polyglot\\Widget\\LanguageMenu", "register"));
     }
-
 
     public function onTrashTerm($termId)
     {
@@ -162,7 +162,6 @@ class WordpressAdaptor {
         Polyglot::instance()->query()->unlinkTranslationFor($postId, "WP_Post");
     }
 
-
     /**
      * Adds plugin registration hooks
      */
@@ -171,7 +170,6 @@ class WordpressAdaptor {
         register_activation_hook($this->loaderPath, array($this, 'activate'));
         register_deactivation_hook($this->loaderPath, array($this, 'deactivate'));
     }
-
 
     /**
      * Loads the plugin text domain.
@@ -205,27 +203,14 @@ class WordpressAdaptor {
         foreach ($this->polyglot->getLocales() as $locale) {
             if ($locale->hasPostTranslation()) {
                 $translatedPost = $locale->getTranslatedPost();
-                $metatags[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), get_the_permalink($translatedPost->ID));
+                if ($translatedPost) {
+                    $metatags[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), get_the_permalink($translatedPost->ID));
+                }
             }
         }
 
         echo implode("\n", $metatags) . "\n";
     }
-
-    // public function preGetPosts($query)
-    // {
-    //     $app = Strata::app();
-    //     $locale = $app->i18n->getCurrentLocale();
-    //     $polyQuery = new Query();
-    //     $ids = array();
-
-    //     foreach ((array)$polyQuery->findAllIdsOfLocale($locale->getCode()) as $id) {
-    //         $ids[] = $id;
-    //     }
-
-    //     return $query->set("post__in", $ids);
-    // }
-
 
     protected function getPluginLocalePath()
     {

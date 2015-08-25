@@ -1,6 +1,7 @@
 <?php
 namespace Polyglot\Admin\Controller;
 
+use Strata\Strata;
 use Polyglot\Admin\Router;
 
 class CallbackController extends BaseController {
@@ -16,6 +17,18 @@ class CallbackController extends BaseController {
 
         if (!is_null($type) && $configuration->isTypeEnabled($type)) {
             add_meta_box("polyglot-localization-metabox", __('Localization', "polyglot"), array($this, 'renderPostMetabox'), $type, 'side', 'high');
+
+            $locale = $this->polyglot->getCurrentLocale();
+            if (!$locale->isDefault()) {
+                remove_meta_box("formatdiv", "post", "side");
+                // remove_meta_box("categorydiv", "post", "side");
+                remove_meta_box("tagsdiv-post_tag", "post", "side");
+
+                remove_meta_box("formatdiv", "page", "side");
+                // remove_meta_box("categorydiv", "page", "side");
+                remove_meta_box("pageparentdiv", "page", "side");
+                remove_meta_box("tagsdiv-post_tag", "page", "side");
+            }
         }
     }
 
@@ -33,6 +46,7 @@ class CallbackController extends BaseController {
         $this->render("metaboxTranslator");
     }
 
+
     /**
      * Adds the metabox registration on taxonomies
      */
@@ -45,19 +59,6 @@ class CallbackController extends BaseController {
             $this->view->set("obj_type", $taxonomy->taxonomy);
             $this->render("metaboxTranslator");
         }
-    }
-
-
-    /**
-     * Adds the locale selection box to the post edit page.
-     * @see Polyglot\Plugin\Adaptor\WordpressAdaptor
-     * @param array $views
-     * @return array
-     */
-    public function addViewEditLocaleSelect($views)
-    {
-        $views["langfilter"] = $this->render("localeSelect");
-        return $views;
     }
 
     /**

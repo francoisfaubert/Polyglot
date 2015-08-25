@@ -26,6 +26,7 @@ class UrlRewriter {
         add_filter('post_link', array($this, 'postLink'), 1, 3);
         add_filter('page_link', array($this, 'postLink'), 1, 3);
         add_filter('query_vars', array($this, 'addQueryVars'));
+        add_filter('term_link', array($this, 'termLink'));
 
         if (!is_admin()) {
             add_action('widgets_init', array($this, 'addLocaleRewrites'));
@@ -76,6 +77,9 @@ class UrlRewriter {
         add_rewrite_rule('('.$regex.')/([^/]+)/?$', 'index.php?name=$matches[2]&locale=$matches[1]', "top");
         add_rewrite_rule('index.php/('.$regex.')/([^/]+)/?$', 'index.php?name=$matches[2]&locale=$matches[1]', "top");
 
+        // Rewrite for categories
+        $this->addCategoryRules();
+
         // Rewrite for localized homepages.
         $this->addHomepagesRules();
 
@@ -112,9 +116,7 @@ class UrlRewriter {
             $details = $this->polyglot->query()->findDetailsById($post->ID);
             $locale = $this->polyglot->getLocaleByCode($details->translation_locale);
 
-
-
-            if (!$locale->isDefault()) {
+            if ($locale && !$locale->isDefault()) {
                 // Don't replace already formatted urls.
                 if (!preg_match("/(index.php)?\/".$locale->getUrl()."\//", $postLink)) {
                     $home = str_replace("//", "\/\/", preg_quote(WP_HOME));
@@ -126,6 +128,22 @@ class UrlRewriter {
 
         return $postLink;
     }
+
+    public function termLink($termLink)
+    {
+        $locale = $this->polyglot->getCurrentLocale();
+        if ($locale && !$locale->isDefault()) {
+            // Don't replace already formatted urls.
+            if (!preg_match("/(index.php)?\/".$locale->getUrl()."\//", $termLink)) {
+                $home = str_replace("//", "\/\/", preg_quote(WP_HOME));
+                $regex = "$home\/(index.php\/)?(.*)?";
+                return preg_replace("/$regex/", WP_HOME . "/$1" . $locale->getUrl() . "/$2", $termLink);
+            }
+        }
+
+        return $termLink;
+    }
+
 
     private function getLocaleUrls()
     {
@@ -182,6 +200,20 @@ class UrlRewriter {
                 add_rewrite_rule("index.php/$url/?$", "index.php?pagename=$pagename", "top");
             }
         }
+    }
+
+    private function addCategoryRules()
+    {
+        $regex = $this->getLocaleUrlsRegex();
+
+        add_rewrite_rule('('.$regex.')/category/(.+?)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?category_name=$matches[2]&feed=$matches[3]&locale=$matches[1]', 'top');
+        add_rewrite_rule('('.$regex.')/category/(.+?)/(feed|rdf|rss|rss2|atom)/?$', 'index.php?category_name=$matches[2]&feed=$matches[3]&locale=$matches[1]', 'top');
+        add_rewrite_rule('('.$regex.')/category/(.+?)/page/?([0-9]{1,})/?$', 'index.php?category_name=$matches[2]&paged=$matches[3]&locale=$matches[1]', 'top');
+        add_rewrite_rule('('.$regex.')/category/(.+?)/?$', 'index.php?category_name=$matches[2]&locale=$matches[1]', 'top');
+        add_rewrite_rule('index.php/('.$regex.')/category/(.+?)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?category_name=$matches[2]&feed=$matches[3]&locale=$matches[1]', 'top');
+        add_rewrite_rule('index.php/('.$regex.')/category/(.+?)/(feed|rdf|rss|rss2|atom)/?$', 'index.php?category_name=$matches[2]&feed=$matches[3]&locale=$matches[1]', 'top');
+        add_rewrite_rule('index.php/('.$regex.')/category/(.+?)/page/?([0-9]{1,})/?$', 'index.php?category_name=$matches[2]&paged=$matches[3]&locale=$matches[1]', 'top');
+        add_rewrite_rule('index.php/('.$regex.')/category/(.+?)/?$', 'index.php?category_name=$matches[2]&locale=$matches[1]', 'top');
     }
 
 }

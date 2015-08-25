@@ -114,14 +114,14 @@ class Query {
 
         $this->logger->logQueryStart();
 
-        if ($this->cache->has($query)) {
-            $queryResults = $this->cache->get($query);
-            // This generates a scary amount of logs entries.
-            //$this->logger->logQueryCompletion($wpdb->last_query, true);
+        if ($this->cache->has($query . $queryType)) {
+            $queryResults = $this->cache->get($query . $queryType);
         } else {
             $queryResults = $wpdb->{$queryType}($query);
-            $this->cache->set($query, $queryResults);
-            $this->logger->logQueryCompletion($wpdb->last_query);
+            $lastQuery = $wpdb->last_query;
+
+            $this->cache->set($query . $queryType, $queryResults);
+            $this->logger->logQueryCompletion($lastQuery);
         }
 
         return $queryResults;
@@ -137,13 +137,10 @@ class Query {
         global $wpdb;
 
         $results = $this->runCachableQuery($wpdb->prepare("
-            SELECT {$wpdb->prefix}polyglot.*,
-                {$wpdb->prefix}posts.post_name
+            SELECT *
             FROM {$wpdb->prefix}polyglot
-                LEFT JOIN {$wpdb->prefix}posts on {$wpdb->prefix}posts.ID = {$wpdb->prefix}polyglot.obj_id
             WHERE translation_of = %s
-                AND obj_kind = %s
-            ORDER BY polyglot_ID ASC",
+            AND obj_kind = %s",
             $id,
             $kind
         ));
@@ -153,7 +150,11 @@ class Query {
         }
     }
 
-
+    /**
+     * Returns a cached reference of a post.
+     * @param  int $id
+     * @return array       An array of PostTranslationEntities
+     */
     public function findPostById($id)
     {
         $this->logger->logQueryStart();
@@ -162,42 +163,20 @@ class Query {
 
         if ($this->cache->has($query)) {
             $queryResults = $this->cache->get($query);
-            //$this->logger->logQueryCompletion("Loaded post ID #$id", true);
         } else {
             $queryResults = new PostTranslationEntity(get_post($id));
             $this->cache->set($query, $queryResults);
-            //$this->logger->logQueryCompletion("Loaded post ID #$id");
         }
 
         return $queryResults;
     }
 
-
-    public function findTermsById($type, $id)
-    {
-        $this->logger->logQueryStart();
-
-        $query = "get_terms_$id\_$type";
-
-        if ($this->cache->has($query)) {
-            $queryResults = $this->cache->get($query);
-           // $this->logger->logQueryCompletion("Loaded taxonomy ID #$id", true);
-        } else {
-
-            $queryResults = array();
-            $terms = get_the_terms($id, $type);
-            if ($terms)  {
-                foreach ($terms as $term) {
-                    $queryResults[] = new TermTranslationEntity($term);
-                }
-            }
-            $this->cache->set($query, $queryResults);
-            //$this->logger->logQueryCompletion("Loaded taxonomy ID #$id");
-        }
-
-        return $queryResults;
-    }
-
+    /**
+     * Returns a cached reference of a loaded term.
+     * @param  int $id
+     * @param  string $type The type of the term (ex: category)
+     * @return array       An array of TermTranslationEntities
+     */
     public function findTermById($id, $type)
     {
         $this->logger->logQueryStart();
@@ -214,8 +193,6 @@ class Query {
         return $queryResults;
     }
 
-
-
     /**
      * Queries for the translation details of an object.
      * @param  mixed $object
@@ -226,6 +203,12 @@ class Query {
         return $this->findDetailsById($object->getObjectId(), $object->getObjectKind());
     }
 
+    /**
+     * Queries for the translation details of an object.
+     * @param  int $id
+     * @param string $kind The type of the object (default "WP_Post")
+     * @return TranslationEntity
+     */
     public function findDetailsById($id, $kind = "WP_Post")
     {
         global $wpdb;
@@ -235,16 +218,34 @@ class Query {
             FROM {$wpdb->prefix}polyglot
                 WHERE obj_id = %s
                 AND obj_kind = %s
-            ORDER BY polyglot_ID ASC
             LIMIT 1",
             $id,
             $kind
         ), "get_row");
 
-        if (!is_null($result)) {
+        if (!is_null($result) && $result != '') {
             return TranslationEntity::factory($result);
         }
     }
+
+    public function findDetailsByIds(array $ids, $kind = "WP_Post")
+    {
+        global $wpdb;
+
+        $results = $this->runCachableQuery($wpdb->prepare("
+            SELECT *
+            FROM {$wpdb->prefix}polyglot
+                WHERE obj_id IN (%s)
+                AND obj_kind = %s",
+            $ids,
+            $kind
+        ));
+
+        if (!is_null($results)) {
+            return $this->rowsToEntities($results);
+        }
+    }
+
 
     /**
      * Fetches all the known translation details of an object's original parent.
@@ -258,6 +259,14 @@ class Query {
         return $this->findTranslationsOfId($object->getObjectId(), $object->getObjectKind());
     }
 
+    /**
+     * Fetches all the known translation details of an object's original parent.
+     * Best for cases where you have a translation and need to build the list of
+     * all locale possibilities.
+     * @param  int $id
+     * @param string $kind The type of the object (default "WP_Post")
+     * @return TranslationEntity
+     */
     public function findOriginalTranslationsOfId($id, $kind = "WP_Post")
     {
         global $wpdb;
@@ -281,8 +290,81 @@ class Query {
         }
     }
 
+
+
     /**
-     *
+     * @todo This is ugly, plz improve
+     */
+    public function findTranslationIdsOf($locale, $kind = "WP_Post")
+    {
+        global $wpdb;
+
+        $results = $this->runCachableQuery($wpdb->prepare("
+            SELECT obj_id
+            FROM {$wpdb->prefix}polyglot
+            WHERE translation_locale = %s
+            AND  obj_kind = %s",
+            $locale->getCode(),
+            $kind
+        ));
+
+        if (!is_null($results) && count($results)) {
+            return $results;
+        }
+    }
+
+
+    public function findTranslationIdsNotInLocale($locale, $kind = "WP_Post")
+    {
+        global $wpdb;
+
+        $results = $this->runCachableQuery($wpdb->prepare("
+            SELECT * FROM
+                ( SELECT obj_id
+                    FROM {$wpdb->prefix}polyglot
+                    WHERE translation_locale != %s
+                    AND  obj_kind = %s) as tbl1,
+                (SELECT translation_of as obj_id
+                    FROM {$wpdb->prefix}polyglot
+                    WHERE translation_locale = %s
+                    AND  obj_kind = %s
+
+                    ) as tbl2",
+            $locale->getCode(),
+            $kind,
+            $locale->getCode(),
+            $kind
+        ));
+
+
+        if (!is_null($results) && count($results)) {
+            return $results;
+        }
+    }
+
+
+    /**
+     * @todo This is horrible, plz improve
+     */
+    public function listTranslatedIds($kind = "WP_Post")
+    {
+        global $wpdb;
+
+        $results = $this->runCachableQuery($wpdb->prepare("
+            SELECT DISTINCT translation_of, obj_id
+            FROM {$wpdb->prefix}polyglot
+            WHERE obj_kind = %s",
+            $kind
+        ));
+
+        if (!is_null($results) && count($results)) {
+            return $results;
+        }
+    }
+
+
+    /**
+     * Returns the original locale of a translated object.
      * @param  mixed $translatedObj
      * @return Locale
      */
@@ -299,36 +381,56 @@ class Query {
         return $polyglot->getLocaleByCode($details->translation_locale);
     }
 
-    // public function generateLocaleHomeUrlList()
-    // {
-    //     $slugs = array();
-    //     $defaultHomeId = $this->getDefaultHomepageId();
-
-    //     // We only care if a page is on the front page
-    //     if ($defaultHomeId > 0) {
-    //         $translatedPages = $this->findAllTranlationsOfOriginalId($defaultHomeId);
-    //         foreach ($translatedPages as $page) {
-    //             $slugs[$page->translation_locale] = $page->post_name;
-    //         }
-    //     }
-
-    //     return $slugs;
-    // }
-
+    /**
+     * Returns the default homepage ID
+     * @return Integer The page ID or -1 if there are none
+     */
     public function getDefaultHomepageId()
     {
         if ($this->hasHomePage()) {
-            return (int)get_option('page_on_front');
+            return $this->pageOnFront();
         }
 
         return -1;
     }
 
+    /**
+     * Returns a cached reference to Wordpress' show_on_front option
+     * @see https://codex.wordpress.org/Option_Reference
+     * @return Boolean True if the current app has a page for home page
+     */
     private function hasHomePage()
     {
-        return get_option('show_on_front') == "page";
+        $query = "get_option_show_on_front";
+
+        if ($this->cache->has($query)) {
+            $showOnFront = $this->cache->get($query);
+        } else {
+            $showOnFront = get_option('show_on_front');
+            $this->cache->set($query, $showOnFront);
+        }
+
+        return $showOnFront == "page";
     }
 
+    /**
+     * Returns a cached reference to Wordpress' page_on_front option
+     * @see https://codex.wordpress.org/Option_Reference
+     * @return Integer The page ID
+     */
+    private function pageOnFront()
+    {
+        $query = "get_option_page_on_front";
+
+        if ($this->cache->has($query)) {
+            $pageOnFront = $this->cache->get($query);
+        } else {
+            $pageOnFront = (int)get_option('page_on_front');
+            $this->cache->set($query, $pageOnFront);
+        }
+
+        return $pageOnFront;
+    }
 
     /**
      * Converts DB rows into translation entities
@@ -343,19 +445,4 @@ class Query {
         }
         return $results;
     }
-
-    /**
-     * @todo : This probably does not need to be here.
-     */
-    private function isInDefaultLocale($obj)
-    {
-        // The post had no parent version, however we must
-        // confirm the queried post is not the default locale.
-        // If it is, then it's normal that there are not parent posts found
-        // because original posts aren't listed in the polyglot table.
-        $app = Strata::app();
-        return $this->findObjectLocale($obj) === $app->i18n->getDefaultLocale()->getCode();
-    }
-
-
 }

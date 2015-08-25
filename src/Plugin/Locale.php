@@ -23,17 +23,6 @@ class Locale extends StrataLocale {
     {
         $originalId = $this->getOriginalObjectId($mixedId, $mixedKind);
         return Polyglot::instance()->query()->findTranlationsOfId($originalId, $mixedKind);
-
-// debug($translations);
-        // $translations = $this->polyglot->query()->findOriginalTranslationsOfId($originalId, $mixedKind);
-
-
-        // debug($originalId);
-        // if (is_null($translations)) {
-        //     $translations = $this->polyglot->query()->findTranlationsOfId($mixedId, $mixedKind);
-        // }
-
-        // return $translations;
     }
 
     private function getOriginalObjectId($mixedId, $mixedKind)
@@ -130,27 +119,7 @@ class Locale extends StrataLocale {
         if ($this->isDefault() && $tree->getId() > 0) {
             return $tree->getId();
         }
-
-
-        // Load the post if it happens that this post is
-        // the owner of this translation set. (@todo I don't think this
-        // // is every true since we don't save translation of the default locale)
-        // if ($tree->isTranslationSetOf($objectId, $objectKind)) {
-        //     return $objectId;
-        // }
-
-
-        // debug($tree);
-        // // When all else failed but the tree is loaded, assume it because the translated post is the
-        // // original owner of the set.
-        // if ($tree->getId() > 0) {
-        //     return $tree->getId();
-        // }
-
-        // When a tree couldn't be loaded, then the current post is the original
-        // return $objectId;
     }
-
 
     public function getHomeUrl()
     {

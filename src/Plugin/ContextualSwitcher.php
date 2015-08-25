@@ -21,9 +21,9 @@ class ContextualSwitcher {
     {
         if (is_admin()) {
             add_action('admin_init', array($this, "setCurrentLocaleByAdminContext"));
+        } else {
+            add_action('wp', array($this, "setCurrentLocaleByFrontContext"));
         }
-
-        add_action('wp', array($this, "setCurrentLocaleByFrontContext"));
     }
 
     /**

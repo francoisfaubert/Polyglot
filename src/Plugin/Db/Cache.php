@@ -3,6 +3,32 @@ namespace Polyglot\Plugin\Db;
 
 class Cache  {
 
+    // public function has($longKey)
+    // {
+    //     return get_site_transient($this->toKey($longKey)) !== false;
+    // }
+
+    // public function get($longKey)
+    // {
+    //     return get_site_transient($this->toKey($longKey));
+    // }
+
+    // public function set($longKey, $value)
+    // {
+    //     return set_site_transient($this->toKey($longKey), $value);
+    // }
+
+    // public function remove($longKey)
+    // {
+    //     return delete_site_transient($this->toKey($longKey));
+    // }
+
+    // private function toKey($longKey)
+    // {
+    //     return "plglt_" . md5($longKey);
+    // }
+
+
     private $cacheDump = array();
 
     public function has($longKey)
@@ -24,4 +50,5 @@ class Cache  {
     {
         unset($this->cacheDump[md5($longKey)]);
     }
+
 }
