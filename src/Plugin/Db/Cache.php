@@ -1,6 +1,12 @@
 <?php
 namespace Polyglot\Plugin\Db;
 
+/**
+ * This cache is meant to store queries on each rendering pass.
+ * It is not intended to dump the results in wp_cache or as a transient.
+ * Using transients will likely be a long term goal on some of the queries
+ * stored here
+ */
 class Cache  {
 
     // public function has($longKey)
@@ -27,7 +33,6 @@ class Cache  {
     // {
     //     return "plglt_" . md5($longKey);
     // }
-
 
     private $cacheDump = array();
 

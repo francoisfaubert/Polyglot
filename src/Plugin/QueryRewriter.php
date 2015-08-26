@@ -157,13 +157,15 @@ class QueryRewriter {
 
         if (!$locale->isDefault()) {
             $matches = $this->polyglot->query()->findTranslationIdsNotInLocale($locale, "Term");
+        } else {
+            $matches = $this->polyglot->query()->listTranslatedIds("Term");
+        }
 
-            // By excluding ids, we allow for fallback
-            // to the default locales.
-            $args['exclude'] = array();
-            foreach ((array)$matches as $row) {
-                $args['exclude'][] = $row->obj_id;
-            }
+        // By excluding ids, we allow for fallback
+        // to the default locales.
+        $args['exclude'] = array();
+        foreach ((array)$matches as $row) {
+            $args['exclude'][] = $row->obj_id;
         }
 
         return $args;

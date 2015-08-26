@@ -127,6 +127,22 @@ class WordpressAdaptor {
         foreach($configuration->getEnabledTaxonomies() as $tax) {
             add_action ($tax . '_edit_form_fields', array($router, "addTaxonomyLocaleSelect"));
         }
+
+ add_filter('manage_posts_columns', array($router, "addLocalizationColumn"));
+        //
+
+        // foreach($configuration->getEnabledPostTypes() as $postType) {
+        //     if ($postType === "page") {
+        //         add_filter('manage_pages_columns', array($router, "addLocalizationColumn"));
+        //         add_action('manage_pages_custom_column', array($router, "renderLocalizationColumn"), 10, 2 );
+        //     } elseif ($postType === "post") {
+        //         add_filter('manage_posts_columns', array($router, "addLocalizationColumn"));
+        //         add_action('manage_posts_custom_column', array($router, "renderLocalizationColumn"), 10, 2 );
+        //     } else {
+        //         add_filter('manage_'.$postType.'_posts_columns', array($router, "addLocalizationColumn"));
+        //         add_action('manage_'.$postType.'_posts_custom_column', array($router, "renderLocalizationColumn"), 10, 2 );
+        //     }
+        // }
     }
 
 

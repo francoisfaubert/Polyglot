@@ -32,6 +32,22 @@ class CallbackController extends BaseController {
         }
     }
 
+    public function addLocalizationColumn($columns)
+    {
+        // $columns['polyglot_locales'] = __('i18n', 'polyglot');
+        return $columns;
+    }
+
+    public function renderLocalizationColumn($column, $post_id)
+    {
+        echo "dude";
+        // if ($column === "polyglot_locales") {
+        //     $this->view->set("obj_id", $post_id);
+        //     // $this->view->set("obj_type", get_post_type());
+        //     $this->render("buttonTranslator");
+        // }
+    }
+
     /**
      * Renders the metabox that displays tranlation statuses.
      */
@@ -41,7 +57,7 @@ class CallbackController extends BaseController {
             $this->view->set("invalidStatus", true);
         } else {
             $this->view->set("obj_id", get_the_ID());
-            $this->view->set("obj_type", "post");
+            $this->view->set("obj_type", get_post_type());
         }
         $this->render("metaboxTranslator");
     }
