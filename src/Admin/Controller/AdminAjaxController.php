@@ -63,9 +63,15 @@ class AdminAjaxController extends BaseController {
         $objId = (int)$params[0];
         $this->view->set("objId", $objId);
 
-        return ($params[1] == "post") ?
-            $this->switchPostTranslation($objId) :
+        $configuration = $this->polyglot->getConfiguration();
+
+        if (in_array($params[1], $configuration->getEnabledPostTypes())) {
+            $this->switchPostTranslation($objId);
+        }
+
+        if (in_array($params[1], $configuration->getEnabledTaxonomies())) {
             $this->switchTermTranslation($objId, $params[1]);
+        }
     }
 
     /**
