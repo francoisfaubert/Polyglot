@@ -1,6 +1,6 @@
 {
-    "name": "francoisfaubert/polyglot",
-    "description": "A translation plugin.",
+    "name": "francoisfaubert/strata-polyglot",
+    "description": "A localization plugin for Wordpress on Strata.",
     "type": "wordpress-plugin",
     "authors": [
         {
