@@ -17,7 +17,7 @@ class Router  {
 
     public function __call($name, $arguments)
     {
-        $this->callbackController($name, $arguments);
+        return $this->callbackController($name, $arguments);
     }
 
     public function contextualize($adaptor)
@@ -37,7 +37,7 @@ class Router  {
             return $this->adminController($request->get('polyglot_action'));
         }
 
-       $this->adminController("index");
+       return $this->adminController("index");
     }
 
 
@@ -47,8 +47,10 @@ class Router  {
         $ctrl->contextualize($this->adaptor);
         $ctrl->init();
         $ctrl->before();
-        call_user_func_array(array($ctrl, $action), $arguments);
+        $return = call_user_func_array(array($ctrl, $action), $arguments);
         $ctrl->after();
+
+        return $return;
     }
 
     public function adminController($action = "index", $arguments = array())
@@ -57,8 +59,10 @@ class Router  {
         $ctrl->contextualize($this->adaptor);
         $ctrl->init();
         $ctrl->before();
-        call_user_func_array(array($ctrl, $action), $arguments);
+        $return = call_user_func_array(array($ctrl, $action), $arguments);
         $ctrl->after();
+
+        return $return;
     }
 
     private function ajaxController($action = "index")
@@ -67,8 +71,10 @@ class Router  {
         $ctrl->contextualize($this->adaptor);
         $ctrl->init();
         $ctrl->before();
-        call_user_func(array($ctrl, $action));
+        $return = call_user_func(array($ctrl, $action));
         $ctrl->after();
+
+        return $return;
     }
 
     protected function render($filename, $variables = array(), $extension = '.php')

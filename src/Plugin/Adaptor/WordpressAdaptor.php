@@ -114,35 +114,25 @@ class WordpressAdaptor {
     {
         add_action('admin_menu', array($this, 'adminMenu'));
         add_action('admin_init', array($this, 'adminInit'));
-
         add_action('admin_enqueue_scripts', array($this, 'enqueueScripts'));
 
+        $configuration = $this->polyglot->getConfiguration();
         $router = new Router();
         $router->contextualize($this);
 
         add_action('wp_ajax_polyglot_ajax', array($router, "autoroute"));
-        add_filter('add_meta_boxes', array($router, "addMetaBox"), 1000000);
 
-        $configuration = $this->polyglot->getConfiguration();
         foreach($configuration->getEnabledTaxonomies() as $tax) {
             add_action ($tax . '_edit_form_fields', array($router, "addTaxonomyLocaleSelect"));
+            add_filter('manage_edit-'.$tax.'_columns', array($router, "addLocalizationColumn"));
+            add_action('manage_'.$tax.'_custom_column', array($router, "renderTaxonomyLocalizationColumn"), 20, 5 );
         }
 
- add_filter('manage_posts_columns', array($router, "addLocalizationColumn"));
-        //
-
-        // foreach($configuration->getEnabledPostTypes() as $postType) {
-        //     if ($postType === "page") {
-        //         add_filter('manage_pages_columns', array($router, "addLocalizationColumn"));
-        //         add_action('manage_pages_custom_column', array($router, "renderLocalizationColumn"), 10, 2 );
-        //     } elseif ($postType === "post") {
-        //         add_filter('manage_posts_columns', array($router, "addLocalizationColumn"));
-        //         add_action('manage_posts_custom_column', array($router, "renderLocalizationColumn"), 10, 2 );
-        //     } else {
-        //         add_filter('manage_'.$postType.'_posts_columns', array($router, "addLocalizationColumn"));
-        //         add_action('manage_'.$postType.'_posts_custom_column', array($router, "renderLocalizationColumn"), 10, 2 );
-        //     }
-        // }
+        foreach($configuration->getEnabledPostTypes() as $postType) {
+            add_action('add_meta_boxes_'.$postType, array($router, "addMetaBox"), 20, 2);
+            add_filter('manage_'.$postType.'_posts_columns', array($router, "addLocalizationColumn"));
+            add_action('manage_'.$postType.'_posts_custom_column', array($router, "renderLocalizationColumn"), 10, 2 );
+        }
     }
 
 
@@ -151,10 +141,6 @@ class WordpressAdaptor {
      */
     protected function addGlobalCallbacks()
     {
-        add_action('plugins_loaded', array($this, 'load'));
-
-        add_action('wp_trash_post', array($this, 'onTrashPost'));
-        add_action('delete_term_taxonomy', array($this, 'onTrashTerm'));
 
         $switcher = new ContextualSwitcher();
         $switcher->registerHooks();
@@ -165,7 +151,10 @@ class WordpressAdaptor {
         $querier = new QueryRewriter();
         $querier->registerHooks();
 
-        add_action('widgets_init', array("\Polyglot\\Widget\\LanguageMenu", "register"));
+        add_action('plugins_loaded', array($this, 'load'));
+        add_action('wp_trash_post', array($this, 'onTrashPost'));
+        add_action('delete_term_taxonomy', array($this, 'onTrashTerm'));
+        add_action('widgets_init', array("\\Polyglot\\Widget\\LanguageMenu", "register"));
     }
 
     public function onTrashTerm($termId)

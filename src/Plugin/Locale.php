@@ -105,20 +105,22 @@ class Locale extends StrataLocale {
 
         // Tree will be null when a new post is being created.
         if (is_null($tree)) {
-            return $this->isDefault() ? $objectId : null;
+            return $objectId;
         }
 
         // Load the translation when it exists
-        if (!$this->isDefault() && $tree->hasTranslationFor($this)) {
+        if (!$this->isDefault() && $tree->hasTranslationFor($this   )) {
             $translationEntity = $tree->getTranslationFor($this);
             return $translationEntity->getObjectId();
         }
+
         // Where there is no translation but this is the default locale
         // load up the base id of the translation tree which maps to the
         // base original object id.
         if ($this->isDefault() && $tree->getId() > 0) {
             return $tree->getId();
         }
+
     }
 
     public function getHomeUrl()

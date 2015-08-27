@@ -1,22 +1,38 @@
 <?php
 namespace Polyglot\Admin\Controller;
 
-use Polyglot\Plugin\Db\Query;
-
+/**
+ * Contains every Ajax requests made by Polyglot
+ * within the Wordpress backend. Either from within actual
+ * plugin files or the different hooks Polyglot has registered
+ * throughout the application.
+ */
 class AdminAjaxController extends BaseController {
 
+    /**
+     * Displays the enabled post types in Polyglot's option page.
+     * @return null
+     */
     public function viewPostTypeList()
     {
         $this->view->set("configuration", $this->polyglot->getConfiguration());
         $this->render("postTypeList");
     }
 
+    /**
+     * Displays the enabled taxonomies in Polyglot's option page.
+     * @return null
+     */
     public function viewTaxonomyList()
     {
         $this->view->set("configuration", $this->polyglot->getConfiguration());
         $this->render("taxonomyList");
     }
 
+    /**
+     * Toggles a post on or off so it is handled by Polyglot.
+     * @return null
+     */
     public function togglePostType()
     {
         $configuration = $this->polyglot->getConfiguration();
@@ -24,6 +40,10 @@ class AdminAjaxController extends BaseController {
         $this->viewPostTypeList();
     }
 
+    /**
+     * Toggles a taxonomy on or off so it is handled by Polyglot.
+     * @return null
+     */
     public function toggleTaxonomy()
     {
         $configuration = $this->polyglot->getConfiguration();
@@ -31,6 +51,12 @@ class AdminAjaxController extends BaseController {
         $this->viewTaxonomyList();
     }
 
+
+    /**
+     * Renders a popup that allows a user to browse the different
+     * translations of a term or a post.
+     * @return null
+     */
     public function switchTranslation()
     {
         $params = $this->parseComplexParams();
@@ -40,11 +66,10 @@ class AdminAjaxController extends BaseController {
         return ($params[1] == "post") ?
             $this->switchPostTranslation($objId) :
             $this->switchTermTranslation($objId, $params[1]);
-
     }
 
     /**
-     * Generates the template file path base directory.
+     * Returns the template file path base directory.
      * @return string
      */
     protected function getTemplatePath()
@@ -52,12 +77,22 @@ class AdminAjaxController extends BaseController {
         return parent::getTemplatePath() . "ajax" . DIRECTORY_SEPARATOR;
     }
 
+    /**
+     * Parses the request's "param" POST value to decompose the
+     * current object ID and kind.
+     * @return array (string)ID, (string)Kind.
+     */
     protected function parseComplexParams()
     {
         $param = $this->request->post("param");
         return explode("#", $param);
     }
 
+    /**
+     * Renders a popup that allows a user to browse the different
+     * translations of a post.
+     * @return null
+     */
     protected function switchPostTranslation($objId)
     {
         $defaultLocale = $this->polyglot->getDefaultLocale();
@@ -67,12 +102,17 @@ class AdminAjaxController extends BaseController {
         $this->render("switchPostTranslation");
     }
 
+    /**
+     * Renders a popup that allows a user to browse the different
+     * translations of a term.
+     * @return null
+     */
     protected function switchTermTranslation($objId, $objType)
     {
-        $term = $this->polyglot->query()->findTermById($objId, $objType);
+        $defaultLocale = $this->polyglot->getDefaultLocale();
+        $orignalTerm = $defaultLocale->getTranslatedTerm($objId, $objType);
 
-        $this->view->set("originalTerm", $term);
+        $this->view->set("originalTerm", $orignalTerm);
         $this->render("switchTermTranslation");
     }
-
 }

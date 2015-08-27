@@ -1,58 +1,70 @@
 <?php
 namespace Polyglot\Admin\Controller;
 
-use Strata\Strata;
-use Polyglot\Admin\Router;
+use Strata\Controller\Request;
 
+/**
+ * Listens for action and filters registered to Wordpress.
+ * All callbacks are sent here to stay in the MVC environment.
+ */
 class CallbackController extends BaseController {
 
     /**
-     * Adds the metabox registration hook.
+     * Callback to the metabox registration hook.
      * @see Polyglot\Plugin\Adaptor\WordpressAdaptor
      */
     public function addMetaBox()
     {
-        $type = get_post_type();
-        $configuration = $this->polyglot->getConfiguration();
-
-        if (!is_null($type) && $configuration->isTypeEnabled($type)) {
-            add_meta_box("polyglot-localization-metabox", __('Localization', "polyglot"), array($this, 'renderPostMetabox'), $type, 'side', 'high');
-
-            $locale = $this->polyglot->getCurrentLocale();
-            if (!$locale->isDefault()) {
-                remove_meta_box("formatdiv", "post", "side");
-                // remove_meta_box("categorydiv", "post", "side");
-                remove_meta_box("tagsdiv-post_tag", "post", "side");
-
-                remove_meta_box("formatdiv", "page", "side");
-                // remove_meta_box("categorydiv", "page", "side");
-                remove_meta_box("pageparentdiv", "page", "side");
-                remove_meta_box("tagsdiv-post_tag", "page", "side");
-            }
+        if (!is_null(get_post_type())) {
+            $this->registerLocalizationMetabox();
+            $this->preventTranslatedMetaBoxes();
         }
     }
 
+    /**
+     * Callback to the column registration hook.
+     * @see Polyglot\Plugin\Adaptor\WordpressAdaptor
+     */
     public function addLocalizationColumn($columns)
     {
-        // $columns['polyglot_locales'] = __('i18n', 'polyglot');
+        $columns['polyglot_locales'] = __('i18n', 'polyglot');
         return $columns;
     }
 
-    public function renderLocalizationColumn($column, $post_id)
+    /**
+     * Callback to the post/page edit.php column rendering.
+     * @see Polyglot\Plugin\Adaptor\WordpressAdaptor
+     */
+    public function renderLocalizationColumn($column, $postId)
     {
-        echo "dude";
-        // if ($column === "polyglot_locales") {
-        //     $this->view->set("obj_id", $post_id);
-        //     // $this->view->set("obj_type", get_post_type());
-        //     $this->render("buttonTranslator");
-        // }
+        if ($column === "polyglot_locales") {
+            $this->view->set("obj_id", $postId);
+            $this->view->set("obj_type", get_post_type());
+            $this->render("buttonTranslator");
+        }
     }
 
     /**
-     * Renders the metabox that displays tranlation statuses.
+     * Callback to the taxonomy listing column rendering
+     * @see Polyglot\Plugin\Adaptor\WordpressAdaptor
+     */
+    public function renderTaxonomyLocalizationColumn($out, $column, $termId)
+    {
+        if ($column === "polyglot_locales") {
+            $request = new Request();
+            $this->view->set("obj_id", $termId);
+            $this->view->set("obj_type", $request->get("taxonomy"));
+            $this->render("buttonTranslator");
+        }
+    }
+
+    /**
+     * Callback that renders the metabox used to display a summary
+     * of the post/page translations.
      */
     public function renderPostMetabox()
     {
+
         if (get_post_status() == "auto-draft") {
             $this->view->set("invalidStatus", true);
         } else {
@@ -62,9 +74,9 @@ class CallbackController extends BaseController {
         $this->render("metaboxTranslator");
     }
 
-
     /**
-     * Adds the metabox registration on taxonomies
+     * Callback that renders the metabox used to display a summary on the
+     * taxonomies' edit page.
      */
     public function addTaxonomyLocaleSelect($taxonomy)
     {
@@ -77,16 +89,41 @@ class CallbackController extends BaseController {
         }
     }
 
+
     /**
-     * Returns a router object that is aware of the current plugin context
-     * for routing urls.
-     * @return Router
+     * Registers the post/page sidebar metabox for switching
+     * localizations.
+     * @return bool
      */
-    private function getRouter()
+    private function registerLocalizationMetabox()
     {
-        $router = new Router();
-        $router->contextualize($this->adaptor);
-        return $router;
+        return add_meta_box(
+            "polyglot-localization-metabox",
+            __('Localization', "polyglot"),
+            array($this, 'renderPostMetabox'),
+            get_post_type(),
+            'side',
+            'high'
+        );
     }
 
+    /**
+     * Prevents unsupported features from appearing on
+     * translated posts. This allows updates on the original
+     * localization to carry over to the translations without fear
+     * of erasing something.
+     */
+    private function preventTranslatedMetaBoxes()
+    {
+        $locale = $this->polyglot->getCurrentLocale();
+        if (!$locale->isDefault()) {
+            remove_meta_box("formatdiv", "post", "side");
+            remove_meta_box("categorydiv", "post", "side");
+            remove_meta_box("tagsdiv-post_tag", "post", "side");
+            remove_meta_box("formatdiv", "page", "side");
+            remove_meta_box("categorydiv", "page", "side");
+            remove_meta_box("pageparentdiv", "page", "side");
+            remove_meta_box("tagsdiv-post_tag", "page", "side");
+        }
+    }
 }

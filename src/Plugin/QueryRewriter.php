@@ -31,11 +31,14 @@ class QueryRewriter {
         if (is_admin()) {
             add_filter('get_terms', array($this, 'getTerms'), 1, 3);
         } else {
-            add_filter('get_terms_args', array($this, 'getTermsArgs'), 10, 2 );
+            add_filter('get_terms_args', array($this, 'getTermsArgs'), 10, 2);
         }
 
         add_action('save_post', array($this, 'localizePostTerms'), 1, 3 );
         add_action('created_term', array($this, 'localizeExistingTerms'), 1, 3);
+
+        //  This doesn't quite work yet.
+        // add_filter('update_post_meta', array($this, 'localizePostMetadata'), 10000, 10000);
     }
 
 
@@ -169,6 +172,41 @@ class QueryRewriter {
         }
 
         return $args;
+    }
+
+    /**
+     * Localizes post metadata by either returning the parent translation's value
+     * if it is inherited, or the localized value when it's not.
+     * @return mixed
+     */
+    public function localizePostMetadata($check, $post_id, $meta_key, $meta_value, $prev_value = null)
+    {
+        $currentLocale = $this->polyglot->getCurrentLocale();
+        if (!$currentLocale->isDefault()) {
+            return $check;
+        }
+
+        $skippedMetas = array('_edit_lock', '_edit_last');
+        if (in_array($meta_key, $skippedMetas)) {
+            return $check;
+        }
+
+
+
+        $configuration = $this->polyglot->getConfiguration();
+        $originalPost = $currentLocale->getTranslatedPost($post_id);
+
+        if ($configuration->isTypeEnabled($originalPost->post_type)) {
+
+            debug(func_get_args());
+            // foreach ($this->polyglot->getLocales() as $locale) {
+            //     if (!$locale->isDefault()) {
+
+            //     }
+            // }
+        }
+
+        return $check;
     }
 
     /**

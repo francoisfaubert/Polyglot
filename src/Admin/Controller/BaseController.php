@@ -5,8 +5,12 @@ use Polyglot\Plugin\Polyglot;
 use Strata\Strata;
 use Strata\View\Template;
 
+/**
+ * Base class of every Polyglot controllers. It automates
+ * the creation of controllers that understand the plugin's context
+ * and know how to render views.
+ */
 class BaseController extends \Strata\Controller\Controller {
-
 
     /** @var string plugin location */
     protected $adaptor;

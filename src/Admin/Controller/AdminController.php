@@ -1,20 +1,35 @@
 <?php
 namespace Polyglot\Admin\Controller;
 
+use Polyglot\Plugin\Translator\Translator;
 use Exception;
-use Polyglot\Plugin\Db\Query;
-use Polyglot\Admin\Form\StringTranslationForm;
 
+/**
+ * Receives all the actions required by the plugin's administration
+ * area.
+ */
 class AdminController extends BaseController {
 
+    /**
+     * Basic entry point
+     * @return null
+     */
     public function index()
     {
         $this->render('index');
     }
 
+    /**
+     * Edits the locale translation string.
+     * @return null
+     */
     public function editLocale()
     {
-        $form = new StringTranslationForm($this->request, $this->view);
+        // $this->view->set("formHelper", $form->getHelper());
+        // $form = new StringTranslationForm($this->request, $this->view);
+
+        $this->loadHelper("Form");
+
         $localeCode = $this->request->get("locale");
         $locale = $this->polyglot->getLocaleByCode($localeCode);
 
@@ -22,81 +37,34 @@ class AdminController extends BaseController {
             $this->polyglot->saveTranslations($locale, $this->request->post("data.translations"));
         }
 
-        $this->view->set("formHelper", $form->getHelper());
         $this->view->set("locale", $locale);
         $this->view->set("translations", $this->polyglot->getTranslations($localeCode));
 
         $this->render("editLocale");
     }
 
-    public function editPostTypeLabels()
-    {
-        $form = new StringTranslationForm($this->request, $this->view);
-
-        if ($this->request->isPost()) {
-            foreach ($this->request->post("data.translations") as $code => $translation) {
-                $locale = $this->polyglot->getLocaleByCode($code);
-                $this->polyglot->saveTranslations($locale, $translation);
-            }
-        }
-
-        $this->view->set("formHelper", $form->getHelper());
-        $this->view->set("postType", get_post_type_object($this->request->get("type")));
-
-        $this->render("editPostTypeLabels");
-    }
-
-    public function editTaxnomyLabels()
-    {
-        $form = new StringTranslationForm($this->request, $this->view);
-
-        if ($this->request->isPost()) {
-            foreach ($this->request->post("data.translations") as $code => $translation) {
-                $locale = $this->polyglot->getLocaleByCode($code);
-                $this->polyglot->saveTranslations($locale, $translation);
-            }
-        }
-
-        $this->view->set("formHelper", $form->getHelper());
-        $this->view->set("taxonomy", get_taxonomy($this->request->get("type")));
-
-        $this->render("editPostTypeLabels");
-    }
-
+    /**
+     * Transition page that duplicates the translated object.
+     * @return null
+     */
     public function createTranslationDuplicate()
     {
+        $id = (int)$this->request->get("object");
+        $kind = $this->request->get("objectKind");
+        $type = $this->request->get("objectType");
+        $localeCode = $this->request->get("locale");
+
         try {
-            $locale = $this->polyglot->getLocaleByCode($this->request->get("locale"));
+            $tanslator = Translator::factory($kind);
+            $tanslator->translate($id, $type, $localeCode);
 
-
-            $newTranslationObjId = $this->polyglot->query()->addTranslation(
-                (int)$this->request->get("object"),
-                $this->request->get("objectType"),
-                $this->request->get("objectKind"),
-                $locale->getCode()
-            );
-
-            switch ($this->request->get("objectKind")) {
-                case 'WP_Post':
-                    $post = $this->polyglot->query()->findPostById($newTranslationObjId);
-                    $this->view->set("translationObj", $post);
-                    $this->view->set("destinationLink", $locale->getEditPostUrl($newTranslationObjId));
-                    break;
-
-                case 'Term' :
-                    $term = $this->polyglot->query()->findTermById($newTranslationObjId, $this->request->get("objectKind"));
-                    $this->view->set("translationObj", $term);
-                    $this->view->set("destinationLink", $locale->getEditTermUrl($newTranslationObjId, $this->request->get("objectType")));
-                    break;
-
-                default : throw new Exception("Polyglot does not know how to translate this.");
-            }
-
+            $this->view->set("translationObj", $tanslator->getTranslatedObject());
+            $this->view->set("destinationLink", $tanslator->getForwardUrl());
         } catch(Exception $e) {
             $this->view->set("error", $e->getMessage());
         }
 
-        $this->view->set("originalId", $this->request->get("object"));
+        $this->view->set("originalId", $id);
         $this->render("duplicating");
     }
 

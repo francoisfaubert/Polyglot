@@ -160,15 +160,17 @@ class Query {
         $this->logger->logQueryStart();
 
         $query = "get_post_$id";
+        $queryResults = null;
 
-        if ($this->cache->has($query)) {
-            $queryResults = $this->cache->get($query);
-        } else {
-            $queryResults = new PostTranslationEntity(get_post($id));
-            $this->cache->set($query, $queryResults);
+        if (!$this->cache->has($query)) {
+            $post = get_post($id);
+            if ($post) {
+                $queryResults = new PostTranslationEntity($post);
+                $this->cache->set($query, $queryResults);
+            }
         }
 
-        return $queryResults;
+        return $this->cache->get($query);
     }
 
     /**
@@ -335,7 +337,6 @@ class Query {
             $locale->getCode(),
             $kind
         ));
-
 
         if (!is_null($results) && count($results)) {
             return $results;

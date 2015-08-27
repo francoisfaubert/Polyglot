@@ -7,11 +7,8 @@ use Strata\Utility\Hash;
 use Strata\Controller\Request;
 
 use Polyglot\Plugin\Locale;
-// use Polyglot\Plugin\Configuration;
-// use Polyglot\Plugin\TranslationEntity;
 use Polyglot\Plugin\Db\Query;
 
-use WP_Post;
 use Exception;
 
 /**
@@ -20,8 +17,13 @@ use Exception;
  */
 class Polyglot extends \Strata\I18n\I18n {
 
+    /**
+     * Returns the active Polyglot instance.
+     * @return Polyglot
+     */
     public static function instance()
     {
+        // At least this creates an elegant bridge between WP and OO programming.
         global $polyglot;
         return is_null($polyglot) ? new self() : $polyglot;
     }
@@ -112,12 +114,12 @@ class Polyglot extends \Strata\I18n\I18n {
          *  explain what you which to accomplish by creating a second instance of
          *  the Polyglot object.
          *
-         *  I am writing this throw early in the life of the plugin and I am still on the
+         *  I am writing this 'throw' early in the life of the plugin and I am still on the
          *  fence on whether it should exist.
          *
-         *  I am adding the throw because I think it would slow the website to a crawl
-         *  if I allow multiple instances of Polyglot that maintain their own separate caches. I would
-         *  rather have an optimized list of API functions available on the global $polyglot object.
+         *  I am adding the 'throw' because I think it would slow the website to allow multiple
+         *  instances of Polyglot that maintain their own separate caches. I would
+         *  rather have a convenient list of API methods available on the global $polyglot object.
          *
          *  That's the idea anyways.
          *  Cheers,
