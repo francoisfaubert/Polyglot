@@ -113,13 +113,13 @@ class UrlRewriter {
         $homepageId = $this->polyglot->query()->getDefaultHomepageId();
         $currentLocale = $this->polyglot->getCurrentLocale();
 
-        if ($currentLocale->isTranslationOfPost($homepageId)) {
-            $localizedPage = $currentLocale->getTranslatedPost();
-            if ($_SERVER['REQUEST_URI'] === '/' . $locale->getUrl() . '/' .$localizedPage->page_name . '/') {
-                wp_redirect(WP_HOME . '/' . $locale->getUrl() . '/', 301);
-                exit;
-            }
-        }
+        // if ($currentLocale->isTranslationOfPost($homepageId)) {
+        //     $localizedPage = $currentLocale->getTranslatedPost($homepageId);
+        //     if ($_SERVER['REQUEST_URI'] === '/' . $currentLocale->getUrl() . '/' .$localizedPage->post_name . '/') {
+        //         wp_redirect(WP_HOME . '/' . $currentLocale->getUrl() . '/', 301);
+        //         exit;
+        //     }
+        // }
     }
 
     /**
@@ -133,19 +133,14 @@ class UrlRewriter {
     {
         $post = is_object($mixed) ? $mixed : $this->polyglot->query()->findPostById((int)$mixed);
 
-        if ($this->isATranslatedPost($post)) {
-            $details = $this->polyglot->query()->findDetailsById($post->ID);
-            $locale = $this->polyglot->getLocaleByCode($details->translation_locale);
+        $locale = $this->polyglot->getCurrentLocale();
+        if ($locale && !$locale->isDefault()) {
+            $translation = $locale->getTranslatedPost($post->ID);
 
-            if ($locale && !$locale->isDefault()) {
-                // Don't replace already formatted urls.
-                $regexed = preg_quote($locale->getUrl(), '/');
-                if (!preg_match("/(index.php)?\/".$regexed."\//", $postLink)) {
-                    $home = str_replace("//", "\/\/", preg_quote(WP_HOME));
-                    $regex = "$home\/(index.php\/)?(.*)?";
-                    return preg_replace("/$regex/", WP_HOME . "/$1" . $locale->getUrl() . "/$2", $postLink);
-                }
-            }
+            $regexedHome = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
+            $regexedUrl = preg_quote($post->post_name, "/");
+            $regex = "$regexedHome\/(index.php\/)?$regexedUrl\/(.*)?";
+            return preg_replace("/^$regex/", WP_HOME . "/$1" . $locale->getUrl() . "/" . $translation->post_name. "/$2", $postLink);
         }
 
         return $postLink;

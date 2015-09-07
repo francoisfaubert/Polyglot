@@ -430,7 +430,7 @@ class Query {
             $this->cache->set($query, $pageOnFront);
         }
 
-        return $pageOnFront;
+        return (int)$pageOnFront;
     }
 
     /**

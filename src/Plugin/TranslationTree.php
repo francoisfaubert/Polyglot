@@ -19,7 +19,7 @@ class TranslationTree  {
         $this->list = $entityList;
 
         if (count($this->list)) {
-            $this->translationObjId = $entityList[0]->translation_of;
+            $this->translationObjId = (int)$entityList[0]->translation_of;
             $this->translationObjKind = $entityList[0]->obj_kind;
         }
     }
@@ -36,7 +36,7 @@ class TranslationTree  {
 
     public function isTranslationSetOf($mixedId, $mixedKind)
     {
-        return $mixedId === $this->translationObjId && $mixedKind === $this->translationObjKind;
+        return (int)$mixedId === (int)$this->translationObjId && $mixedKind === $this->translationObjKind;
     }
 
     public function hasTranslationFor(Locale $locale)

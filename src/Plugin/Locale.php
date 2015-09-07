@@ -39,7 +39,7 @@ class Locale extends StrataLocale {
     private function proofId($postId = null)
     {
         if (is_null($postId)) {
-            return get_the_ID();
+            return (int)get_the_ID();
         }
 
         return (int)$postId;
@@ -136,7 +136,6 @@ class Locale extends StrataLocale {
     {
         return admin_url('options-general.php?page=polyglot-plugin&polyglot_action=editLocale&locale='.$this->getCode());
     }
-
 
     public function getTranslatePostUrl($originalPost)
     {

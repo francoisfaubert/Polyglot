@@ -43,7 +43,9 @@ class Cache  {
 
     public function get($longKey)
     {
-        return $this->cacheDump[md5($longKey)];
+        if ($this->has($longKey)) {
+            return $this->cacheDump[md5($longKey)];
+        }
     }
 
     public function set($longKey, $value)
