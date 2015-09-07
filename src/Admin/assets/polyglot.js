@@ -63,8 +63,9 @@
         el.parent().find(".spinner").remove();
     }
 
-    function triggerPopupClickEventAjaxCall()
+    function triggerPopupClickEventAjaxCall(evt)
     {
+        evt.preventDefault();
         var el = $(this),
             action = el.attr("data-polyglot-ajax-action");
 

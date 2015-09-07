@@ -109,7 +109,7 @@ class Configuration {
 
     public function getPostTypes()
     {
-        $unsupported = array("nav_menu_item", "revision");
+        $unsupported = array("nav_menu_item", "revision", "acf-field-group", "acf-field");
         return $this->filterKeys($unsupported, get_post_types(array(), "objects"));
     }
 
