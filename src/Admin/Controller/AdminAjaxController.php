@@ -1,6 +1,8 @@
 <?php
 namespace Polyglot\Admin\Controller;
 
+use Exception;
+
 /**
  * Contains every Ajax requests made by Polyglot
  * within the Wordpress backend. Either from within actual
@@ -63,9 +65,11 @@ class AdminAjaxController extends BaseController {
         $objId = (int)$params[0];
         $this->view->set("objId", $objId);
 
-        return ($params[1] == "post") ?
-            $this->switchPostTranslation($objId) :
-            $this->switchTermTranslation($objId, $params[1]);
+        switch ($params[1]) {
+            case 'post' :
+            case 'page' : return $this->switchPostTranslation($objId);
+            default : return  $this->switchTermTranslation($objId, $params[1]);
+        }
     }
 
     /**

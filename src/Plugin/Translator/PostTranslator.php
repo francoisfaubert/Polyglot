@@ -75,5 +75,17 @@ class PostTranslator extends TranslatorBase {
             $sql_query.= implode(" UNION ALL ", $sql_query_sel);
             $wpdb->query($sql_query);
         }
+
+
+global $wp_object_cache;
+foreach ($wp_object_cache->cache as $key => $value) {
+    if (strstr($key, "acf")) {
+        foreach ($value as $acfkey => $acfvalue) {
+            wp_cache_delete($acfkey, 'acf' );
+        }
+    }
+}
+
+
     }
 }

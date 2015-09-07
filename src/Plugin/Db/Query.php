@@ -59,34 +59,34 @@ class Query {
         ));
     }
 
-    public function addTranslation($originalId, $originalType, $originalKind, $targetLocale)
+    public function addTranslation($originalId, $originalType, $originalKind, $targetLocale, $associationId)
     {
         global $wpdb;
 
-        if ($originalKind == "WP_Post") {
-            $originalTitle = get_the_title($originalId);
-            $translationTitle = $originalTitle . " ($targetLocale)";
-            $associationId = wp_insert_post(array(
-                "post_title" => $translationTitle,
-                "post_type" => $originalType
-            ));
-            $cahePrefix = "get_post";
+        // if ($originalKind == "WP_Post") {
+        //     $originalTitle = get_the_title($originalId);
+        //     $translationTitle = $originalTitle . " ($targetLocale)";
+        //     $associationId = wp_insert_post(array(
+        //         "post_title" => $translationTitle,
+        //         "post_type" => $originalType
+        //     ));
+        //     $cahePrefix = "get_post";
 
-        } elseif ($originalKind == "Term") {
-            $term = get_term_by("id", $originalId, $originalType);
-            $translationTitle = $term->name . " ($targetLocale)";
-            $result = wp_insert_term( $translationTitle, $originalType);
+        // } elseif ($originalKind == "Term") {
+        //     $term = get_term_by("id", $originalId, $originalType);
+        //     $translationTitle = $term->name . " ($targetLocale)";
+        //     $result = wp_insert_term( $translationTitle, $originalType);
 
-            if (is_a($result, 'WP_Error')) {
-                $error = array_values($result->errors);
-                throw new Exception($error[0][0]);
-            }
+        //     if (is_a($result, 'WP_Error')) {
+        //         $error = array_values($result->errors);
+        //         throw new Exception($error[0][0]);
+        //     }
 
-            $cahePrefix = "get_term";
-            $associationId = $result['term_id'];
-        } else {
-            throw new Exception("We don't know how to duplicate $originalKind.");
-        }
+        //     $cahePrefix = "get_term";
+        //     $associationId = $result['term_id'];
+        // } else {
+        //     throw new Exception("We don't know how to duplicate $originalKind.");
+        // }
 
         if ((int)$associationId > 0) {
             $row = array(
@@ -99,7 +99,7 @@ class Query {
 
             if ($wpdb->insert("{$wpdb->prefix}polyglot", $row)) {
 
-                $this->cache->remove("$cahePrefix\_$associationId\_$originalType");
+                // $this->cache->remove("$cahePrefix\_$associationId\_$originalType");
 
                 return $associationId;
             }

@@ -20,6 +20,7 @@ abstract class TranslatorBase {
 
         if ($this->isValidLocale()) {
             $this->translationObjId = $this->copyObject();
+            $this->saveInformationToPolyglot();
 
             if ((int)$this->translationObjId > 0) {
                 return $this->carryOverOriginalData();
@@ -34,13 +35,14 @@ abstract class TranslatorBase {
         return Polyglot::instance()->getLocaleByCode($this->translatedTo);
     }
 
-    protected function copyObject()
+    protected function saveInformationToPolyglot()
     {
         return Polyglot::instance()->query()->addTranslation(
             $this->originalId,
             $this->originalType,
             $this->originalKind,
-            $this->translatedTo
+            $this->translatedTo,
+            $this->translationObjId
         );
     }
 
@@ -52,4 +54,5 @@ abstract class TranslatorBase {
 
     abstract public function carryOverOriginalData();
     abstract public function getTranslatedObject();
+    abstract public function copyObject();
 }

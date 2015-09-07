@@ -27,4 +27,19 @@ class TermTranslator extends TranslatorBase {
     {
 
     }
+
+    public function copyObject()
+    {
+        $term = get_term_by("id", $this->originalId, $this->originalType);
+        $translationTitle = $term->name . " (".$this->translatedTo.")";
+        $result = wp_insert_term( $translationTitle, $this->originalType);
+
+        if (is_a($result, 'WP_Error')) {
+            $error = array_values($result->errors);
+            throw new Exception($error[0][0]);
+        }
+
+        $this->translationObjId = $result['term_id'];
+        return $this->translationObjId;
+    }
 }

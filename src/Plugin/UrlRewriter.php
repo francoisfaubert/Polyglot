@@ -118,7 +118,8 @@ class UrlRewriter {
 
             if ($locale && !$locale->isDefault()) {
                 // Don't replace already formatted urls.
-                if (!preg_match("/(index.php)?\/".$locale->getUrl()."\//", $postLink)) {
+                $regexed = preg_quote($locale->getUrl(), '/');
+                if (!preg_match("/(index.php)?\/".$regexed."\//", $postLink)) {
                     $home = str_replace("//", "\/\/", preg_quote(WP_HOME));
                     $regex = "$home\/(index.php\/)?(.*)?";
                     return preg_replace("/$regex/", WP_HOME . "/$1" . $locale->getUrl() . "/$2", $postLink);
@@ -134,7 +135,8 @@ class UrlRewriter {
         $locale = $this->polyglot->getCurrentLocale();
         if ($locale && !$locale->isDefault()) {
             // Don't replace already formatted urls.
-            if (!preg_match("/(index.php)?\/".$locale->getUrl()."\//", $termLink)) {
+            $regexed = preg_quote($locale->getUrl(), '/');
+            if (!preg_match("/(index.php)?\/".$regexed."\//", $termLink)) {
                 $home = str_replace("//", "\/\/", preg_quote(WP_HOME));
                 $regex = "$home\/(index.php\/)?(.*)?";
                 return preg_replace("/$regex/", WP_HOME . "/$1" . $locale->getUrl() . "/$2", $termLink);
