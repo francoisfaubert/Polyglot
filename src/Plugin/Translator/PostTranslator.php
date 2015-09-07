@@ -63,29 +63,10 @@ class PostTranslator extends TranslatorBase {
 
     protected function copyMetas()
     {
-        global $wpdb;
-        $post_meta_infos = $wpdb->get_results("SELECT meta_key, meta_value FROM {$wpdb->postmeta} WHERE post_id={$this->originalId}");
-        if (count($post_meta_infos)!=0) {
-            $sql_query = "INSERT INTO {$wpdb->postmeta} (post_id, meta_key, meta_value) ";
-            foreach ($post_meta_infos as $meta_info) {
-                $meta_key = $meta_info->meta_key;
-                $meta_value = addslashes($meta_info->meta_value);
-                $sql_query_sel[]= "SELECT $this->translationObjId, '$meta_key', '$meta_value'";
+        foreach (get_post_meta($this->originalId) as $key => $metas) {
+            foreach ($metas as $value) {
+                update_post_meta($this->translationObjId, $key, $value);
             }
-            $sql_query.= implode(" UNION ALL ", $sql_query_sel);
-            $wpdb->query($sql_query);
         }
-
-
-global $wp_object_cache;
-foreach ($wp_object_cache->cache as $key => $value) {
-    if (strstr($key, "acf")) {
-        foreach ($value as $acfkey => $acfvalue) {
-            wp_cache_delete($acfkey, 'acf' );
-        }
-    }
-}
-
-
     }
 }

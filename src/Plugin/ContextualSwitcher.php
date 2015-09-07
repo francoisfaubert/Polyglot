@@ -56,6 +56,15 @@ class ContextualSwitcher {
         if ($postId) {
             return $this->setLocaleByPostId($postId);
         }
+
+        $instance = Polyglot::instance();
+        foreach ($instance->getLocales() as $locale) {
+            $regexed = preg_quote($locale->getCode(), '/');
+            if (preg_match('/^\/(index.php\/)?'.$regexed.'/', $_SERVER['REQUEST_URI'])) {
+                $instance->setLocale($locale);
+                return $locale;
+            }
+        }
     }
 
     /**

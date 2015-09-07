@@ -36,9 +36,6 @@ class QueryRewriter {
 
         add_action('save_post', array($this, 'localizePostTerms'), 1, 3 );
         add_action('created_term', array($this, 'localizeExistingTerms'), 1, 3);
-
-        //  This doesn't quite work yet.
-        // add_filter('update_post_meta', array($this, 'localizePostMetadata'), 10000, 10000);
     }
 
 
@@ -96,11 +93,13 @@ class QueryRewriter {
             add_filter('posts_where', array($this, 'notAPolyglotPost'));
         } else {
 
-            $matches = $this->polyglot->query()->findTranslationIdsOf($locale, "WP_Post");
-            foreach ((array)$matches as $row) {
-                $postIds[] = $row->obj_id;
+            if ($query->is_main_query()) {
+                $matches = $this->polyglot->query()->findTranslationIdsOf($locale, "WP_Post");
+                foreach ((array)$matches as $row) {
+                    $postIds[] = $row->obj_id;
+                }
+                $query->set("post__in", $postIds);
             }
-            $query->set("post__in", $postIds);
         }
 
         return $query;

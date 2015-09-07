@@ -29,10 +29,31 @@ class UrlRewriter {
         add_filter('term_link', array($this, 'termLink'));
 
         if (!is_admin()) {
+            add_action('wp', array($this, "runOriginalRoute"));
+
             add_action('widgets_init', array($this, 'addLocaleRewrites'));
             add_action('widgets_init', array($this, 'forwardCanonicalUrls'));
 
             add_filter('redirect_canonical', array($this, 'redirectCanonical'), 10, 2);
+
+        }
+    }
+
+    public function runOriginalRoute()
+    {
+
+        $app = \Strata\Strata::app();
+        $locale = $this->polyglot->getDefaultLocale();
+        $originalPost = $locale->getTranslatedPost();
+
+        if ($originalPost) {
+            $originalUrl = get_permalink($originalPost->ID);
+            $originalPath =
+                parse_url($originalUrl, PHP_URL_PATH) .
+                parse_url($originalUrl, PHP_URL_QUERY) .
+                parse_url($originalUrl, PHP_URL_FRAGMENT);
+
+            $app->router->run($originalPath);
         }
     }
 
