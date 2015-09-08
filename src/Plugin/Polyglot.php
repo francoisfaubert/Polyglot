@@ -78,7 +78,9 @@ class Polyglot extends \Strata\I18n\I18n {
 
             // Find our version of the original locale and
             // reassign it.
-            $this->setLocale($this->getLocaleByCode($orignalLocale->getCode()));
+            if ($orignalLocale) {
+                $this->setLocale($this->getLocaleByCode($orignalLocale->getCode()));
+            }
         }
         return $this->locales;
     }
