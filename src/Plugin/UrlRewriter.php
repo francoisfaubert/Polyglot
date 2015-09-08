@@ -136,11 +136,13 @@ class UrlRewriter {
         $locale = $this->polyglot->getCurrentLocale();
         if ($locale && !$locale->isDefault()) {
             $translation = $locale->getTranslatedPost($post->ID);
+            if ($translation) {
+                $regexedHome = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
+                $regexedUrl = preg_quote($post->post_name, "/");
+                $regex = "$regexedHome\/(index.php\/)?$regexedUrl\/(.*)?";
 
-            $regexedHome = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
-            $regexedUrl = preg_quote($post->post_name, "/");
-            $regex = "$regexedHome\/(index.php\/)?$regexedUrl\/(.*)?";
-            return preg_replace("/^$regex/", WP_HOME . "/$1" . $locale->getUrl() . "/" . $translation->post_name. "/$2", $postLink);
+                return preg_replace("/^$regex/", WP_HOME . "/$1" . $locale->getUrl() . "/" . $translation->post_name. "/$2", $postLink);
+            }
         }
 
         return $postLink;
