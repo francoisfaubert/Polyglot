@@ -29,10 +29,14 @@ class UrlRewriter {
         add_filter('term_link', array($this, 'termLink'));
 
         if (!is_admin()) {
-            add_action('wp', array($this, "runOriginalRoute"));
+
+            $locale = $this->polyglot->getCurrentLocale();
+            if (!$locale->isDefault()) {
+                add_action('wp', array($this, "runOriginalRoute"));
+            }
 
             add_action('widgets_init', array($this, 'addLocaleRewrites'));
-            add_action('widgets_init', array($this, 'forwardCanonicalUrls'));
+            // add_action('widgets_init', array($this, 'forwardCanonicalUrls'));
 
             add_filter('redirect_canonical', array($this, 'redirectCanonical'), 10, 2);
 
@@ -41,8 +45,6 @@ class UrlRewriter {
 
     public function runOriginalRoute()
     {
-
-        $app = \Strata\Strata::app();
         $locale = $this->polyglot->getDefaultLocale();
         $originalPost = $locale->getTranslatedPost();
 
@@ -53,6 +55,7 @@ class UrlRewriter {
                 parse_url($originalUrl, PHP_URL_QUERY) .
                 parse_url($originalUrl, PHP_URL_FRAGMENT);
 
+            $app = \Strata\Strata::app();
             $app->router->run($originalPath);
         }
     }
@@ -113,13 +116,13 @@ class UrlRewriter {
         $homepageId = $this->polyglot->query()->getDefaultHomepageId();
         $currentLocale = $this->polyglot->getCurrentLocale();
 
-        // if ($currentLocale->isTranslationOfPost($homepageId)) {
-        //     $localizedPage = $currentLocale->getTranslatedPost($homepageId);
-        //     if ($_SERVER['REQUEST_URI'] === '/' . $currentLocale->getUrl() . '/' .$localizedPage->post_name . '/') {
-        //         wp_redirect(WP_HOME . '/' . $currentLocale->getUrl() . '/', 301);
-        //         exit;
-        //     }
-        // }
+        if ($currentLocale->isTranslationOfPost($homepageId)) {
+            $localizedPage = $currentLocale->getTranslatedPost($homepageId);
+            if ($_SERVER['REQUEST_URI'] === '/' . $currentLocale->getUrl() . '/' .$localizedPage->post_name . '/') {
+                wp_redirect(WP_HOME . '/' . $currentLocale->getUrl() . '/', 301);
+                exit;
+            }
+        }
     }
 
     /**
