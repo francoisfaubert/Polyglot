@@ -5,13 +5,17 @@ use Exception;
 
 class TermTranslationEntity extends TranslationEntity {
 
-    public function loadAssociated()
+    public function loadAssociatedWPObject()
     {
-        if ($this->obj_kind === "stdClass") {
-            return get_term_by('id', $this->obj_id, $this->obj_type);
+        if (is_null($this->associatedWPObject)) {
+            $this->associatedWPObject = get_term_by('id', $this->obj_id, $this->obj_type);
         }
 
-        throw new Exception("TermTranslationEntity was not associated to a term.");
+        if (is_null($this->associatedWPObject)) {
+            throw new Exception("TermTranslationEntity was not associated to a term.");
+        }
+
+        return $this->associatedWPObject;
     }
 
 
@@ -21,7 +25,7 @@ class TermTranslationEntity extends TranslationEntity {
             return $this->obj_id;
         }
 
-        return $this->term_id;
+        // return $this->term_id;
     }
 
     public function getObjectKind()

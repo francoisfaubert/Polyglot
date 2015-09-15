@@ -173,40 +173,6 @@ class QueryRewriter {
         return $args;
     }
 
-    /**
-     * Localizes post metadata by either returning the parent translation's value
-     * if it is inherited, or the localized value when it's not.
-     * @return mixed
-     */
-    public function localizePostMetadata($check, $post_id, $meta_key, $meta_value, $prev_value = null)
-    {
-        $currentLocale = $this->polyglot->getCurrentLocale();
-        if (!$currentLocale->isDefault()) {
-            return $check;
-        }
-
-        $skippedMetas = array('_edit_lock', '_edit_last');
-        if (in_array($meta_key, $skippedMetas)) {
-            return $check;
-        }
-
-
-
-        $configuration = $this->polyglot->getConfiguration();
-        $originalPost = $currentLocale->getTranslatedPost($post_id);
-
-        if ($configuration->isTypeEnabled($originalPost->post_type)) {
-
-            debug(func_get_args());
-            // foreach ($this->polyglot->getLocales() as $locale) {
-            //     if (!$locale->isDefault()) {
-
-            //     }
-            // }
-        }
-
-        return $check;
-    }
 
     /**
      * After creating a new taxonomy, if the taxonomy is not in

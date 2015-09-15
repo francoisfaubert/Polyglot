@@ -5,13 +5,17 @@ use Exception;
 
 class PostTranslationEntity extends TranslationEntity {
 
-    public function loadAssociated()
+    public function loadAssociatedWPObject()
     {
-        if ($this->obj_kind === "WP_Post" || $this->obj_kind === "WP_Page") {
-            return get_post($this->obj_id);
+        if (is_null($this->associatedWPObject) && ($this->obj_kind === "WP_Post" || $this->obj_kind === "WP_Page")) {
+            $this->associatedWPObject = get_post($this->obj_id);
         }
 
-        throw new Exception("PostTranslationEntity was not associated to a post.");
+        if (is_null($this->associatedWPObject)) {
+            throw new Exception("PostTranslationEntity was not associated to a post.");
+        }
+
+        return $this->associatedWPObject;
     }
 
     public function getObjectId()
@@ -19,10 +23,10 @@ class PostTranslationEntity extends TranslationEntity {
         // Accesss the property like a function because
         // of the get/set internals of the Translation entity.
 
-        $id = $this->ID;
-        if (!empty($id)) {
-            return $id;
-        }
+        // $id = $this->ID;
+        // if (!empty($id)) {
+        //     return $id;
+        // }
 
         return $this->obj_id;
     }
@@ -36,11 +40,11 @@ class PostTranslationEntity extends TranslationEntity {
     {
         // Accesss the property like a function because
         // of the get/set internals of the Translation entity.
-        $post_type = $this->post_type;
+        // $post_type = $this->post_type;
 
-        if (!empty($post_type)) {
-            return $post_type;
-        }
+        // if (!empty($post_type)) {
+        //     return $post_type;
+        // }
 
         return $this->obj_type;
     }

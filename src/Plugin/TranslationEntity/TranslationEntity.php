@@ -5,7 +5,7 @@ namespace Polyglot\Plugin\TranslationEntity;
 use Strata\Model\CustomPostType\ModelEntity;
 use Exception;
 
-class TranslationEntity extends ModelEntity {
+abstract class TranslationEntity extends ModelEntity {
 
     public static function factory($translation)
     {
@@ -18,6 +18,8 @@ class TranslationEntity extends ModelEntity {
         throw new Exception("Unknown translation object type.");
     }
 
+    protected $associatedWPObject;
+
     public function isOriginal()
     {
         global $polyglot;
@@ -25,9 +27,6 @@ class TranslationEntity extends ModelEntity {
         return is_null($this->translation_of) && $defaultLocale->getCode() === $this->translation_locale;
     }
 
-    public function loadAssociated()
-    {
-        throw new Exception("Unknown association.");
-    }
+    abstract function loadAssociatedWPObject();
 
 }
