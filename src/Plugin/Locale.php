@@ -69,7 +69,8 @@ class Locale extends StrataLocale {
     {
         $id = (int)$this->findTranslatedId($this->proofId($postId), "WP_Post");
         if ($id > 0) {
-            return Polyglot::instance()->query()->findPostById($id);
+            $entity = Polyglot::instance()->query()->findPostById($id);
+            return $entity->loadAssociatedWPObject();
         }
     }
 
@@ -95,7 +96,8 @@ class Locale extends StrataLocale {
     {
         $id = (int)$this->findTranslatedId($termId, "Term");
         if ($id > 0) {
-            return Polyglot::instance()->query()->findTermById($id, $taxName);
+            $entity = Polyglot::instance()->query()->findTermById($id, $taxName);
+            return $entity->loadAssociatedWPObject();
         }
     }
 
@@ -109,7 +111,7 @@ class Locale extends StrataLocale {
         }
 
         // Load the translation when it exists
-        if (!$this->isDefault() && $tree->hasTranslationFor($this   )) {
+        if (!$this->isDefault() && $tree->hasTranslationFor($this)) {
             $translationEntity = $tree->getTranslationFor($this);
             return $translationEntity->getObjectId();
         }
@@ -139,7 +141,7 @@ class Locale extends StrataLocale {
 
     public function getTranslatePostUrl($originalPost)
     {
-        return admin_url('options-general.php?page=polyglot-plugin&polyglot_action=createTranslationDuplicate&object='.$originalPost->ID.'&objectKind='.$originalPost->getObjectKind().'&objectType='.$originalPost->post_type.'&locale='.$this->getCode());
+        return admin_url('options-general.php?page=polyglot-plugin&polyglot_action=createTranslationDuplicate&object='.$originalPost->ID.'&objectKind=WP_Post&objectType='.$originalPost->post_type.'&locale='.$this->getCode());
     }
 
     public function getEditPostUrl($postId = null)
@@ -155,12 +157,12 @@ class Locale extends StrataLocale {
 
     public function getTranslateTermUrl($originalTerm)
     {
-        return admin_url('options-general.php?page=polyglot-plugin&polyglot_action=createTranslationDuplicate&object='.$originalTerm->term_id.'&objectKind='.$originalTerm->getObjectKind().'&objectType='.$originalTerm->taxonomy.'&locale='.$this->getCode());
+        return admin_url('options-general.php?page=polyglot-plugin&polyglot_action=createTranslationDuplicate&object='.$originalTerm->term_id.'&objectKind=Term&objectType='.$originalTerm->taxonomy.'&locale='.$this->getCode());
     }
 
     public function getEditTermUrl($termId, $taxonomy)
     {
         $object = $this->getTranslatedTerm($termId, $taxonomy);
-        return admin_url('edit-tags.php?action=edit&taxonomy='.$object->getObjectType().'&tag_ID='.$object->getObjectId().'&post_type=post');
+        return admin_url('edit-tags.php?action=edit&taxonomy='.$object->taxonomy.'&tag_ID='.$object->term_id.'&post_type=post');
     }
 }

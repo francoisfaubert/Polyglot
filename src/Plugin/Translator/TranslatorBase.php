@@ -6,6 +6,9 @@ use Exception;
 
 abstract class TranslatorBase {
 
+    abstract public function carryOverOriginalData();
+    abstract public function copyObject();
+
     protected $originalId;
     protected $originalType;
     protected $originalKind;
@@ -19,6 +22,11 @@ abstract class TranslatorBase {
         $this->translatedTo = $localeCode;
 
         if ($this->isValidLocale()) {
+
+            if ($this->translationExists()) {
+                throw new Exception(__("There is already a translation saved for this entity.", 'polyglot'));
+            }
+
             $this->translationObjId = $this->copyObject();
             $this->saveInformationToPolyglot();
 
@@ -51,8 +59,10 @@ abstract class TranslatorBase {
         return !is_null($this->getTranslationLocale());
     }
 
-
-    abstract public function carryOverOriginalData();
-    abstract public function getTranslatedObject();
-    abstract public function copyObject();
+    private function translationExists()
+    {
+        $polyglot = Polyglot::instance();
+        $tree = $polyglot->query()->findTranlationsOfId($this->originalId, $this->originalKind);
+        return $tree && $tree->hasTranslationFor($polyglot->getLocaleByCode($this->translatedTo));
+    }
 }

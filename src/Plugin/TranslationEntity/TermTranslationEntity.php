@@ -18,23 +18,8 @@ class TermTranslationEntity extends TranslationEntity {
         return $this->associatedWPObject;
     }
 
-
-    public function getObjectId()
-    {
-        if (isset($this->obj_id)) {
-            return $this->obj_id;
-        }
-
-        // return $this->term_id;
-    }
-
     public function getObjectKind()
     {
         return "Term";
-    }
-
-    public function getObjectType()
-    {
-        return $this->taxonomy;
     }
 }

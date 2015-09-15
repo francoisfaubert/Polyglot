@@ -57,8 +57,6 @@ class AdminController extends BaseController {
         try {
             $tanslator = Translator::factory($kind);
             $tanslator->translate($id, $type, $localeCode);
-
-            $this->view->set("translationObj", $tanslator->getTranslatedObject());
             $this->view->set("destinationLink", $tanslator->getForwardUrl());
         } catch(Exception $e) {
             $this->view->set("error", $e->getMessage());

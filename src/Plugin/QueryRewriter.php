@@ -96,7 +96,7 @@ class QueryRewriter {
             if ($query->is_main_query()) {
                 $matches = $this->polyglot->query()->findTranslationIdsOf($locale, "WP_Post");
                 foreach ((array)$matches as $row) {
-                    $postIds[] = $row->obj_id;
+                    $postIds[] = $row;
                 }
                 $query->set("post__in", $postIds);
             }
@@ -122,7 +122,7 @@ class QueryRewriter {
 
         $termIds = array();
         foreach ((array)$matches as $row) {
-            $termIds[] = (int)$row->obj_id;
+            $termIds[] = (int)$row;
         }
 
         $localized = array();

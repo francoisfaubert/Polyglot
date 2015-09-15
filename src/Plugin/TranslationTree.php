@@ -14,14 +14,11 @@ class TranslationTree  {
     private $translationObjId;
     private $translationObjKind;
 
-    function __construct($entityList)
+    function __construct($id, $kind, $entityList)
     {
         $this->list = $entityList;
-
-        if (count($this->list)) {
-            $this->translationObjId = (int)$entityList[0]->translation_of;
-            $this->translationObjKind = $entityList[0]->obj_kind;
-        }
+        $this->translationObjId = (int)$id;
+        $this->translationObjKind = $kind;
     }
 
     public function getId()

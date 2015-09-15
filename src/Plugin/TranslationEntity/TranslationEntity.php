@@ -7,6 +7,8 @@ use Exception;
 
 abstract class TranslationEntity extends ModelEntity {
 
+    abstract function loadAssociatedWPObject();
+
     public static function factory($translation)
     {
         switch($translation->obj_kind) {
@@ -27,6 +29,14 @@ abstract class TranslationEntity extends ModelEntity {
         return is_null($this->translation_of) && $defaultLocale->getCode() === $this->translation_locale;
     }
 
-    abstract function loadAssociatedWPObject();
+    public function getObjectId()
+    {
+        return $this->obj_id;
+    }
+
+    public function getObjectType()
+    {
+        return $this->obj_type;
+    }
 
 }

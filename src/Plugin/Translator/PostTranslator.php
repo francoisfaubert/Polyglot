@@ -8,15 +8,6 @@ class PostTranslator extends TranslatorBase {
 
     protected $originalKind = "WP_Post";
 
-    public function getTranslatedObject()
-    {
-        if ((int)$this->translationObjId > 0) {
-            return Polyglot::instance()->query()->findPostById($this->translationObjId);
-        }
-
-        throw new Exception("Translation is not associated to an object.");
-    }
-
     public function getForwardUrl()
     {
         $locale = $this->getTranslationLocale();
@@ -27,23 +18,28 @@ class PostTranslator extends TranslatorBase {
     {
         $locale = $this->getTranslationLocale();
         $originalPost = get_post($this->originalId);
-        $copiedData = array(
-            'comment_status' => $originalPost->comment_status,
-            'ping_status'    => $originalPost->ping_status,
-            'post_author'    => $originalPost->post_author,
-            'post_content'   => $originalPost->post_content,
-            'post_excerpt'   => $originalPost->post_excerpt,
-            'post_name'      => $originalPost->post_name,
-            'post_parent'    => $originalPost->post_parent,
-            'post_password'  => $originalPost->post_password,
-            'post_status'    => 'draft',
-            'post_title'     => $originalPost->post_title . " (" . $locale->getCode() . ")",
-            'post_type'      => $originalPost->post_type,
-            'to_ping'        => $originalPost->to_ping,
-            'menu_order'     => $originalPost->menu_order
-        );
 
-        return wp_insert_post($copiedData);
+        if ($originalPost) {
+            $copiedData = array(
+                'comment_status' => $originalPost->comment_status,
+                'ping_status'    => $originalPost->ping_status,
+                'post_author'    => $originalPost->post_author,
+                'post_content'   => $originalPost->post_content,
+                'post_excerpt'   => $originalPost->post_excerpt,
+                'post_name'      => $originalPost->post_name,
+                'post_parent'    => $originalPost->post_parent,
+                'post_password'  => $originalPost->post_password,
+                'post_status'    => 'draft',
+                'post_title'     => $originalPost->post_title . " (" . $locale->getCode() . ")",
+                'post_type'      => $originalPost->post_type,
+                'to_ping'        => $originalPost->to_ping,
+                'menu_order'     => $originalPost->menu_order
+            );
+
+            return wp_insert_post($copiedData);
+        }
+
+        throw new Exception("We could not load the original object.");
     }
 
     public function carryOverOriginalData()

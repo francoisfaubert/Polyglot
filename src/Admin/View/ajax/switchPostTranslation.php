@@ -14,6 +14,7 @@
         </th>
     </thead>
 
+
 <?php $idx = 0; foreach ($polyglot->getLocales() as $code => $locale) : ?>
 
     <tr class="<?php echo ($idx % 2) === 0 ? "even" : "odd" ?>">

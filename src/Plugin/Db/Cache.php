@@ -20,26 +20,38 @@ class Cache  {
     private $entitiesMap = array();
     private $entitiesIds = array();
 
+    protected $translationOfKeyPrefix = "t_of_";
+    protected $pIdKeyPrefix = "id_";
+
     public function addEntity(TranslationEntity $entity)
     {
-        if (!$this->idWasCached($entity->polyglot_ID)) {
+        if (!$this->idWasCached($entity->polyglot_ID, $entity->obj_kind)) {
+
+            $tOfKey = $this->translationOfKeyPrefix . $entity->translation_of;
+            $idKey = $this->pIdKeyPrefix . $entity->polyglot_ID;
 
             if (!array_key_exists($entity->obj_kind, $this->entitiesMap)) {
                 $this->entitiesMap[$entity->obj_kind] = array();
             }
 
-            if (!array_key_exists((int)$entity->translation_of, $this->entitiesMap[$entity->obj_kind])) {
-                $this->entitiesMap[$entity->obj_kind][(int)$entity->translation_of] = array();
+            if (!array_key_exists($tOfKey, $this->entitiesMap[$entity->obj_kind])) {
+                $this->entitiesMap[$entity->obj_kind][$tOfKey] = array();
             }
 
-            $this->entitiesMap[$entity->obj_kind][(int)$entity->translation_of][] = $entity;
-            $this->entitiesIds[(int)$entity->polyglot_ID] = $entity;
+            $this->entitiesMap[$entity->obj_kind][$tOfKey][] = $entity;
+            $this->entitiesIds[$entity->obj_kind][$idKey] = $entity;
         }
     }
 
     public function getNumberOfCachedRecords()
     {
-        return count($this->entitiesMap);
+        $total = 0;
+
+        foreach ($this->entitiesIds as $kind => $entries) {
+            $total += count($entries);
+        }
+
+        return $total;
     }
 
     public function getByKind($kind)
@@ -54,18 +66,20 @@ class Cache  {
     public function findTranlationsOf($id, $kind)
     {
         $byKind = $this->getByKind($kind);
+        $key = $this->translationOfKeyPrefix . $id;
 
-        if (array_key_exists((int)$id, $byKind)) {
-            return $byKind[(int)$id];
+        if (array_key_exists($key, $byKind)) {
+            return $byKind[$key];
         }
 
         return array();
     }
 
-    public function findDetailsById($id)
+    public function findDetailsById($id, $kind)
     {
-        if ($this->idWasCached($id)) {
-            return $this->entitiesIds[(int)$id];
+        if ($this->idWasCached($id, $kind)) {
+            $key = $this->pIdKeyPrefix . $id;
+            return $this->entitiesIds[$kind][$key];
         }
     }
 
@@ -84,8 +98,9 @@ class Cache  {
         }
     }
 
-    public function idWasCached($id)
+    public function idWasCached($id, $kind)
     {
-        return array_key_exists((int)$id, $this->entitiesMap);
+        $key = $this->pIdKeyPrefix . $id;
+        return array_key_exists($kind, $this->entitiesIds) && array_key_exists($key, $this->entitiesIds[$kind]);
     }
 }

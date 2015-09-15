@@ -82,6 +82,7 @@ class Query {
         global $wpdb;
 
         if ((int)$associationId > 0) {
+
             $row = array(
                 'obj_kind' => $originalKind,
                 'obj_type' => $originalType,
@@ -91,9 +92,9 @@ class Query {
             );
 
             if ($wpdb->insert("{$wpdb->prefix}polyglot", $row)) {
-                // Is this really impactful since the cache isn't carried over
-                // between sessions?
-                $this->numberOfRecords++;
+                // this seems like overkill
+                $this->cache = new Cache();
+
                 return $associationId;
             }
 
@@ -110,38 +111,46 @@ class Query {
 
     public function findTranlationsOfId($id, $kind = "WP_Post")
     {
-        $entities = array();
+        $data = array();
 
-        if($this->cacheIsComplete()) {
-            $entities = $this->cache->findTranlationsOf($id, $kind);
-
-        // If the caching is incomplete, we don't have the choice of
-        // querying the DB because there's no way we can know we are
-        // filtering all possibilities.
-        } else {
-            global $wpdb;
-
-            $this->logger->logQueryStart();
-            $results = $wpbd->get_results($wpdb->prepare("
-                SELECT *
-                FROM {$wpdb->prefix}polyglot
-                WHERE translation_of = %d
-                AND obj_kind = %s
-                ORDER BY polyglot_ID",
-                $id,
-                $kind
-            ));
-            $this->logger->logQueryCompletion($wpdb->last_query);
-
-            if (!is_null($results) && count($results)) {
-                // Because we're starting to hit records that aren't cached,
-                // cache a page around this id.
-                $this->cachePageAtId($results[0]->polyglot_ID);
-                $entities = $this->rowsToEntities($results);
+        // Lookup in the cache beforehand
+        $alreadyPresent = $this->cache->findTranlationsOf($id, $kind);
+        if (is_array($alreadyPresent)) {
+            foreach ($alreadyPresent as $entity) {
+                $data[(int)$entity->polyglot_ID] = $entity;
             }
         }
 
-        return new TranslationTree($entities);
+        // Bail when we know they aren't any other results.
+        if($this->cacheIsComplete()) {
+            return new TranslationTree($id, $kind, array_values($data));
+        }
+
+        $notIn = count($data) ? 'AND polyglot_ID NOT IN ('.implode(array_keys($data)).')' : '';
+
+        global $wpdb;
+        $this->logger->logQueryStart();
+        $results = $wpdb->get_results($wpdb->prepare("
+            SELECT *
+            FROM {$wpdb->prefix}polyglot
+            WHERE translation_of = %d
+            AND obj_kind = %s
+            ORDER BY polyglot_ID",
+            $id,
+            $kind
+        ));
+        $this->logger->logQueryCompletion($wpdb->last_query);
+
+        if (!is_null($results) && count($results)) {
+            // Because we're starting to hit records that aren't cached,
+            // cache a page around this id.
+            $this->cachePageAtId($results[0]->polyglot_ID);
+            foreach ($this->rowsToEntities($results) as $entity) {
+                $data[(int)$entity->polyglot_ID] = $entity;
+            }
+        }
+
+        return new TranslationTree($id, $kind, array_values($data));
     }
 
     /**
@@ -199,7 +208,7 @@ class Query {
      */
     public function findDetailsById($id, $kind = "WP_Post")
     {
-        if($this->cacheIsComplete() || $this->cache->idWasCached($id)) {
+        if($this->cacheIsComplete() || $this->cache->idWasCached($id, $kind)) {
             return $this->cache->findDetailsById($id, $kind);
         }
 
@@ -230,7 +239,7 @@ class Query {
 
         // Lookup in the cache beforehand
         foreach ($ids as $id) {
-            if ($this->cache->idWasCached($id)) {
+            if ($this->cache->idWasCached($id, $kind)) {
                 $details[(int)$id] = $this->cache->findDetailsById($id, $kind);
             } else {
                 $missingIds[] = $id;
@@ -294,12 +303,15 @@ class Query {
     public function findTranslationIdsOf($locale, $kind = "WP_Post")
     {
         $data = array();
+        $localeCode = $locale->getCode();
 
         // Lookup in the cache beforehand
-        $alreadyPresent = $this->cache->getTranslationsOf($locale->getCode());
-        if (is_array($alreadyPresent)) {
-            foreach ($alreadyPresent as $entity) {
-                $data[(int)$entity->polyglot_ID] = $entity->obj_id;
+
+        foreach ($this->cache->getByKind($kind) as $translationOf => $entities) {
+            foreach ($entities as $entity) {
+                if ($entity->translation_locale === $localeCode) {
+                    $data[(int)$entity->polyglot_ID] = $entity->obj_id;
+                }
             }
         }
 
@@ -318,7 +330,7 @@ class Query {
             WHERE translation_locale = %s
             $notIn
             AND  obj_kind = %s",
-            $locale->getCode(),
+            $localeCode,
             $kind
         ));
         $this->logger->logQueryCompletion($wpdb->last_query);
@@ -508,6 +520,6 @@ class Query {
 
     private function cacheIsComplete()
     {
-        return $this->numberOfRecords >= $this->cache->getNumberOfCachedRecords();
+        return $this->cache->getNumberOfCachedRecords() >= $this->numberOfRecords;
     }
 }
