@@ -22,58 +22,62 @@
         </div>
     </header>
 
+    <br clear="all">
 
-    <?php if (isset($translations)) : ?>
-        <h4><?php _e("Edit strings", "polyglot"); ?></h4>
+    <h3><?php _e("Add strings", "polyglot"); ?></h3>
 
-        <?php echo $FormHelper->create(); ?>
-        <?php $count = 0; ?>
-        <?php foreach ($translations as $id => $translation) : ?>
+    <?php echo $FormHelper->create(); ?>
+        <?php echo $FormHelper->input("mode", array("type" => "hidden", "value" => "add")); ?>
+        <?php echo $FormHelper->input("translation[context]", array("type" => "hidden", "value" => "")); ?>
+        <?php echo $FormHelper->input("translation[plural]", array("type" => "hidden", "value" => "")); ?>
+        <?php echo $FormHelper->input("translation[pluralTranslation]", array("type" => "hidden", "value" => "")); ?>
+        <div>
+            <label>
+                <?php echo __("Original key string", "polyglot"); ?>
+                <?php echo $FormHelper->input("translation[original]"); ?>
+            </label>
+        </div>
 
-            <?php if ($count % 2 === 0) : ?>
-                <div class="group">
-            <?php endif; ?>
+        <div>
+            <label>
+                <?php echo __("Translation", "polyglot"); ?>
+                <?php echo $FormHelper->input("translation[translation]"); ?>
+            </label>
+        </div>
 
-                <div class="col">
-                    <blockquote>
-                        "<?php echo htmlentities($translation->getOriginal()); ?>"
-                    </blockquote>
+        <div>
+            <label>
+                <?php echo __("Comments", "polyglot"); ?>
+                <?php echo $FormHelper->input("translation[comments]", array("type" => "textarea")); ?>
+            </label>
+        </div>
 
-                    <?php $references = $translation->getReferences(); ?>
-                    <?php if (count($references)) : ?>
-                        <div class="references"><?php echo basename($references[0][0]); ?>#<?php echo $references[0][1]; ?></div>
-                    <?php endif; ?>
-
-                    <?php echo $FormHelper->input("translations[$count][id]", array("type" => "hidden", "value" => htmlentities($translation->getId()))); ?>
-                    <?php echo $FormHelper->input("translations[$count][original]", array("type" => "hidden", "value" => htmlentities($translation->getOriginal()))); ?>
-                    <?php echo $FormHelper->input("translations[$count][context]", array("type" => "hidden", "value" => htmlentities($translation->getContext()))); ?>
-                    <?php echo $FormHelper->input("translations[$count][plural]", array("type" => "hidden", "value" => "")); ?>
-                    <?php echo $FormHelper->input("translations[$count][pluralTranslation]", array("type" => "hidden", "value" => "")); ?>
-
-                    <div>
-                        <label>
-                            <?php echo __("Translation", "polyglot"); ?>
-                            <?php echo $FormHelper->input("translations[$count][translation]", array("value" => $translation->getTranslation())); ?>
-                        </label>
-                    </div>
-
-                    <div>
-                        <label>
-                            <?php echo __("Comments", "polyglot"); ?>
-                            <?php echo $FormHelper->input("translations[$count][comments]", array("type" => "textarea", "value" => $translation->getTranslation())); ?>
-                        </label>
-                    </div>
-                </div>
-
-            <?php if (($count+1)%2===0 || ($count+1) >= count($translations)) : ?>
-                </div>
-            <?php endif; ?>
-
-            <?php $count++; ?>
-        <?php endforeach; ?>
+        <?php echo $FormHelper->submit(array("label" => __("Add", "polyglot"), "class" => "button button-primary")); ?>
+    <?php echo $FormHelper->end(); ?>
 
 
-        <?php echo $FormHelper->submit(array("label" => __("Save", "polyglot"))); ?>
-        <?php echo $FormHelper->end(); ?>
-    <?php endif; ?>
+    <hr>
+
+
+    <h3><?php _e("Edit string", "polyglot"); ?></h3> <a class="button" href="<?php echo admin_url('options-general.php?page=polyglot-plugin&polyglot_action=batchEdit&locale=' . $locale->getCode()); ?>"><?php _e("Batch edit all"); ?></a>
+
+
+    <h4><?php _e("Search for string", "polyglot"); ?></h4>
+    <?php echo $FormHelper->create(null, array("type" => "GET")); ?>
+        <input type="hidden" name="page" value="polyglot-plugin">
+        <input type="hidden" name="polyglot_action" value="searchString">
+        <?php echo $FormHelper->input("locale", array("name" => "locale", "type" => "hidden", "value" => $locale->getCode())); ?>
+
+        <div>
+            <label>
+                <?php echo __("Original key string", "polyglot"); ?>
+                <?php echo $FormHelper->input("translation[original]"); ?>
+            </label>
+        </div>
+
+        <?php echo $FormHelper->submit(array("label" => __("Search", "polyglot"), "class" => "button button-primary")); ?>
+    <?php echo $FormHelper->end(); ?>
+
+
+
 </div>

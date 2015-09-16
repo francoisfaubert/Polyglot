@@ -40,6 +40,20 @@ class AdminController extends BaseController {
 
         $localeCode = $this->request->get("locale");
         $locale = $this->polyglot->getLocaleByCode($localeCode);
+        $this->view->set("locale", $locale);
+
+        $modifiedDate = $locale->hasPoFile() ? date("F d Y H:i:s.", filemtime($locale->getPoFilePath())) : null;
+        $this->view->set("modifiedDate", $modifiedDate);
+
+        $this->render("editLocale");
+    }
+
+    public function batchEdit()
+    {
+        $this->view->loadHelper("Form");
+
+        $localeCode = $this->request->get("locale");
+        $locale = $this->polyglot->getLocaleByCode($localeCode);
 
         if ($this->request->isPost()) {
             $this->polyglot->saveTranslations($locale, $this->request->post("data.translations"));
@@ -47,15 +61,44 @@ class AdminController extends BaseController {
 
         $this->view->set("locale", $locale);
 
-        $modifiedDate = $locale->hasPoFile() ? date("F d Y H:i:s.", filemtime($locale->getPoFilePath())) : null;
-        $this->view->set("modifiedDate", $modifiedDate);
-
         try {
             $this->view->set("translations", $this->polyglot->getTranslations($localeCode));
         } catch (Exception $e) {
         }
 
-        $this->render("editLocale");
+        $this->render("batchEdit");
+    }
+
+    public function searchString()
+    {
+        $this->view->loadHelper("Form");
+
+        $localeCode = $this->request->get("locale");
+        $locale = $this->polyglot->getLocaleByCode($localeCode);
+
+        if ($this->request->isPost()) {
+            $this->polyglot->saveTranslations($locale, $this->request->post("data.translations"));
+        }
+
+        $this->view->set("locale", $locale);
+        $query = $this->request->get("data.translation.original");
+        $this->view->set("searchQuery", $query);
+
+        $matchingTranslations = array();
+        try {
+            $translations = $this->polyglot->getTranslations($localeCode);
+
+            foreach ($translations as $translation) {
+                $match = preg_quote($query, "/");
+                if (preg_match("/$match/i", htmlentities($translation->getOriginal()))) {
+                    $matchingTranslations[] = $translation;
+                }
+            }
+        } catch (Exception $e) { }
+
+        $this->view->set("translations", $matchingTranslations);
+
+        $this->render("searchEdit");
     }
 
     /**

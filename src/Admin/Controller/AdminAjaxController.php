@@ -53,7 +53,6 @@ class AdminAjaxController extends BaseController {
         $this->viewTaxonomyList();
     }
 
-
     /**
      * Renders a popup that allows a user to browse the different
      * translations of a term or a post.
