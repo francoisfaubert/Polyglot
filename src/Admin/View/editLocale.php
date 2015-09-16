@@ -26,6 +26,10 @@
 
     <h3><?php _e("Add strings", "polyglot"); ?></h3>
 
+    <?php if (isset($addedString) && $addedString) : ?>
+        <p class="success"><?php _e("String added successfully", "polyglot"); ?></p>
+    <?php endif; ?>
+
     <?php echo $FormHelper->create(); ?>
         <?php echo $FormHelper->input("mode", array("type" => "hidden", "value" => "add")); ?>
         <?php echo $FormHelper->input("translation[context]", array("type" => "hidden", "value" => "")); ?>
@@ -42,13 +46,6 @@
             <label>
                 <?php echo __("Translation", "polyglot"); ?>
                 <?php echo $FormHelper->input("translation[translation]"); ?>
-            </label>
-        </div>
-
-        <div>
-            <label>
-                <?php echo __("Comments", "polyglot"); ?>
-                <?php echo $FormHelper->input("translation[comments]", array("type" => "textarea")); ?>
             </label>
         </div>
 
