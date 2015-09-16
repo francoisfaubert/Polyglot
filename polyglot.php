@@ -21,6 +21,5 @@ if (class_exists("Polyglot\Plugin\Polyglot") && class_exists("Polyglot\Plugin\Ad
     $plugin->register(__FILE__);
 
 } else {
-    $app = Strata\Strata::app();
-    $app->log("Though Polyglot is enabled, it could not be loaded.", "[Plugins::Polyglot]");
+    Strata\Strata::app()->log("Though Polyglot is enabled, it could not be loaded.", "[Plugins:Polyglot]");
 }

@@ -1,7 +1,9 @@
 <?php if (isset($destinationLink)) : ?>
 
-    <p><?php _e("Localizing...", 'polyglot'); ?></p>
-    <script>window.location = '<?php echo $destinationLink; ?>';</script>
+    <div class="localizing">
+        <p><?php _e("Localizing...", 'polyglot'); ?></p>
+        <script>window.location = '<?php echo $destinationLink; ?>';</script>
+    </div>
 
 <?php else : ?>
 

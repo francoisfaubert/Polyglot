@@ -32,7 +32,7 @@ class UrlRewriter {
 
             $locale = $this->polyglot->getCurrentLocale();
             if (!$locale->isDefault()) {
-                add_action('wp', array($this, "runOriginalRoute"));
+                add_action('strata_on_before_routing', array($this, "runOriginalRoute"), 1, 1);
             }
 
             add_action('widgets_init', array($this, 'addLocaleRewrites'));
@@ -43,7 +43,7 @@ class UrlRewriter {
         }
     }
 
-    public function runOriginalRoute()
+    public function runOriginalRoute($routedUrl)
     {
         $locale = $this->polyglot->getDefaultLocale();
         $originalPost = $locale->getTranslatedPost();
@@ -55,9 +55,10 @@ class UrlRewriter {
                 parse_url($originalUrl, PHP_URL_QUERY) .
                 parse_url($originalUrl, PHP_URL_FRAGMENT);
 
-            $app = \Strata\Strata::app();
-            $app->router->run($originalPath);
+            return $originalPath;
         }
+
+        return $routedUrl;
     }
 
     /**

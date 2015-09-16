@@ -2,7 +2,14 @@
 namespace Polyglot\Admin\Controller;
 
 use Polyglot\Plugin\Translator\Translator;
+use Strata\Shell\Command\I18nCommand;
+
 use Exception;
+
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\BufferedOutput;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Console\Application;
 
 /**
  * Receives all the actions required by the plugin's administration
@@ -16,6 +23,10 @@ class AdminController extends BaseController {
      */
     public function index()
     {
+        $locale = $this->polyglot->getDefaultLocale();
+        $modifiedDate = $locale->hasPoFile() ? date("F d Y H:i:s.", filemtime($locale->getPoFilePath())) : null;
+        $this->view->set("modifiedDate", $modifiedDate);
+
         $this->render('index');
     }
 
@@ -25,10 +36,7 @@ class AdminController extends BaseController {
      */
     public function editLocale()
     {
-        // $this->view->set("formHelper", $form->getHelper());
-        // $form = new StringTranslationForm($this->request, $this->view);
-
-        $this->loadHelper("Form");
+        $this->view->loadHelper("Form");
 
         $localeCode = $this->request->get("locale");
         $locale = $this->polyglot->getLocaleByCode($localeCode);
@@ -38,7 +46,14 @@ class AdminController extends BaseController {
         }
 
         $this->view->set("locale", $locale);
-        $this->view->set("translations", $this->polyglot->getTranslations($localeCode));
+
+        $modifiedDate = $locale->hasPoFile() ? date("F d Y H:i:s.", filemtime($locale->getPoFilePath())) : null;
+        $this->view->set("modifiedDate", $modifiedDate);
+
+        try {
+            $this->view->set("translations", $this->polyglot->getTranslations($localeCode));
+        } catch (Exception $e) {
+        }
 
         $this->render("editLocale");
     }
@@ -66,4 +81,32 @@ class AdminController extends BaseController {
         $this->render("duplicating");
     }
 
+    public function scanProject()
+    {
+        $this->view->set("output", $this->runCLIExtractCommand());
+
+        if ($this->request->hasGet("backToLocale")) {
+            $localeCode = $this->request->get("backToLocale");
+            $this->view->set("returnLocale", $this->polyglot->getLocaleByCode($localeCode));
+        }
+
+        $this->render("scan");
+    }
+
+    private function runCLIExtractCommand()
+    {
+        $application = new Application();
+        $application->setAutoExit(false);
+        $application->add(new I18nCommand());
+
+        $input = new ArrayInput(array(
+           'command' => 'i18n',
+           'type' => 'extract',
+        ));
+
+        $output = new BufferedOutput();
+        $application->run($input, $output);
+
+        return $output->fetch();
+    }
 }
