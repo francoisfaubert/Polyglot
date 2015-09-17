@@ -3,6 +3,7 @@
 namespace Polyglot\Plugin;
 
 use Strata\Controller\Request;
+
 use Polyglot\Plugin\Polyglot;
 use Exception;
 
@@ -19,11 +20,12 @@ class ContextualSwitcher {
      */
     public function registerHooks()
     {
-        if (is_admin()) {
-            add_action('admin_init', array($this, "setCurrentLocaleByAdminContext"));
-        } else {
-            add_action('wp', array($this, "setCurrentLocaleByFrontContext"));
-        }
+        add_filter('strata_i18n_set_current_locale_by_context', array($this, "setCurrentLocaleByContext"));
+    }
+
+    public function setCurrentLocaleByContext()
+    {
+        return is_admin() ? $this->setCurrentLocaleByAdminContext() : $this->setCurrentLocaleByFrontContext();
     }
 
     /**
@@ -74,33 +76,45 @@ class ContextualSwitcher {
      */
     private function setLocaleByPostId($postId)
     {
-        $post = Polyglot::instance()->query()->findPostById($postId);
-        if (isset($post->ID)) {
-            return $this->setLocaleByObject($post);
+        $tree = $this->getTranslationTree($postId);
+        if ($tree && $tree->hasTranslatedObject($postId, "WP_Post")) {
+            return $this->setLocaleByObject($tree->getTranslatedObject($postId, "WP_Post"));
         }
     }
 
     private function setLocaleByTaxonomyId($taxonomyId, $taxonomyType)
     {
-        $term = Polyglot::instance()->query()->findTermById($taxonomyId, $taxonomyType);
-        if (isset($term->term_id)) {
-            return $this->setLocaleByObject($term);
+        $tree = $this->getTranslationTree($taxonomyId, "Term");
+        if ($tree && $tree->hasTranslatedObject($taxonomyId, "Term")) {
+            return $this->setLocaleByObject($tree->getTranslatedObject($taxonomyId, "Term"));
         }
     }
 
     /**
      * Sets the locale by Wordpress object.
-     * @param mixed $mixed WP_Post, stdClass
+     * @param TranslationEntity $mixed
      * @return Locale
      */
     private function setLocaleByObject($mixed)
     {
-        $instance = Polyglot::instance();
-        $locale = $instance->query()->findObjectLocale($mixed);
-        if (!is_null($locale)) {
-            $instance->setLocale($locale);
-            return $locale;
+        return Polyglot::instance()->getLocaleByCode($mixed->translation_locale);
+    }
+
+    private function getTranslationTree($mixedId, $mixedKind = "WP_Post")
+    {
+        $originalId = $this->getOriginalObjectId($mixedId, $mixedKind);
+        return Polyglot::instance()->query()->findTranlationsOfId($originalId, $mixedKind);
+    }
+
+    private function getOriginalObjectId($mixedId, $mixedKind)
+    {
+        $localizedDetails = Polyglot::instance()->query()->findDetailsById($mixedId, $mixedKind);
+        if ($localizedDetails && !is_null($localizedDetails->translation_of)) {
+            return (int)$localizedDetails->translation_of;
         }
+
+        // Assume this object is the original since it had no translation
+        return (int)$mixedId;
     }
 
 }

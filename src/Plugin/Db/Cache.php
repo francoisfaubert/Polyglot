@@ -25,10 +25,10 @@ class Cache  {
 
     public function addEntity(TranslationEntity $entity)
     {
-        if (!$this->idWasCached($entity->polyglot_ID, $entity->obj_kind)) {
+        if (!$this->idWasCached($entity->obj_id, $entity->obj_kind)) {
 
             $tOfKey = $this->translationOfKeyPrefix . $entity->translation_of;
-            $idKey = $this->pIdKeyPrefix . $entity->polyglot_ID;
+            $idKey = $this->pIdKeyPrefix . $entity->obj_id;
 
             if (!array_key_exists($entity->obj_kind, $this->entitiesMap)) {
                 $this->entitiesMap[$entity->obj_kind] = array();

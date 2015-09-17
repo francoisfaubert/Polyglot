@@ -47,6 +47,7 @@ class Locale extends StrataLocale {
 
     public function hasPostTranslation($postId = null)
     {
+
         $postId = $this->proofId($postId);
         $tree = $this->getTranslationTree($postId);
 
@@ -55,7 +56,7 @@ class Locale extends StrataLocale {
             return $this->isDefault();
         }
 
-        return !is_null($this->getTranslatedPost($postId));
+        return $tree->hasTranslationFor($this) || ($this->isDefault() && $tree->isTranslationSetOf($postId, "WP_Post"));
     }
 
     public function isTranslationOfPost($postId = null)
@@ -67,23 +68,33 @@ class Locale extends StrataLocale {
 
     public function getTranslatedPost($postId = null)
     {
-        $id = (int)$this->findTranslatedId($this->proofId($postId), "WP_Post");
-        if ($id > 0) {
-            $entity = Polyglot::instance()->query()->findPostById($id);
-            return $entity->loadAssociatedWPObject();
+        $tree = $this->getTranslationTree($postId, "WP_Post");
+        if ($tree) {
+            $translationEntity = $tree->getTranslationFor($this);
+            if ($translationEntity) {
+                return $translationEntity->loadAssociatedWPObject();
+            }
+
+            if ($tree->isTranslationSetOf($postId, "WP_Post")) {
+                return get_post($postId);
+            }
         }
     }
 
     public function hasTermTranslation($termId, $taxname)
     {
+        if ($this->isDefault()) {
+            return false;
+        }
+
         $tree = $this->getTranslationTree($termId, "Term");
 
-        // Tree will be null when a new post is being created.
+        // Tree will be null when a new term is being created.
         if (is_null($tree)) {
             return $this->isDefault();
         }
 
-        return !is_null($this->getTranslatedTerm($termId, $taxname));
+        return $tree->hasTranslationFor($this) || ($this->isDefault() && $tree->isTranslationSetOf($postId, "WP_Post"));
     }
 
     public function isTranslationOfTerm($termId, $taxname)
@@ -94,10 +105,16 @@ class Locale extends StrataLocale {
 
     public function getTranslatedTerm($termId, $taxName)
     {
-        $id = (int)$this->findTranslatedId($termId, "Term");
-        if ($id > 0) {
-            $entity = Polyglot::instance()->query()->findTermById($id, $taxName);
-            return $entity->loadAssociatedWPObject();
+        $tree = $this->getTranslationTree($termId, "Term");
+        if ($tree) {
+            $translationEntity = $tree->getTranslationFor($this);
+            if ($translationEntity) {
+                return $translationEntity->loadAssociatedWPObject();
+            }
+
+            if ($tree->isTranslationSetOf($termId, "Term")) {
+                return get_term_by('id', $termId, $taxName);
+            }
         }
     }
 
@@ -147,12 +164,16 @@ class Locale extends StrataLocale {
     public function getEditPostUrl($postId = null)
     {
         $object = $this->getTranslatedPost($postId);
+        return $this->getEditPostByIdAndType($object->ID, $object->post_type);
+    }
 
-        if (isset($object->post_type) && $object->post_type != 'post') {
-            return admin_url('post.php?post='.$object->ID.'&post_type='.$object->post_type.'&action=edit&locale=' . $this->getCode());
+    public function getEditPostByIdAndType($postId, $postType = "")
+    {
+        if (empty($postType) && $postType != 'post') {
+            return admin_url('post.php?post='.$postId.'&post_type='.$postType.'&action=edit&locale=' . $this->getCode());
         }
 
-        return admin_url('post.php?post='.$object->ID.'&action=edit&locale=' . $this->getCode());
+        return admin_url('post.php?post='.$postId.'&action=edit&locale=' . $this->getCode());
     }
 
     public function getTranslateTermUrl($originalTerm)

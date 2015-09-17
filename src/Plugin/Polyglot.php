@@ -35,6 +35,11 @@ class Polyglot extends \Strata\I18n\I18n {
     function __construct()
     {
         $this->throwIfGlobalExists();
+        $this->stealI18nInformation();
+
+        // We need to rehook into setCurrentLocaleByContext because we need to
+        // try again once global post objects are loaded.
+        add_action(is_admin() ? 'admin_init' : 'wp', array($this, "setCurrentLocaleByContext"));
     }
 
     /**
@@ -63,27 +68,24 @@ class Polyglot extends \Strata\I18n\I18n {
         return $this->configuration;
     }
 
-    /**
-     * Returns the list of Locale objects
-     * @return array
-     */
-    public function getLocales()
+    public function stealI18nInformation()
     {
         if (!$this->localized) {
-            $app = Strata::app();
-            $orignalLocale = $app->i18n->getCurrentLocale();
+            $orignalLocaleCode = Strata::app()->i18n->getCurrentLocaleCode();
 
             $this->locales = $this->rebuildLocaleList();
             $this->localized = true;
 
             // Find our version of the original locale and
             // reassign it.
-            if ($orignalLocale) {
-                $this->setLocale($this->getLocaleByCode($orignalLocale->getCode()));
+            if ($orignalLocaleCode) {
+                $this->setLocale($this->getLocaleByCode($orignalLocaleCode));
+            } elseif (is_null($this->setCurrentLocaleByContext())) {
+                $this->setLocale($this->getDefaultLocale());
             }
         }
-        return $this->locales;
     }
+
 
     /**
      * Overrides the default i18n function in order to use

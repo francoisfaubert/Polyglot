@@ -101,7 +101,9 @@ class AdminAjaxController extends BaseController {
         $defaultLocale = $this->polyglot->getDefaultLocale();
         $orignalPost = $defaultLocale->getTranslatedPost($objId);
 
+        $this->view->set("objId", $objId);
         $this->view->set("originalPost", $orignalPost);
+
         $this->render("switchPostTranslation");
     }
 
@@ -114,6 +116,9 @@ class AdminAjaxController extends BaseController {
     {
         $defaultLocale = $this->polyglot->getDefaultLocale();
         $orignalTerm = $defaultLocale->getTranslatedTerm($objId, $objType);
+
+        $this->view->set("objId", $objId);
+        $this->view->set("objType", $objType);
 
         $this->view->set("originalTerm", $orignalTerm);
         $this->render("switchTermTranslation");

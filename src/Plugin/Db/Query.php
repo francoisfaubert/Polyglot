@@ -156,20 +156,27 @@ class Query {
     /**
      * Returns a cached reference of a post.
      * @param  int $id
-     * @return array       An array of PostTranslationEntities
+     * @return TranslationEntity
      */
-    public function findPostById($id)
-    {
-        $cached = $this->cache->findByOriginalObject($id, 'WP_Post');
-        if (!is_null($cached)) {
-            return $cached;
-        }
+    // public function findPostById($id)
+    // {
+    //     if($this->cacheIsComplete() || $this->cache->idWasCached($id, 'WP_Post')) {
+    //         $cached = $this->cache->findByOriginalObject($id, 'WP_Post');
+    //         if (!is_null($cached)) {
+    //             return $cached;
+    //         }
+    //     }
 
-        $entity = new PostTranslationEntity((object)["obj_id" => (int)$id]);
-        $this->cache->addEntity($entity);
+    //     $entity = $this->findDetailsById($id, "WP_Post");
 
-        return $entity;
-    }
+    //     // This gets useful while creating new references
+    //     if (is_null($entity)) {
+    //         $entity = new PostTranslationEntity((object)["obj_id" => (int)$id]);
+    //         $this->cache->addEntity($entity);
+    //     }
+
+    //     return $entity;
+    // }
 
     /**
      * Returns a cached reference of a loaded term.

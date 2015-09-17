@@ -135,17 +135,41 @@ class UrlRewriter {
      */
     public function postLink($postLink, $mixed = 0)
     {
-        $post = is_object($mixed) ? $mixed : $this->polyglot->query()->findPostById((int)$mixed);
+        $post = null;
+
+        // Try to find an associated post translation.
+        if (is_object($mixed)) {
+            $post = $mixed;
+        } else {
+            $tree = $this->getTranslationTree($mixed);
+            if ($tree) {
+                $translationEntity = $tree->getTranslatedObject($mixed, "WP_Post");
+                if ($translationEntity) {
+                    $post = $translationEntity->loadAssociatedWPObject();
+                }
+            }
+        }
+
+        // We haven't found an associated post,
+        // therefore the link provided is the correct one.
+        if (is_null($post)) {
+            return $postLink;
+        }
+
 
         $locale = $this->polyglot->getCurrentLocale();
         if ($locale && !$locale->isDefault()) {
             $translation = $locale->getTranslatedPost($post->ID);
-            if ($translation) {
-                $regexedHome = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
-                $regexedUrl = preg_quote($post->post_name, "/");
-                $regex = "$regexedHome\/(index.php\/)?$regexedUrl\/(.*)?";
+            if ($translation && $translation->post_type !== "revision") {
 
-                return preg_replace("/^$regex/", WP_HOME . "/$1" . $locale->getUrl() . "/" . $translation->post_name. "/$2", $postLink);
+                $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
+                return preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . "/" . $locale->getUrl(), $postLink);
+
+                //  in the backend, this doesn't work
+                // $regexedHome = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
+                // $regexedUrl = preg_quote($translation->post_name, "/");
+                // $regex = "$regexedHome(\/index.php)?\/$regexedUrl(.*)?";
+                // return preg_replace("/^$regex/", WP_HOME . "/$1" . $locale->getUrl() . "/" . $translation->post_name. "/$2", $postLink);
             }
         }
 
@@ -238,6 +262,23 @@ class UrlRewriter {
         add_rewrite_rule('index.php/('.$regex.')/category/(.+?)/(feed|rdf|rss|rss2|atom)/?$', 'index.php?category_name=$matches[2]&feed=$matches[3]&locale=$matches[1]', 'top');
         add_rewrite_rule('index.php/('.$regex.')/category/(.+?)/page/?([0-9]{1,})/?$', 'index.php?category_name=$matches[2]&paged=$matches[3]&locale=$matches[1]', 'top');
         add_rewrite_rule('index.php/('.$regex.')/category/(.+?)/?$', 'index.php?category_name=$matches[2]&locale=$matches[1]', 'top');
+    }
+
+    private function getTranslationTree($mixedId, $mixedKind = "WP_Post")
+    {
+        $originalId = $this->getOriginalObjectId($mixedId, $mixedKind);
+        return Polyglot::instance()->query()->findTranlationsOfId($originalId, $mixedKind);
+    }
+
+    private function getOriginalObjectId($mixedId, $mixedKind)
+    {
+        $localizedDetails = Polyglot::instance()->query()->findDetailsById($mixedId, $mixedKind);
+        if ($localizedDetails && !is_null($localizedDetails->translation_of)) {
+            return (int)$localizedDetails->translation_of;
+        }
+
+        // Assume this object is the original since it had no translation
+        return (int)$mixedId;
     }
 
 }

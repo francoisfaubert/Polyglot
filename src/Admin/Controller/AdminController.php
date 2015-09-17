@@ -45,13 +45,11 @@ class AdminController extends BaseController {
         $modifiedDate = $locale->hasPoFile() ? date("F d Y H:i:s.", filemtime($locale->getPoFilePath())) : null;
         $this->view->set("modifiedDate", $modifiedDate);
 
-
         if ($this->request->isPost()) {
             $newString = array($this->request->post("data.translation"));
             $this->polyglot->saveTranslations($locale, $newString);
             $this->view->set("addedString", true);
         }
-
 
         $this->render("editLocale");
     }

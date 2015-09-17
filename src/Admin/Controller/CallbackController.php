@@ -116,7 +116,7 @@ class CallbackController extends BaseController {
     private function preventTranslatedMetaBoxes()
     {
         $locale = $this->polyglot->getCurrentLocale();
-        if (!$locale->isDefault()) {
+        if ($locale && !$locale->isDefault()) {
             remove_meta_box("formatdiv", "post", "side");
             remove_meta_box("categorydiv", "post", "side");
             remove_meta_box("tagsdiv-post_tag", "post", "side");

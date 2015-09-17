@@ -11,7 +11,7 @@ class PostTranslator extends TranslatorBase {
     public function getForwardUrl()
     {
         $locale = $this->getTranslationLocale();
-        return $locale->getEditPostUrl($this->translationObjId);
+        return $locale->getEditPostByIdAndType($this->translationObjId, $this->originalType);
     }
 
     public function copyObject()

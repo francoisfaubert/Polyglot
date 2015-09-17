@@ -48,8 +48,20 @@ class TranslationTree  {
                 return $translationEntity;
             }
         }
+    }
 
-        return null;
+    public function hasTranslatedObject($id, $kind)
+    {
+        return !is_null($this->getTranslatedObject($id, $kind));
+    }
+
+    public function getTranslatedObject($id, $kind)
+    {
+        foreach ($this->list as $translationEntity) {
+            if ((int)$translationEntity->obj_id === (int)$id && $translationEntity->obj_kind === $kind) {
+                return $translationEntity;
+            }
+        }
     }
 
 }
