@@ -67,6 +67,7 @@ class Locale extends StrataLocale {
 
     public function getTranslatedPost($postId = null)
     {
+        $postId = $this->proofId($postId);
         $tree = $this->getTranslationTree($postId, "WP_Post");
         if ($tree) {
             $translationEntity = $tree->getTranslationFor($this);
@@ -74,7 +75,7 @@ class Locale extends StrataLocale {
                 return $translationEntity->loadAssociatedWPObject();
             }
 
-            if ($tree->isTranslationSetOf($postId, "WP_Post")) {
+            if ($this->isDefault() && $tree->isTranslationSetOf($postId, "WP_Post")) {
                 return get_post($postId);
             }
         }
@@ -107,7 +108,7 @@ class Locale extends StrataLocale {
                 return $translationEntity->loadAssociatedWPObject();
             }
 
-            if ($tree->isTranslationSetOf($termId, "Term")) {
+            if ($this->isDefault() && $tree->isTranslationSetOf($termId, "Term")) {
                 return get_term_by('id', $termId, $taxName);
             }
         }

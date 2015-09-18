@@ -205,11 +205,14 @@ class WordpressAdaptor {
     {
         $metatags = array();
 
-        foreach ($this->polyglot->getLocales() as $locale) {
-            if ($locale->hasPostTranslation()) {
-                $translatedPost = $locale->getTranslatedPost();
-                if ($translatedPost) {
-                    $metatags[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), get_the_permalink($translatedPost->ID));
+        $currentPost = get_post();
+        if ($currentPost) {
+            foreach ($this->polyglot->getLocales() as $locale) {
+                if ($locale->hasPostTranslation($currentPost->ID)) {
+                    $translatedPost = $locale->getTranslatedPost($currentPost->ID);
+                    if ($translatedPost) {
+                        $metatags[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(),  get_permalink($translatedPost->ID));
+                    }
                 }
             }
         }

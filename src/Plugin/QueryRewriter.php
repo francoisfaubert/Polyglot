@@ -152,7 +152,7 @@ class QueryRewriter {
         if (!$locale->isDefault()) {
             $matches = $this->polyglot->query()->findTranslationIdsNotInLocale($locale, "Term");
         } else {
-            $matches = $this->polyglot->query()->listTranslatedIds("Term");
+            $matches = $this->polyglot->query()->listTranslatedEntitiesIds("Term");
         }
 
         // By excluding ids, we allow for fallback
