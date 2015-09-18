@@ -32,11 +32,11 @@ class UrlRewriter {
 
             $locale = $this->polyglot->getCurrentLocale();
             if (!$locale->isDefault()) {
-                add_action('strata_on_before_routing', array($this, "runOriginalRoute"), 1, 1);
+                add_action('strata_on_before_url_routing', array($this, "runOriginalRoute"), 1, 1);
             }
 
             add_action('widgets_init', array($this, 'addLocaleRewrites'));
-            // add_action('widgets_init', array($this, 'forwardCanonicalUrls'));
+            add_action('widgets_init', array($this, 'forwardCanonicalUrls'));
 
             add_filter('redirect_canonical', array($this, 'redirectCanonical'), 10, 2);
 
@@ -45,11 +45,17 @@ class UrlRewriter {
 
     public function runOriginalRoute($routedUrl)
     {
-        $locale = $this->polyglot->getDefaultLocale();
-        $originalPost = $locale->getTranslatedPost();
+        $defaultLocale = $this->polyglot->getDefaultLocale();
+        $currentLocale = $this->polyglot->getCurrentLocale();
+        $originalPost = $defaultLocale->getTranslatedPost();
 
         if ($originalPost) {
-            $originalUrl = get_permalink($originalPost->ID);
+
+            // Get permalink will append the current locale url when
+            // the configuration allows locales to present content form
+            // the default.
+            $originalUrl = str_replace("/" . $currentLocale->getUrl(), "", get_permalink($originalPost->ID));
+
             $originalPath =
                 parse_url($originalUrl, PHP_URL_PATH) .
                 parse_url($originalUrl, PHP_URL_QUERY) .
@@ -117,13 +123,28 @@ class UrlRewriter {
         $homepageId = $this->polyglot->query()->getDefaultHomepageId();
         $currentLocale = $this->polyglot->getCurrentLocale();
 
+        // Check for a localized homepage
         if ($currentLocale->isTranslationOfPost($homepageId)) {
             $localizedPage = $currentLocale->getTranslatedPost($homepageId);
-            if ($_SERVER['REQUEST_URI'] === '/' . $currentLocale->getUrl() . '/' .$localizedPage->post_name . '/') {
-                wp_redirect(WP_HOME . '/' . $currentLocale->getUrl() . '/', 301);
-                exit;
+            if ($localizedPage) {
+                if ($_SERVER['REQUEST_URI'] === '/' . $currentLocale->getUrl() . '/' .$localizedPage->post_name . '/') {
+                    wp_redirect(WP_HOME . '/' . $currentLocale->getUrl() . '/', 301);
+                    exit;
+                }
             }
         }
+
+        // When there's no localized hoempage but we have to fallback to the
+        // default locale, then
+        if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback")) {
+            // doesn't work.
+            // global $post;
+            // $post = get_post($homepageId);
+            // setup_postdata($post);
+            // exit;
+            // debug($post);
+        }
+
     }
 
     /**
@@ -136,40 +157,53 @@ class UrlRewriter {
     public function postLink($postLink, $mixed = 0)
     {
         $post = null;
+        $postLocale = null;
+        $currentLocale = $this->polyglot->getCurrentLocale();
 
         // Try to find an associated post translation.
-        if (is_object($mixed)) {
-            $post = $mixed;
-        } else {
-            $tree = $this->getTranslationTree($mixed);
-            if ($tree) {
-                $translationEntity = $tree->getTranslatedObject($mixed, "WP_Post");
-                if ($translationEntity) {
-                    $post = $translationEntity->loadAssociatedWPObject();
-                }
+        $postId = is_object($mixed) ? $mixed->ID : $mixed;
+        $tree = $this->getTranslationTree($postId);
+        if ($tree) {
+            $translationEntity = $tree->getTranslatedObject($postId, "WP_Post");
+            if ($translationEntity) {
+                $post = $translationEntity->loadAssociatedWPObject();
+                $postLocale = $this->polyglot->getLocaleByCode($translationEntity->translation_locale);
             }
         }
 
         // We haven't found an associated post,
         // therefore the link provided is the correct one.
         if (is_null($post)) {
+            // Before leaving, check if we are expected to build localized urls when
+            // the page does not exist.
+            if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback")) {
+                if (!$currentLocale->isDefault()) {
+                    $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
+                    return preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . "/" . $currentLocale->getUrl(), $postLink);
+                }
+            }
+
             return $postLink;
         }
 
-
-        $locale = $this->polyglot->getCurrentLocale();
-        if ($locale && !$locale->isDefault()) {
-            $translation = $locale->getTranslatedPost($post->ID);
+        if (isset($postLocale) && !$postLocale->isDefault()) {
+            $translation = $postLocale->getTranslatedPost($post->ID);
             if ($translation && $translation->post_type !== "revision") {
-
                 $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
-                return preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . "/" . $locale->getUrl(), $postLink);
 
-                //  in the backend, this doesn't work
-                // $regexedHome = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
-                // $regexedUrl = preg_quote($translation->post_name, "/");
-                // $regex = "$regexedHome(\/index.php)?\/$regexedUrl(.*)?";
-                // return preg_replace("/^$regex/", WP_HOME . "/$1" . $locale->getUrl() . "/" . $translation->post_name. "/$2", $postLink);
+                $localizedUrl = preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . "/" . $postLocale->getUrl(), $postLink);
+
+                // We have a translated url, but if it happens to be the homepage we
+                // need to remove the slug
+                $homepageId = $this->polyglot->query()->getDefaultHomepageId();
+
+                // Check for a localized homepage
+                if ($currentLocale->isTranslationOfPost($homepageId)) {
+                    $localizedPage = $currentLocale->getTranslatedPost($homepageId);
+                    $localizedUrl = str_replace($localizedPage->post_name . "/", "", $localizedUrl);
+                }
+
+                return $localizedUrl;
             }
         }
 

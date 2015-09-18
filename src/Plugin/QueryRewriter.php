@@ -94,11 +94,14 @@ class QueryRewriter {
         } else {
 
             if ($query->is_main_query()) {
-                $matches = $this->polyglot->query()->findTranslationIdsOf($locale, "WP_Post");
-                foreach ((array)$matches as $row) {
-                    $postIds[] = $row;
+                $postIds = $this->polyglot->query()->findTranslationIdsOf($locale, "WP_Post");
+
+                // I know this doesn't really work out, but I think I can get
+                // away with that kind of filtering for now. I think this will break
+                // natural WP archives in which the same, bilingual results may appear
+                if (!(bool)Strata::app()->getConfig("i18n.default_locale_fallback")) {
+                    $query->set("post__in", $postIds);
                 }
-                $query->set("post__in", $postIds);
             }
         }
 
@@ -111,18 +114,13 @@ class QueryRewriter {
         $locale = $this->polyglot->getCurrentLocale();
 
         if ($locale->isDefault()) {
-            $matches = $this->polyglot->query()->listTranslatedEntitiesIds("Term");
+            $termIds = $this->polyglot->query()->listTranslatedEntitiesIds("Term");
         } else {
-            $matches = $this->polyglot->query()->findTranslationIdsOf($locale, "Term");
+            $termIds = $this->polyglot->query()->findTranslationIdsOf($locale, "Term");
         }
 
-        if (!count($matches)) {
+        if (!count($termIds)) {
             return $terms;
-        }
-
-        $termIds = array();
-        foreach ((array)$matches as $id) {
-            $termIds[] = (int)$id;
         }
 
         $localized = array();

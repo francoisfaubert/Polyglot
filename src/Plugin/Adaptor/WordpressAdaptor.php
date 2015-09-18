@@ -213,6 +213,9 @@ class WordpressAdaptor {
                     if ($translatedPost) {
                         $metatags[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(),  get_permalink($translatedPost->ID));
                     }
+                } elseif ($locale->isDefault()) {
+                    $translatedPost = $locale->getTranslatedPost($currentPost->ID);
+                    $metatags[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(),  get_permalink($translatedPost->ID));
                 }
             }
         }

@@ -65,10 +65,11 @@ class AdminAjaxController extends BaseController {
         $this->view->set("objId", $objId);
 
         switch ($params[1]) {
-            case 'post' :
-            case 'page' : return $this->switchPostTranslation($objId);
-            default : return  $this->switchTermTranslation($objId, $params[1], $params[2]);
+            case 'WP_Post' : return $this->switchPostTranslation($objId);
+            case 'Term' : return $this->switchTermTranslation($objId, $params[2], $params[3]);
         }
+
+        throw new Exception("That is not a type we understand.");
     }
 
     /**
@@ -101,6 +102,7 @@ class AdminAjaxController extends BaseController {
         $defaultLocale = $this->polyglot->getDefaultLocale();
         $orignalPost = $defaultLocale->getTranslatedPost($objId);
 
+        $this->view->set("objKind", "WP_Post");
         $this->view->set("objId", $objId);
         $this->view->set("originalPost", $orignalPost);
 
@@ -118,6 +120,8 @@ class AdminAjaxController extends BaseController {
         $orignalTerm = $defaultLocale->getTranslatedTerm($objId, $objType);
 
         $this->view->set("contextualPostType", is_null($customPostType) ? null : $customPostType);
+
+        $this->view->set("objKind", "Term");
         $this->view->set("objId", $objId);
         $this->view->set("objType", $objType);
         $this->view->set("originalTerm", $orignalTerm);

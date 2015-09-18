@@ -40,6 +40,9 @@ class CallbackController extends BaseController {
         if ($column === "polyglot_locales") {
             $this->view->set("obj_id", $postId);
             $this->view->set("obj_type", get_post_type());
+            $this->view->set("objKind", "WP_Post");
+            $this->view->set("contextualPostType", $this->request->hasGet("post_type") ? $this->request->get("post_type") : "post");
+
             $this->render("buttonTranslator");
         }
     }
@@ -51,10 +54,10 @@ class CallbackController extends BaseController {
     public function renderTaxonomyLocalizationColumn($out, $column, $termId)
     {
         if ($column === "polyglot_locales") {
-
             $this->view->set("contextualPostType", $this->request->hasGet("post_type") ? $this->request->get("post_type") : "post");
             $this->view->set("obj_id", $termId);
             $this->view->set("obj_type", $this->request->get("taxonomy"));
+            $this->view->set("objKind", "Term");
             $this->render("buttonTranslator");
         }
     }
@@ -65,12 +68,12 @@ class CallbackController extends BaseController {
      */
     public function renderPostMetabox()
     {
-
         if (get_post_status() == "auto-draft") {
             $this->view->set("invalidStatus", true);
         } else {
             $this->view->set("obj_id", get_the_ID());
             $this->view->set("obj_type", get_post_type());
+            $this->view->set("objKind", "WP_Post");
         }
         $this->render("metaboxTranslator");
     }
@@ -86,6 +89,7 @@ class CallbackController extends BaseController {
         if (!is_null($taxonomy) && $configuration->isTaxonomyEnabled($taxonomy->taxonomy)) {
             $this->view->set("obj_id", $taxonomy->term_id);
             $this->view->set("obj_type", $taxonomy->taxonomy);
+            $this->view->set("objKind", "Term");
             $this->render("metaboxTranslator");
         }
     }
