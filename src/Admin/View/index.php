@@ -71,12 +71,8 @@
     <?php endif; ?>
 
     <section class="dynamic-translations">
-        <h2><?php _e("Dynamic translations", "polyglot"); ?></h2>
-
-        <h3><?php _e("Post types"); ?> :</h3>
+        <h2><?php _e("Dynamic localization", "polyglot"); ?></h2>
         <div class="post-type-management" data-polyglot-ajax="autoload" data-polyglot-ajax-action="viewPostTypeList"></div>
-
-        <h3><?php _e("Taxonomies"); ?> :</h3>
         <div class="taxonomy-management" data-polyglot-ajax="autoload" data-polyglot-ajax-action="viewTaxonomyList"></div>
     </section>
 </div>

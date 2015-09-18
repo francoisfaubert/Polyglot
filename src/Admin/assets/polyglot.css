@@ -58,3 +58,19 @@
 .polyglot-page .scanner .button {
     width:100%;
 }
+
+.polyglot-page .post-type-management,
+.polyglot-page .taxonomy-management {
+    width:40%;
+    float:left;
+}
+
+.polyglot-page .post-type-management .button,
+.polyglot-page .taxonomy-management .button {
+    min-width:120px;
+    text-align:center;
+}
+
+.polyglot-page .post-type-management {
+    margin-right:8%;
+}

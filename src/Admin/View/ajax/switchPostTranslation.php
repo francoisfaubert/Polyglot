@@ -2,18 +2,19 @@
 
 <table class="widefat striped">
     <thead>
-    <tr>
-        <th scope="col" id="polyglot-code" class="manage-column column-title">
-            <span><?php _e("Code", 'polyglot'); ?></span>
-        </th>
-        <th scope="col" id="polyglot-locale" class="manage-column column-title">
-            <span><?php _e("Locale", 'polyglot'); ?></span>
-        </th>
-        <th scope="col" id="polyglot-action" class="manage-column column-title">
-            <span></span>
-        </th>
+        <tr>
+            <th scope="col" id="polyglot-code" class="manage-column column-title">
+                <span><?php _e("Code", 'polyglot'); ?></span>
+            </th>
+            <th scope="col" id="polyglot-locale" class="manage-column column-title">
+                <span><?php _e("Locale", 'polyglot'); ?></span>
+            </th>
+            <th scope="col" id="polyglot-action" class="manage-column column-title">
+                <span></span>
+            </th>
+        </tr>
     </thead>
-
+    <tbody>
 
 <?php $idx = 0; foreach ($polyglot->getLocales() as $code => $locale) : ?>
 
@@ -53,4 +54,5 @@
         </td>
     </tr>
 <?php $idx++; endforeach; ?>
+    </tbody>
 </table>
