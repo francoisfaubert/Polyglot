@@ -67,7 +67,7 @@ class AdminAjaxController extends BaseController {
         switch ($params[1]) {
             case 'post' :
             case 'page' : return $this->switchPostTranslation($objId);
-            default : return  $this->switchTermTranslation($objId, $params[1]);
+            default : return  $this->switchTermTranslation($objId, $params[1], $params[2]);
         }
     }
 
@@ -112,15 +112,16 @@ class AdminAjaxController extends BaseController {
      * translations of a term.
      * @return null
      */
-    protected function switchTermTranslation($objId, $objType)
+    protected function switchTermTranslation($objId, $objType, $customPostType = null)
     {
         $defaultLocale = $this->polyglot->getDefaultLocale();
         $orignalTerm = $defaultLocale->getTranslatedTerm($objId, $objType);
 
+        $this->view->set("contextualPostType", is_null($customPostType) ? null : $customPostType);
         $this->view->set("objId", $objId);
         $this->view->set("objType", $objType);
-
         $this->view->set("originalTerm", $orignalTerm);
+
         $this->render("switchTermTranslation");
     }
 }

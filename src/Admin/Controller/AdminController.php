@@ -121,7 +121,17 @@ class AdminController extends BaseController {
         try {
             $tanslator = Translator::factory($kind);
             $tanslator->translate($id, $type, $localeCode);
-            $this->view->set("destinationLink", $tanslator->getForwardUrl());
+            $url = $tanslator->getForwardUrl();
+
+            // Taxonomies needs to remembers their associated post type
+            // so the admin menu visually points to the correct section.
+            // It could be done more elegantly if the information was
+            // stored in the translation entity.
+            if ($this->request->hasGet("forwardPostType")) {
+                $url .= "&post_type=" . $this->request->get("forwardPostType");
+            }
+
+            $this->view->set("destinationLink", $url);
         } catch(Exception $e) {
             $this->view->set("error", $e->getMessage());
         }

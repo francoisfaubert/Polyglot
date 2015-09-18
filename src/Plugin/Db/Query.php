@@ -389,14 +389,16 @@ class Query {
     }
 
 
-    public function listTranslatedIds($kind = "WP_Post")
+    public function listTranslatedEntitiesIds($kind = "WP_Post")
     {
         $entities = array();
 
         // Lookup in the cache beforehand
-        foreach ($this->cache->getByKind($kind) as $entity) {
-            if (!array_key_exists((int)$entity->translation_of, $entities)) {
-                $entities[(int)$entity->translation_of] = $entity;
+        foreach ($this->cache->getByKind($kind) as $translationOf => $cachedEntities) {
+            foreach ($cachedEntities as $entity) {
+                if (!array_key_exists((int)$entity->obj_id, $entities)) {
+                    $entities[(int)$entity->obj_id] = $entity->obj_id;
+                }
             }
         }
 
@@ -405,13 +407,14 @@ class Query {
             return array_values($entities);
         }
 
-        $notIn = count($entities) ? 'AND translation_of NOT IN ('.implode(array_keys($entities)).')' : '';
+        $notIn = count($entities) ? 'AND obj_id NOT IN ('.implode(array_keys($entities)).')' : '';
 
         global $wpdb;
 
         $this->logger->logQueryStart();
+        //SELECT DISTINCT translation_of, polyglot_ID, obj_id, obj_kind, obj_type, translation_locale
         $results = $wpdb->get_results($wpdb->prepare("
-            SELECT DISTINCT translation_of, polyglot_ID, obj_id, obj_kind, obj_type, translation_locale
+            SELECT *
             FROM {$wpdb->prefix}polyglot
             WHERE obj_kind = %s
             $notIn",
@@ -422,7 +425,7 @@ class Query {
         if (!is_null($results) && count($results)) {
             foreach ($this->rowsToEntities($results) as $entity) {
                 $this->cache->addEntity($entity);
-                $entities[(int)$entity->translation_of] = $entity;
+                $entities[(int)$entity->obj_id] = $entity->obj_id;
             }
         }
 

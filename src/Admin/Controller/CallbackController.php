@@ -51,9 +51,10 @@ class CallbackController extends BaseController {
     public function renderTaxonomyLocalizationColumn($out, $column, $termId)
     {
         if ($column === "polyglot_locales") {
-            $request = new Request();
+
+            $this->view->set("contextualPostType", $this->request->hasGet("post_type") ? $this->request->get("post_type") : "post");
             $this->view->set("obj_id", $termId);
-            $this->view->set("obj_type", $request->get("taxonomy"));
+            $this->view->set("obj_type", $this->request->get("taxonomy"));
             $this->render("buttonTranslator");
         }
     }

@@ -25,11 +25,11 @@
         </td>
         <td>
             <?php if ($locale->hasTermTranslation($objId, $originalTerm->taxonomy)) : ?>
-                <a class="button default-button" href="<?php echo $locale->getEditTermUrl($objId, $originalTerm->taxonomy); ?>">
+                <a class="button default-button" href="<?php echo $locale->getEditTermUrl($objId, $originalTerm->taxonomy, $contextualPostType); ?>">
                     <?php _e('Edit', 'polyglot'); ?>
                 </a>
             <?php else : ?>
-                <a class="button default-button" href="<?php echo $locale->getTranslateTermUrl($originalTerm); ?>">
+                <a class="button default-button" href="<?php echo $locale->getTranslateTermUrl($originalTerm, $contextualPostType); ?>">
                     <?php _e('Translate', 'polyglot'); ?>
                 </a>
             <?php endif; ?>

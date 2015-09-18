@@ -111,7 +111,7 @@ class QueryRewriter {
         $locale = $this->polyglot->getCurrentLocale();
 
         if ($locale->isDefault()) {
-            $matches = $this->polyglot->query()->listTranslatedIds("Term");
+            $matches = $this->polyglot->query()->listTranslatedEntitiesIds("Term");
         } else {
             $matches = $this->polyglot->query()->findTranslationIdsOf($locale, "Term");
         }
@@ -121,21 +121,14 @@ class QueryRewriter {
         }
 
         $termIds = array();
-        foreach ((array)$matches as $row) {
-            $termIds[] = (int)$row;
+        foreach ((array)$matches as $id) {
+            $termIds[] = (int)$id;
         }
 
         $localized = array();
-
         foreach ($terms as $term) {
 
-            $termIdToMatch = null;
-
-            if (is_string($term)) {
-                $termIdToMatch = $term;
-            } else {
-                $termIdToMatch = $term->term_id;
-            }
+            $termIdToMatch = is_string($term) ? $term : $term->term_id;
 
             if ((int)$termIdToMatch > 0) {
                 if ($locale->isDefault()) {
@@ -149,7 +142,6 @@ class QueryRewriter {
                 }
             }
         }
-
         return $localized;
     }
 
@@ -166,8 +158,8 @@ class QueryRewriter {
         // By excluding ids, we allow for fallback
         // to the default locales.
         $args['exclude'] = array();
-        foreach ((array)$matches as $row) {
-            $args['exclude'][] = $row->obj_id;
+        foreach ((array)$matches as $id) {
+            $args['exclude'][] = $id;
         }
 
         return $args;

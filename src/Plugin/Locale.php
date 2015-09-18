@@ -47,7 +47,6 @@ class Locale extends StrataLocale {
 
     public function hasPostTranslation($postId = null)
     {
-
         $postId = $this->proofId($postId);
         $tree = $this->getTranslationTree($postId);
 
@@ -83,10 +82,6 @@ class Locale extends StrataLocale {
 
     public function hasTermTranslation($termId, $taxname)
     {
-        if ($this->isDefault()) {
-            return false;
-        }
-
         $tree = $this->getTranslationTree($termId, "Term");
 
         // Tree will be null when a new term is being created.
@@ -94,7 +89,7 @@ class Locale extends StrataLocale {
             return $this->isDefault();
         }
 
-        return $tree->hasTranslationFor($this) || ($this->isDefault() && $tree->isTranslationSetOf($postId, "WP_Post"));
+        return $tree->hasTranslationFor($this, "Term") || ($this->isDefault() && $tree->isTranslationSetOf($termId, "Term"));
     }
 
     public function isTranslationOfTerm($termId, $taxname)
@@ -176,14 +171,26 @@ class Locale extends StrataLocale {
         return admin_url('post.php?post='.$postId.'&action=edit&locale=' . $this->getCode());
     }
 
-    public function getTranslateTermUrl($originalTerm)
+    public function getTranslateTermUrl($originalTerm, $contextualPostType = null)
     {
-        return admin_url('options-general.php?page=polyglot-plugin&polyglot_action=createTranslationDuplicate&object='.$originalTerm->term_id.'&objectKind=Term&objectType='.$originalTerm->taxonomy.'&locale='.$this->getCode());
+        $url = 'options-general.php?page=polyglot-plugin&polyglot_action=createTranslationDuplicate&object='.$originalTerm->term_id.'&objectKind=Term&objectType='.$originalTerm->taxonomy.'&locale='.$this->getCode();
+
+        if (is_null($contextualPostType)) {
+            return admin_url($url);
+        }
+
+        return admin_url($url . "&forwardPostType=" . $contextualPostType);
     }
 
-    public function getEditTermUrl($termId, $taxonomy)
+    public function getEditTermUrl($termId, $taxonomy, $contextualPostType = null)
     {
         $object = $this->getTranslatedTerm($termId, $taxonomy);
-        return admin_url('edit-tags.php?action=edit&taxonomy='.$object->taxonomy.'&tag_ID='.$object->term_id.'&post_type=post');
+        $url = 'edit-tags.php?action=edit&taxonomy='.$object->taxonomy.'&tag_ID='.$object->term_id;
+
+        if (is_null($contextualPostType)) {
+            return admin_url($url);
+        }
+
+        return admin_url($url . '&post_type=' . $contextualPostType);
     }
 }
