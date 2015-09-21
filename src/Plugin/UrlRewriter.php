@@ -175,7 +175,12 @@ class UrlRewriter {
                 $post = $translationEntity->loadAssociatedWPObject();
                 $postLocale = $this->polyglot->getLocaleByCode($translationEntity->translation_locale);
             }
+            elseif ($tree->isTranslationSetOf($postId, "WP_Post")) {
+                $post = get_post($tree->getId());
+                $postLocale = $this->polyglot->getDefaultLocale();
+            }
         }
+
 
         // We haven't found an associated post,
         // therefore the link provided is the correct one.
@@ -186,16 +191,14 @@ class UrlRewriter {
                 $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
                 return preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . "/" . $currentLocale->getUrl(), $postLink);
             }
-
             return $postLink;
         }
 
-        if (isset($postLocale) && !$postLocale->isDefault()) {
-            $translation = $postLocale->getTranslatedPost($post->ID);
-            if ($translation && $translation->post_type !== "revision") {
+        if (isset($postLocale)) {
+            if ($post && $post->post_type !== "revision") {
                 $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
-
-                $localizedUrl = preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . "/" . $postLocale->getUrl(), $postLink);
+                $replacementUrl = $postLocale->isDefault() ? '' : "/" . $postLocale->getUrl();
+                $localizedUrl = preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . $replacementUrl, $postLink);
 
                 // We have a translated url, but if it happens to be the homepage we
                 // need to remove the slug

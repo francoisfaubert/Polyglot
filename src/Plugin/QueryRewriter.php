@@ -65,16 +65,6 @@ class QueryRewriter {
         return $clause;
     }
 
-    // public function notAPolyglotPost($where = '')
-    // {
-    //     global $wpdb;
-    //     return $where . $wpdb->prepare(" AND {$wpdb->prefix}posts.ID NOT IN (
-    //             SELECT obj_id
-    //             FROM {$wpdb->prefix}polyglot
-    //             WHERE obj_kind = %s
-    //         ) ", "WP_Post");
-    // }
-
     public function inPolyglotPosts($where = '')
     {
         $locale = $this->polyglot->getCurrentLocale();

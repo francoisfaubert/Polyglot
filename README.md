@@ -11,6 +11,8 @@ $strata = array(
     "custom-post-types" => array(),
 
     "i18n" => array(
+        "textdomain" => "my_website",
+        "default_locale_fallback" => true,
         "locales" => array(
             "en_CA" => array("nativeLabel" => "English", "default" => true),
             "fr_CA" => array("nativeLabel" => "Français", "url" => "francais"),
@@ -34,8 +36,9 @@ This early in the creation of the plugin, in lieu of actual documentation, here 
 
 <ul>
 <?php foreach ($polyglot->getLocales() as $locale) : ?>
-    <?php if ($locale->hasTranslation()) : ?>
-        <li><a href="<?php echo $locale->getTranslationPermalink(); ?>" hreflang="<?php echo $locale->getCode(); ?>"><?php echo $locale->getTranslationTitle(); ?></a></li>
+    <?php if ($locale->hasTranslation()) :
+        $localizedPost = $locale->getTranslatedPost(); ?>
+        <li><a href="<?php echo get_permalink($localizedPost->ID); ?>" hreflang="<?php echo $locale->getCode(); ?>"><?php echo $localizedPost->post_title; ?></a></li>
     <?php endif; ?>
 <?php endforeach; ?>
 </ul>
