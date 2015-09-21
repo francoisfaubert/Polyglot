@@ -47,9 +47,15 @@ class UrlRewriter {
     {
         $defaultLocale = $this->polyglot->getDefaultLocale();
         $currentLocale = $this->polyglot->getCurrentLocale();
-        $originalPost = $defaultLocale->getTranslatedPost();
 
-        if ($originalPost) {
+        $originalPost = $defaultLocale->getTranslatedPost();
+        $localizedPost = $currentLocale->getTranslatedPost();
+
+        // Validate the presence of a localized version because we could
+        // be in fallback to the original post.
+        // When in fallback mode, we must send the original url stripped
+        // locale code which is meaningless at that point.
+        if ($this->isLocalizedPost($originalPost, $localizedPost) || $this->isFallbackPost($originalPost, $localizedPost)) {
 
             // Get permalink will append the current locale url when
             // the configuration allows locales to present content form
@@ -66,6 +72,17 @@ class UrlRewriter {
 
         return $routedUrl;
     }
+
+    private function isLocalizedPost($originalPost, $localizedPost)
+    {
+        return !is_null($originalPost) && !is_null($localizedPost);
+    }
+
+    private function isFallbackPost($originalPost, $localizedPost)
+    {
+        return !is_null($originalPost) && is_null($localizedPost);
+    }
+
 
     /**
      * Declares the query parameter for the locale.
@@ -134,17 +151,6 @@ class UrlRewriter {
             }
         }
 
-        // When there's no localized hoempage but we have to fallback to the
-        // default locale, then
-        if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback")) {
-            // doesn't work.
-            // global $post;
-            // $post = get_post($homepageId);
-            // setup_postdata($post);
-            // exit;
-            // debug($post);
-        }
-
     }
 
     /**
@@ -176,11 +182,9 @@ class UrlRewriter {
         if (is_null($post)) {
             // Before leaving, check if we are expected to build localized urls when
             // the page does not exist.
-            if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback")) {
-                if (!$currentLocale->isDefault()) {
-                    $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
-                    return preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . "/" . $currentLocale->getUrl(), $postLink);
-                }
+            if ($this->shouldFallbackToDefault() && !$currentLocale->isDefault()) {
+                $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
+                return preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . "/" . $currentLocale->getUrl(), $postLink);
             }
 
             return $postLink;
@@ -200,7 +204,9 @@ class UrlRewriter {
                 // Check for a localized homepage
                 if ($currentLocale->isTranslationOfPost($homepageId)) {
                     $localizedPage = $currentLocale->getTranslatedPost($homepageId);
-                    $localizedUrl = str_replace($localizedPage->post_name . "/", "", $localizedUrl);
+                    if ($localizedPage) {
+                        $localizedUrl = str_replace($localizedPage->post_name . "/", "", $localizedUrl);
+                    }
                 }
 
                 return $localizedUrl;
@@ -226,6 +232,10 @@ class UrlRewriter {
         return $termLink;
     }
 
+    private function shouldFallbackToDefault()
+    {
+        return (bool)Strata::app()->getConfig("i18n.default_locale_fallback");
+    }
 
     private function getLocaleUrls()
     {
@@ -272,14 +282,22 @@ class UrlRewriter {
     private function addHomepagesRules()
     {
         $homepageId = $this->polyglot->query()->getDefaultHomepageId();
+        $defaultLocale = $this->polyglot->getDefaultLocale();
 
         foreach ($this->polyglot->getLocales() as $locale) {
-            $localizedPage = $locale->getTranslatedPost($homepageId);
-            if (!is_null($localizedPage)) {
-                $pagename = $localizedPage->post_name;
-                $url = $locale->getUrl();
-                add_rewrite_rule("$url/?$", "index.php?pagename=$pagename", "top");
-                add_rewrite_rule("index.php/$url/?$", "index.php?pagename=$pagename", "top");
+            if (!$locale->isDefault()) {
+                $localizedPage = $locale->getTranslatedPost($homepageId);
+
+                if (is_null($localizedPage) && $this->shouldFallbackToDefault()) {
+                    $localizedPage = $defaultLocale->getTranslatedPost($homepageId);
+                }
+
+                if (!is_null($localizedPage)) {
+                    $pagename = $localizedPage->post_name;
+                    $url = $locale->getUrl();
+                    add_rewrite_rule("$url/?$", "index.php?pagename=$pagename", "top");
+                    add_rewrite_rule("index.php/$url/?$", "index.php?pagename=$pagename", "top");
+                }
             }
         }
     }

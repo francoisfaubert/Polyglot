@@ -8,6 +8,7 @@ use Strata\I18n\I18n;
 use Polyglot\Plugin\Polyglot;
 use Polyglot\Plugin\Locale;
 use Polyglot\Plugin\Db\Query;
+use Polyglot\Plugin\Db\Logger;
 
 use WP_Post;
 use Exception;
@@ -15,10 +16,12 @@ use Exception;
 class QueryRewriter {
 
     private $polyglot = null;
+    private $logger = null;
 
     function __construct()
     {
         $this->polyglot = Polyglot::instance();
+        $this->logger = new Logger();
     }
 
     public function registerHooks()
@@ -62,15 +65,15 @@ class QueryRewriter {
         return $clause;
     }
 
-    public function notAPolyglotPost($where = '')
-    {
-        global $wpdb;
-        return $where . $wpdb->prepare(" AND {$wpdb->prefix}posts.ID NOT IN (
-                SELECT obj_id
-                FROM {$wpdb->prefix}polyglot
-                WHERE obj_kind = %s
-            ) ", "WP_Post");
-    }
+    // public function notAPolyglotPost($where = '')
+    // {
+    //     global $wpdb;
+    //     return $where . $wpdb->prepare(" AND {$wpdb->prefix}posts.ID NOT IN (
+    //             SELECT obj_id
+    //             FROM {$wpdb->prefix}polyglot
+    //             WHERE obj_kind = %s
+    //         ) ", "WP_Post");
+    // }
 
     public function inPolyglotPosts($where = '')
     {
@@ -86,21 +89,68 @@ class QueryRewriter {
 
     public function preGetPosts($query)
     {
-        $locale = $this->polyglot->getCurrentLocale();
-        $postIds = array();
+        if ($query->is_main_query()) {
 
-        if (is_admin() || $locale->isDefault()) {
-            add_filter('posts_where', array($this, 'notAPolyglotPost'));
-        } else {
+            $currentLocale = $this->polyglot->getCurrentLocale();
 
-            if ($query->is_main_query()) {
-                $postIds = $this->polyglot->query()->findTranslationIdsOf($locale, "WP_Post");
+            // In the backend of when we are in the default locale,
+            // prevent non-localized posts to show up. The correct way
+            // to access these would be through the Locale objects.
+            if (is_admin() || $currentLocale->isDefault()) {
 
-                // I know this doesn't really work out, but I think I can get
-                // away with that kind of filtering for now. I think this will break
-                // natural WP archives in which the same, bilingual results may appear
-                if (!(bool)Strata::app()->getConfig("i18n.default_locale_fallback")) {
-                    $query->set("post__in", $postIds);
+                $this->logger->logQueryStart();
+                $localizedPostIds = $this->polyglot->query()->listTranslatedEntitiesIds();
+                if (count($localizedPostIds)) {
+                    $query->set("post__not_in", $localizedPostIds);
+                    $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $localizedPostIds) . ")");
+                }
+
+            } else {
+
+                $currentTranslations = $this->polyglot->query()->findLocaleTranslations($currentLocale, "WP_Post");
+                $this->logger->logQueryStart();
+
+                if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback")) {
+
+                    // Collect all locales that aren't the current one and prevent them.
+                    // This massive filter allows for default posts and the properly localized
+                    // ones to show.
+                    $otherTranslations = array();
+
+                    foreach ($this->polyglot->getLocales() as $locale) {
+                        if ($locale->getCode() !== $currentLocale->getCode()) {
+                            $otherTranslations += $this->polyglot->query()->findLocaleTranslations($locale, "WP_Post");
+                        }
+                    }
+
+                    $notIn = array();
+                    if (count($otherTranslations)) {
+                        foreach ($otherTranslations as $translationEntity) {
+                            $notIn[] = $translationEntity->obj_id;
+                        }
+                    }
+
+                    // At the moment, we have filtered out other languages. There are duplicates
+                    // because we have to prevent the translated posts to appear.
+                    foreach ($currentTranslations as $translationEntity) {
+                        $notIn[] = $translationEntity->translation_of;
+                    }
+
+                    if (count($notIn)) {
+                        $query->set("post__not_in", $notIn);
+                        $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $notIn) . ")");
+                    }
+
+                // When we don't have to fallback, force the posts from the current locale.
+                } else {
+                    $in = array();
+                    foreach ($currentTranslations as $translationEntity) {
+                        $in[] = $translationEntity->obj_id;
+                    }
+                    if (count($in)) {
+                        $query->set("post__in", $in);
+                        $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID IN (" . implode(", ", $in) . ")");
+                    }
                 }
             }
         }

@@ -154,31 +154,6 @@ class Query {
     }
 
     /**
-     * Returns a cached reference of a post.
-     * @param  int $id
-     * @return TranslationEntity
-     */
-    // public function findPostById($id)
-    // {
-    //     if($this->cacheIsComplete() || $this->cache->idWasCached($id, 'WP_Post')) {
-    //         $cached = $this->cache->findByOriginalObject($id, 'WP_Post');
-    //         if (!is_null($cached)) {
-    //             return $cached;
-    //         }
-    //     }
-
-    //     $entity = $this->findDetailsById($id, "WP_Post");
-
-    //     // This gets useful while creating new references
-    //     if (is_null($entity)) {
-    //         $entity = new PostTranslationEntity((object)["obj_id" => (int)$id]);
-    //         $this->cache->addEntity($entity);
-    //     }
-
-    //     return $entity;
-    // }
-
-    /**
      * Returns a cached reference of a loaded term.
      * @param  int $id
      * @param  string $type The type of the term (ex: category)
@@ -307,7 +282,7 @@ class Query {
     }
 
 
-    public function findTranslationIdsOf($locale, $kind = "WP_Post")
+    public function findLocaleTranslations($locale, $kind = "WP_Post")
     {
         $data = array();
         $localeCode = $locale->getCode();
@@ -317,7 +292,7 @@ class Query {
         foreach ($this->cache->getByKind($kind) as $translationOf => $entities) {
             foreach ($entities as $entity) {
                 if ($entity->translation_locale === $localeCode) {
-                    $data[(int)$entity->polyglot_ID] = $entity->obj_id;
+                    $data[(int)$entity->polyglot_ID] = $entity;
                 }
             }
         }
@@ -346,7 +321,7 @@ class Query {
             $entities = $this->rowsToEntities($results);
             foreach ($entities as $entity) {
                 $this->cache->addEntity($entity);
-                $data[(int)$entity->polyglot_ID] = $entity->obj_id;
+                $data[(int)$entity->polyglot_ID] = $entity;
             }
         }
 
@@ -412,7 +387,6 @@ class Query {
         global $wpdb;
 
         $this->logger->logQueryStart();
-        //SELECT DISTINCT translation_of, polyglot_ID, obj_id, obj_kind, obj_type, translation_locale
         $results = $wpdb->get_results($wpdb->prepare("
             SELECT *
             FROM {$wpdb->prefix}polyglot

@@ -14,13 +14,13 @@ class Logger extends StrataLogger {
         $this->executionStart = microtime(true);
     }
 
-    public function logQueryCompletion($sql, $hitCache = false)
+    public function logQueryCompletion($sql)
     {
         $executionTime = microtime(true) - $this->executionStart;
         $timer = sprintf(" (Done in %s seconds)", round($executionTime, 4));
         $oneLine = preg_replace('/\s+/', ' ', trim($sql));
 
-        $label = $hitCache ? "[Plugins:Polyglot:Cache]" : "[Plugins:Polyglot:Query]";
+        $label = "[Plugins:Polyglot:Query]";
         $this->log($oneLine . $timer, $label);
     }
 }
