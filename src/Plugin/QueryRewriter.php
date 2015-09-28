@@ -156,7 +156,10 @@ class QueryRewriter {
         if ($locale->isDefault()) {
             $termIds = $this->polyglot->query()->listTranslatedEntitiesIds("Term");
         } else {
-            $termIds = $this->polyglot->query()->findTranslationIdsOf($locale, "Term");
+            $termIds = array();
+            foreach ($this->polyglot->query()->findLocaleTranslations($locale, "Term") as $translation) {
+                $termIds[] = $translation->obj_id;
+            }
         }
 
         if (!count($termIds)) {
