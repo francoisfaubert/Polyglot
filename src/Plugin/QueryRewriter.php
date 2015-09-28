@@ -79,7 +79,7 @@ class QueryRewriter {
 
     public function preGetPosts($query)
     {
-        if ($query->is_main_query()) {
+        // if ($query->is_main_query()) {
 
             $currentLocale = $this->polyglot->getCurrentLocale();
 
@@ -91,8 +91,8 @@ class QueryRewriter {
                 $this->logger->logQueryStart();
                 $localizedPostIds = $this->polyglot->query()->listTranslatedEntitiesIds();
                 if (count($localizedPostIds)) {
-                    $query->set("post__not_in", $localizedPostIds);
-                    $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $localizedPostIds) . ")");
+                    $query->set("post__not_in", array_merge($query->get("post__not_in"), $localizedPostIds));
+                    #$this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $localizedPostIds) . ")");
                 }
 
             } else {
@@ -127,8 +127,8 @@ class QueryRewriter {
                     }
 
                     if (count($notIn)) {
-                        $query->set("post__not_in", $notIn);
-                        $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $notIn) . ")");
+                        $query->set("post__not_in", array_merge($query->get("post__not_in"), $notIn));
+                       # $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $notIn) . ")");
                     }
 
                 // When we don't have to fallback, force the posts from the current locale.
@@ -138,12 +138,12 @@ class QueryRewriter {
                         $in[] = $translationEntity->obj_id;
                     }
                     if (count($in)) {
-                        $query->set("post__in", $in);
-                        $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID IN (" . implode(", ", $in) . ")");
+                        $query->set("post__in", array_merge($query->get("post__in"), $in));
+                       # $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID IN (" . implode(", ", $in) . ")");
                     }
                 }
             }
-        }
+        // }
 
         return $query;
     }
