@@ -79,7 +79,7 @@ class QueryRewriter {
 
     public function preGetPosts($query)
     {
-        // if ($query->is_main_query()) {
+        if ($query->is_main_query()) {
 
             $currentLocale = $this->polyglot->getCurrentLocale();
 
@@ -91,8 +91,8 @@ class QueryRewriter {
                 $this->logger->logQueryStart();
                 $localizedPostIds = $this->polyglot->query()->listTranslatedEntitiesIds();
                 if (count($localizedPostIds)) {
-                    $query->set("post__not_in", array_merge($query->get("post__not_in"), $localizedPostIds));
-                    #$this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $localizedPostIds) . ")");
+                    $query->set("post__not_in", $localizedPostIds);
+                    $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $localizedPostIds) . ")");
                 }
 
             } else {
@@ -127,8 +127,8 @@ class QueryRewriter {
                     }
 
                     if (count($notIn)) {
-                        $query->set("post__not_in", array_merge($query->get("post__not_in"), $notIn));
-                       # $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $notIn) . ")");
+                        $query->set("post__not_in", $notIn);
+                        $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $notIn) . ")");
                     }
 
                 // When we don't have to fallback, force the posts from the current locale.
@@ -138,12 +138,12 @@ class QueryRewriter {
                         $in[] = $translationEntity->obj_id;
                     }
                     if (count($in)) {
-                        $query->set("post__in", array_merge($query->get("post__in"), $in));
-                       # $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID IN (" . implode(", ", $in) . ")");
+                        $query->set("post__in", $in);
+                        $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID IN (" . implode(", ", $in) . ")");
                     }
                 }
             }
-        // }
+        }
 
         return $query;
     }
@@ -156,10 +156,7 @@ class QueryRewriter {
         if ($locale->isDefault()) {
             $termIds = $this->polyglot->query()->listTranslatedEntitiesIds("Term");
         } else {
-            $termIds = array();
-            foreach ($this->polyglot->query()->findLocaleTranslations($locale, "Term") as $translation) {
-                $termIds[] = $translation->obj_id;
-            }
+            $termIds = $this->polyglot->query()->findTranslationIdsOf($locale, "Term");
         }
 
         if (!count($termIds)) {
@@ -275,8 +272,12 @@ class QueryRewriter {
                     // Assign either the original term as backup or the localized
                     // term.
                     foreach (wp_get_post_terms($postId, $taxonomy) as $term) {
-                        $translatedTerm = $locale->getTranslatedTerm($term->term_id, $taxonomy);
-                        wp_add_object_terms($postId, $translatedTerm ? $translatedTerm->term_id : $term->term_id, $taxonomy);
+                        if ($term && !array_key_exists('invalid_taxonomy', $term)) {
+                            $translatedTerm = $locale->getTranslatedTerm($term->term_id, $taxonomy);
+                            if ($translatedTerm) {
+                                wp_add_object_terms($postId, $translatedTerm ? $translatedTerm->term_id : $term->term_id, $taxonomy);
+                            }
+                        }
                     }
                 }
             }
