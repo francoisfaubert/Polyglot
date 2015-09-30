@@ -203,38 +203,36 @@ class WordpressAdaptor {
      */
     public function appendHeaderHtml()
     {
-        $metatags = array();
+        $alternates = array();
+        $canonicals = array();
         $currentPost = get_post();
 
         if ($currentPost) {
             foreach ($this->polyglot->getLocales() as $locale) {
-
-                // When there's a translation, we only need the alternate
                 if ($locale->hasPostTranslation($currentPost->ID)) {
                     $translatedPost = $locale->getTranslatedPost($currentPost->ID);
                     if ($translatedPost && $translatedPost->post_status === "publish") {
-                        $metatags[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(),  get_permalink($translatedPost->ID));
-                    }
+                       $alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(),  get_permalink($translatedPost->ID));
+                   }
                 } else {
-
-                    // When there's not translation but this is the default locale, no need for canonical yet.
-                    if ($locale->isDefault()) {
-                        $translatedPost = $locale->getTranslatedPost($currentPost->ID);
-                        if ($translatedPost && $translatedPost->post_status === "publish") {
-                            $metatags[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(),  get_permalink($translatedPost->ID));
-                        }
-
                     // When we are fallbacking to default local on missing content but this
                     // is not the default locale, we need canonicals too.
-                    } elseif ((bool)Strata::app()->getConfig("i18n.default_locale_fallback") && $currentPost->post_status === "publish") {
-                        $link = WP_HOME . "/" . $locale->getUrl() . "/" . $currentPost->post_name;
-                        $metatags[] = sprintf('<link rel="canonical" href="%s">', $link);
+                    if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback") && $currentPost->post_status === "publish") {
+                        $defaultLocale = $this->polyglot->getDefaultLocale();
+                        $originalPost = $defaultLocale->getTranslatedPost($currentPost->ID);
+                        $originalUrl = get_permalink($originalPost);
+                        $localizedFakeUrl = str_replace(WP_HOME . "/", WP_HOME . "/" . $locale->getUrl() . "/", $originalUrl);
+
+                        $alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $localizedFakeUrl);
+                        $canonicals[] = sprintf('<link rel="canonical" href="%s">', $localizedFakeUrl);
                     }
                 }
             }
         }
 
-        echo implode("\n", $metatags) . "\n";
+        echo
+            implode("\n", $alternates) . "\n" .
+            implode("\n", $canonicals) . "\n";
     }
 
     protected function getPluginLocalePath()

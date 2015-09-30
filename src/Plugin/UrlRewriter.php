@@ -163,7 +163,6 @@ class UrlRewriter {
      */
     public function postLink($postLink, $mixed = 0)
     {
-        $currentLocale = $this->polyglot->getCurrentLocale();
         $postId = is_object($mixed) ? $mixed->ID : $mixed;
 
         // Try to find an associated post translation.
@@ -171,14 +170,13 @@ class UrlRewriter {
         if ($tree) {
             $translationEntity = $tree->getTranslatedObject($postId, "WP_Post");
             if ($translationEntity) {
-
                 $post = $translationEntity->loadAssociatedWPObject();
                 $postLocale = $this->polyglot->getLocaleByCode($translationEntity->translation_locale);
-
                 if (!is_null($postLocale) && !is_null($post) && !wp_is_post_revision($post->ID)) {
                     return $this->parseLocalizablePostLink($postLink, $post, $postLocale);
-                    // return $this->localizeParentSlugs($localized, get_ancestors($postId, $post->post_type));
                 }
+            } elseif ($tree->isTranslationSetOf($postId, "WP_Post") && !wp_is_post_revision($postId)) {
+                return $this->parseLocalizablePostLink($postLink, get_post($postId), $this->polyglot->getDefaultLocale());
             }
         }
 
@@ -204,7 +202,6 @@ class UrlRewriter {
 
     protected function parseLocalizablePostLink($postLink, $post, $postLocale)
     {
-        $currentLocale = $this->polyglot->getCurrentLocale();
         $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
         $replacementUrl = $postLocale->isDefault() ? '' : "/" . $postLocale->getUrl();
         $localizedUrl = preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . $replacementUrl, $postLink);
@@ -230,26 +227,6 @@ class UrlRewriter {
         return $url;
     }
 
-    // protected function localizeParentSlugs($url, $ancestors)
-    // {
-    //     if (count($ancestors)) {
-    //         $currentLocale = $this->polyglot->getCurrentLocale();
-    //         $defaultLocale = $this->polyglot->getDefaultLocale();
-
-    //         foreach ($ancestors as $ancestorID) {
-    //             if ($currentLocale->hasPostTranslation($ancestorID)) {
-    //                 $translation = $currentLocale->getTranslatedPost($ancestorID);
-    //                 $original = $defaultLocale->getTranslatedPost($ancestorID);
-
-    //                 // debug($original->post_name, $translation->post_name, $url);
-    //                 $url = str_replace($original->post_name, $translation->post_name, $url);
-    //             }
-    //         }
-    //     }
-
-    //     return $url;
-    // }
-
     public function parentPreEdit($parent_post_id, $post_id)
     {
         $currentLocale = $this->polyglot->getCurrentLocale();
@@ -260,7 +237,6 @@ class UrlRewriter {
 
         return $parent_post_id;
     }
-
 
     public function termLink($termLink)
     {
