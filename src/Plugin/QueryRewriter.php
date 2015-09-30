@@ -37,7 +37,8 @@ class QueryRewriter {
             add_filter('get_terms_args', array($this, 'getTermsArgs'), 10, 2);
         }
 
-        add_action('save_post', array($this, 'localizePostTerms'), 1, 3 );
+        add_action('save_post', array($this, 'localizePostTerms'), 1, 3);
+        add_filter('wp_insert_post_data', array($this, 'localizeParentId'), 10, 2);
         add_action('created_term', array($this, 'localizeExistingTerms'), 1, 3);
     }
 
@@ -65,82 +66,67 @@ class QueryRewriter {
         return $clause;
     }
 
-    public function inPolyglotPosts($where = '')
-    {
-        $locale = $this->polyglot->getCurrentLocale();
-        global $wpdb;
-        return $where . $wpdb->prepare(" AND {$wpdb->prefix}posts.ID IN (
-            SELECT obj_id
-            FROM {$wpdb->prefix}polyglot
-            WHERE translation_locale = %s
-            AND  obj_kind = %s
-        )", $locale->getCode(), "WP_Post" );
-    }
-
     public function preGetPosts($query)
     {
-        if ($query->is_main_query()) {
+        $currentLocale = $this->polyglot->getCurrentLocale();
 
-            $currentLocale = $this->polyglot->getCurrentLocale();
+        // In the backend of when we are in the default locale,
+        // prevent non-localized posts to show up. The correct way
+        // to access these would be through the Locale objects.
+        if (is_admin() || $currentLocale->isDefault()) {
 
-            // In the backend of when we are in the default locale,
-            // prevent non-localized posts to show up. The correct way
-            // to access these would be through the Locale objects.
-            if (is_admin() || $currentLocale->isDefault()) {
+            $this->logger->logQueryStart();
+            $localizedPostIds = $this->polyglot->query()->listTranslatedEntitiesIds();
+            if (count($localizedPostIds)) {
+                $query->set("post__not_in", array_merge($query->get("post__not_in"), $localizedPostIds));
+                #$this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $localizedPostIds) . ")");
+            }
 
-                $this->logger->logQueryStart();
-                $localizedPostIds = $this->polyglot->query()->listTranslatedEntitiesIds();
-                if (count($localizedPostIds)) {
-                    $query->set("post__not_in", $localizedPostIds);
-                    $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $localizedPostIds) . ")");
+        } else {
+
+            $currentTranslations = $this->polyglot->query()->findLocaleTranslations($currentLocale, "WP_Post");
+            $this->logger->logQueryStart();
+
+            if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback")) {
+
+                // Collect all locales that aren't the current one and prevent them.
+                // This massive filter allows for default posts and the properly localized
+                // ones to show.
+                $otherTranslations = array();
+
+                foreach ($this->polyglot->getLocales() as $locale) {
+                    if ($locale->getCode() !== $currentLocale->getCode()) {
+                        $otherTranslations += $this->polyglot->query()->findLocaleTranslations($locale, "WP_Post");
+                    }
                 }
 
+                $notIn = array();
+                if (count($otherTranslations)) {
+                    foreach ($otherTranslations as $translationEntity) {
+                        $notIn[] = $translationEntity->obj_id;
+                    }
+                }
+
+                // At the moment, we have filtered out other languages. There are duplicates
+                // because we have to prevent the translated posts to appear.
+                foreach ($currentTranslations as $translationEntity) {
+                    $notIn[] = $translationEntity->translation_of;
+                }
+
+                if (count($notIn)) {
+                    $query->set("post__not_in", array_merge($query->get("post__not_in"), $notIn));
+                   # $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $notIn) . ")");
+                }
+
+            // When we don't have to fallback, force the posts from the current locale.
             } else {
-
-                $currentTranslations = $this->polyglot->query()->findLocaleTranslations($currentLocale, "WP_Post");
-                $this->logger->logQueryStart();
-
-                if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback")) {
-
-                    // Collect all locales that aren't the current one and prevent them.
-                    // This massive filter allows for default posts and the properly localized
-                    // ones to show.
-                    $otherTranslations = array();
-
-                    foreach ($this->polyglot->getLocales() as $locale) {
-                        if ($locale->getCode() !== $currentLocale->getCode()) {
-                            $otherTranslations += $this->polyglot->query()->findLocaleTranslations($locale, "WP_Post");
-                        }
-                    }
-
-                    $notIn = array();
-                    if (count($otherTranslations)) {
-                        foreach ($otherTranslations as $translationEntity) {
-                            $notIn[] = $translationEntity->obj_id;
-                        }
-                    }
-
-                    // At the moment, we have filtered out other languages. There are duplicates
-                    // because we have to prevent the translated posts to appear.
-                    foreach ($currentTranslations as $translationEntity) {
-                        $notIn[] = $translationEntity->translation_of;
-                    }
-
-                    if (count($notIn)) {
-                        $query->set("post__not_in", $notIn);
-                        $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $notIn) . ")");
-                    }
-
-                // When we don't have to fallback, force the posts from the current locale.
-                } else {
-                    $in = array();
-                    foreach ($currentTranslations as $translationEntity) {
-                        $in[] = $translationEntity->obj_id;
-                    }
-                    if (count($in)) {
-                        $query->set("post__in", $in);
-                        $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID IN (" . implode(", ", $in) . ")");
-                    }
+                $in = array();
+                foreach ($currentTranslations as $translationEntity) {
+                    $in[] = $translationEntity->obj_id;
+                }
+                if (count($in)) {
+                    $query->set("post__in", array_merge($query->get("post__in"), $in));
+                   # $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID IN (" . implode(", ", $in) . ")");
                 }
             }
         }
@@ -156,7 +142,10 @@ class QueryRewriter {
         if ($locale->isDefault()) {
             $termIds = $this->polyglot->query()->listTranslatedEntitiesIds("Term");
         } else {
-            $termIds = $this->polyglot->query()->findTranslationIdsOf($locale, "Term");
+            $termIds = array();
+            foreach ($this->polyglot->query()->findLocaleTranslations($locale, "Term") as $translation) {
+                $termIds[] = $translation->obj_id;
+            }
         }
 
         if (!count($termIds)) {
@@ -248,14 +237,47 @@ class QueryRewriter {
     }
 
     /**
+     * When saving a post, validates the sent data to ensure the localized
+     * post parent is saved upon saving a localized sub-post.
+     * @see wp_insert_post_data
+     * @param  array $data    Inserted data
+     * @param  array $postarr Working data
+     * @return array
+     */
+    public function localizeParentId($data , $postarr)
+    {
+        if (array_key_exists("ID", $postarr)) {
+            $currentLocale = $this->polyglot->getCurrentLocale();
+            $defaultLocale = $this->polyglot->getDefaultLocale();
+            if (!$currentLocale->isDefault()) {
+
+                // Check the default locale's post for a parent id. If there's a
+                // parent id, then try to find if it has a translation. If it does,
+                // that we've finally found what is the correct parent id.
+                $translation = $defaultLocale->getTranslatedPost($postarr['ID']);
+                if ($translation && (int)$translation->post_parent > 0) {
+                    $parentPostTranslation = $currentLocale->getTranslatedPost($translation->post_parent);
+                    if ($parentPostTranslation) {
+                        $data["post_parent"] = $parentPostTranslation->ID;
+                    }
+                }
+            }
+        }
+
+        return $data;
+    }
+
+
+    /**
      * @param int $postId The post ID.
      * @param post $post The post object.
      * @param bool $update Whether this is an existing post being updated or not.
      */
     public function localizePostTerms($postId)
     {
-        if (wp_is_post_revision($postId))
+        if (wp_is_post_revision($postId)) {
             return;
+        }
 
         $configuration = $this->polyglot->getConfiguration();
         $locale = $this->polyglot->getDefaultLocale();
@@ -272,12 +294,8 @@ class QueryRewriter {
                     // Assign either the original term as backup or the localized
                     // term.
                     foreach (wp_get_post_terms($postId, $taxonomy) as $term) {
-                        if ($term && !array_key_exists('invalid_taxonomy', $term)) {
-                            $translatedTerm = $locale->getTranslatedTerm($term->term_id, $taxonomy);
-                            if ($translatedTerm) {
-                                wp_add_object_terms($postId, $translatedTerm ? $translatedTerm->term_id : $term->term_id, $taxonomy);
-                            }
-                        }
+                        $translatedTerm = $locale->getTranslatedTerm($term->term_id, $taxonomy);
+                        wp_add_object_terms($postId, $translatedTerm ? $translatedTerm->term_id : $term->term_id, $taxonomy);
                     }
                 }
             }

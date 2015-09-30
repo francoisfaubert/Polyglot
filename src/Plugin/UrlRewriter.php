@@ -28,8 +28,9 @@ class UrlRewriter {
         add_filter('query_vars', array($this, 'addQueryVars'));
         add_filter('term_link', array($this, 'termLink'));
 
-        if (!is_admin()) {
-
+        if (is_admin()) {
+            // add_filter( 'parent_edit_pre', array($this, "parentPreEdit"), 10, 2 );
+        } else {
             $locale = $this->polyglot->getCurrentLocale();
             if (!$locale->isDefault()) {
                 add_action('strata_on_before_url_routing', array($this, "runOriginalRoute"), 1, 1);
@@ -162,62 +163,104 @@ class UrlRewriter {
      */
     public function postLink($postLink, $mixed = 0)
     {
-        $post = null;
-        $postLocale = null;
         $currentLocale = $this->polyglot->getCurrentLocale();
+        $postId = is_object($mixed) ? $mixed->ID : $mixed;
 
         // Try to find an associated post translation.
-        $postId = is_object($mixed) ? $mixed->ID : $mixed;
         $tree = $this->getTranslationTree($postId);
         if ($tree) {
             $translationEntity = $tree->getTranslatedObject($postId, "WP_Post");
             if ($translationEntity) {
+
                 $post = $translationEntity->loadAssociatedWPObject();
                 $postLocale = $this->polyglot->getLocaleByCode($translationEntity->translation_locale);
-            }
-            elseif ($tree->isTranslationSetOf($postId, "WP_Post")) {
-                $post = get_post($tree->getId());
-                $postLocale = $this->polyglot->getDefaultLocale();
+
+                if (!is_null($postLocale) && !is_null($post) && !wp_is_post_revision($post->ID)) {
+                    return $this->parseLocalizablePostLink($postLink, $post, $postLocale);
+                    // return $this->localizeParentSlugs($localized, get_ancestors($postId, $post->post_type));
+                }
             }
         }
-
 
         // We haven't found an associated post,
         // therefore the link provided is the correct one.
-        if (is_null($post)) {
-            // Before leaving, check if we are expected to build localized urls when
-            // the page does not exist.
-            if ($this->shouldFallbackToDefault() && !$currentLocale->isDefault()) {
-                $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
-                return preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . "/" . $currentLocale->getUrl(), $postLink);
-            }
-            return $postLink;
-        }
+        return $this->parseIgnoredPostLink($postLink);
+    }
 
-        if (isset($postLocale)) {
-            if ($post && $post->post_type !== "revision") {
-                $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
-                $replacementUrl = $postLocale->isDefault() ? '' : "/" . $postLocale->getUrl();
-                $localizedUrl = preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . $replacementUrl, $postLink);
+    protected function parseIgnoredPostLink($postLink)
+    {
+        $currentLocale = $this->polyglot->getCurrentLocale();
 
-                // We have a translated url, but if it happens to be the homepage we
-                // need to remove the slug
-                $homepageId = $this->polyglot->query()->getDefaultHomepageId();
-
-                // Check for a localized homepage
-                if ($currentLocale->isTranslationOfPost($homepageId)) {
-                    $localizedPage = $currentLocale->getTranslatedPost($homepageId);
-                    if ($localizedPage) {
-                        $localizedUrl = str_replace($localizedPage->post_name . "/", "", $localizedUrl);
-                    }
-                }
-
-                return $localizedUrl;
-            }
+        // Before leaving, check if we are expected to build localized urls when
+        // the page does not exist. This ensures the default content is displayed as-if it
+        // was a localization of the current locale. (ex: en_US could be the invisible fallback for en_CA).
+        if ($this->shouldFallbackToDefault() && !$currentLocale->isDefault()) {
+            $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
+            return preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . "/" . $currentLocale->getUrl(), $postLink);
         }
 
         return $postLink;
     }
+
+    protected function parseLocalizablePostLink($postLink, $post, $postLocale)
+    {
+        $currentLocale = $this->polyglot->getCurrentLocale();
+        $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
+        $replacementUrl = $postLocale->isDefault() ? '' : "/" . $postLocale->getUrl();
+        $localizedUrl = preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . $replacementUrl, $postLink);
+
+        // We have a translated url, but if it happens to be the homepage we
+        // need to remove the slug
+        return $this->removeLocaleHomeKeys($localizedUrl);
+    }
+
+    protected function removeLocaleHomeKeys($url)
+    {
+        $homepageId = $this->polyglot->query()->getDefaultHomepageId();
+        $currentLocale = $this->polyglot->getCurrentLocale();
+
+        // Check for a localized homepage
+        if ($currentLocale->isTranslationOfPost($homepageId)) {
+            $localizedPage = $currentLocale->getTranslatedPost($homepageId);
+            if ($localizedPage) {
+                return str_replace($localizedPage->post_name . "/", "", $url);
+            }
+        }
+
+        return $url;
+    }
+
+    // protected function localizeParentSlugs($url, $ancestors)
+    // {
+    //     if (count($ancestors)) {
+    //         $currentLocale = $this->polyglot->getCurrentLocale();
+    //         $defaultLocale = $this->polyglot->getDefaultLocale();
+
+    //         foreach ($ancestors as $ancestorID) {
+    //             if ($currentLocale->hasPostTranslation($ancestorID)) {
+    //                 $translation = $currentLocale->getTranslatedPost($ancestorID);
+    //                 $original = $defaultLocale->getTranslatedPost($ancestorID);
+
+    //                 // debug($original->post_name, $translation->post_name, $url);
+    //                 $url = str_replace($original->post_name, $translation->post_name, $url);
+    //             }
+    //         }
+    //     }
+
+    //     return $url;
+    // }
+
+    public function parentPreEdit($parent_post_id, $post_id)
+    {
+        $currentLocale = $this->polyglot->getCurrentLocale();
+        $translation = $currentLocale->getTranslatedPost($parent_post_id);
+        if ($translation) {
+            return $translation->ID;
+        }
+
+        return $parent_post_id;
+    }
+
 
     public function termLink($termLink)
     {

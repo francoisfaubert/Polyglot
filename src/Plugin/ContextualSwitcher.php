@@ -41,6 +41,10 @@ class ContextualSwitcher {
             return $this->setLocaleByPostId($request->get("post"));
         }
 
+        if ($request->isPost() && $request->hasPost("post_ID")) {
+            return $this->setLocaleByPostId($request->post("post_ID"));
+        }
+
         if ($request->hasGet("taxonomy") && $request->hasGet("tag_ID")) {
             return $this->setLocaleByTaxonomyId($request->get("tag_ID"), $request->get("taxonomy"));
         }
