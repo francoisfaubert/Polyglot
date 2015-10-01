@@ -9,7 +9,7 @@ abstract class TranslationEntity extends ModelEntity {
 
     abstract function loadAssociatedWPObject();
 
-    public static function factory($translation)
+    public static function factory($translation, $config = array())
     {
         switch($translation->obj_kind) {
             case "WP_Post" :
