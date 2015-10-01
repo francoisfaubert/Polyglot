@@ -33,6 +33,7 @@ class WordpressAdaptor {
 
     /** @var Polyglot A local reference to the global polyglot object. */
     private $polyglot;
+    private $rewriter;
 
     /**
      * Registers the plugin and saved the context in which
@@ -141,12 +142,11 @@ class WordpressAdaptor {
      */
     protected function addGlobalCallbacks()
     {
-
         $switcher = new ContextualSwitcher();
         $switcher->registerHooks();
 
-        $rewriter = new UrlRewriter();
-        $rewriter->registerHooks();
+        $this->rewriter = new UrlRewriter();
+        $this->rewriter->registerHooks();
 
         $querier = new QueryRewriter();
         $querier->registerHooks();
@@ -205,26 +205,34 @@ class WordpressAdaptor {
     {
         $alternates = array();
         $canonicals = array();
-        $currentPost = get_post();
 
+        $currentLocale = $this->polyglot->getCurrentLocale();
+        $defaultLocale = $this->polyglot->getDefaultLocale();
+
+        $currentPost = get_post();
         if ($currentPost) {
             foreach ($this->polyglot->getLocales() as $locale) {
                 if ($locale->hasPostTranslation($currentPost->ID)) {
                     $translatedPost = $locale->getTranslatedPost($currentPost->ID);
                     if ($translatedPost && $translatedPost->post_status === "publish") {
                        $alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(),  get_permalink($translatedPost->ID));
-                   }
+                    }
                 } else {
                     // When we are fallbacking to default local on missing content but this
                     // is not the default locale, we need canonicals too.
                     if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback") && $currentPost->post_status === "publish") {
-                        $defaultLocale = $this->polyglot->getDefaultLocale();
+
                         $originalPost = $defaultLocale->getTranslatedPost($currentPost->ID);
                         $originalUrl = get_permalink($originalPost);
-                        $localizedFakeUrl = str_replace(WP_HOME . "/", WP_HOME . "/" . $locale->getUrl() . "/", $originalUrl);
+                        $localizedFakeUrl = $this->rewriter->getLocalizedFallbackUrl($originalUrl, $locale);
 
                         $alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $localizedFakeUrl);
-                        $canonicals[] = sprintf('<link rel="canonical" href="%s">', $localizedFakeUrl);
+
+                        // On a forced translation page, if the current locale is pretending to exist but
+                        // fallbacks to the global, say it's a canonical of that global translation.
+                        if (!$currentLocale->isDefault() && $currentLocale->getCode() === $locale->getCode()) {
+                            $canonicals[] = sprintf('<link rel="canonical" href="%s">', $originalUrl);
+                        }
                     }
                 }
             }

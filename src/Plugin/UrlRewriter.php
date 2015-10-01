@@ -28,9 +28,7 @@ class UrlRewriter {
         add_filter('query_vars', array($this, 'addQueryVars'));
         add_filter('term_link', array($this, 'termLink'));
 
-        if (is_admin()) {
-            // add_filter( 'parent_edit_pre', array($this, "parentPreEdit"), 10, 2 );
-        } else {
+        if (!is_admin()) {
             $locale = $this->polyglot->getCurrentLocale();
             if (!$locale->isDefault()) {
                 add_action('strata_on_before_url_routing', array($this, "runOriginalRoute"), 1, 1);
@@ -185,6 +183,27 @@ class UrlRewriter {
         return $this->parseIgnoredPostLink($postLink);
     }
 
+    public function getLocalizedFallbackUrl($originalUrl, $locale)
+    {
+        return str_replace(WP_HOME . "/", WP_HOME . "/" . $locale->getUrl() . "/", $originalUrl);
+    }
+
+    public function termLink($termLink)
+    {
+        $locale = $this->polyglot->getCurrentLocale();
+        if ($locale && !$locale->isDefault()) {
+            // Don't replace already formatted urls.
+            $regexed = preg_quote($locale->getUrl(), '/');
+            if (!preg_match("/(index.php)?\/".$regexed."\//", $termLink)) {
+                $home = str_replace("//", "\/\/", preg_quote(WP_HOME));
+                $regex = "$home\/(index.php\/)?(.*)?";
+                return preg_replace("/$regex/", WP_HOME . "/$1" . $locale->getUrl() . "/$2", $termLink);
+            }
+        }
+
+        return $termLink;
+    }
+
     protected function parseIgnoredPostLink($postLink)
     {
         $currentLocale = $this->polyglot->getCurrentLocale();
@@ -208,50 +227,25 @@ class UrlRewriter {
 
         // We have a translated url, but if it happens to be the homepage we
         // need to remove the slug
-        return $this->removeLocaleHomeKeys($localizedUrl);
+        return $this->removeLocaleHomeKeys($localizedUrl, $postLocale);
     }
 
-    protected function removeLocaleHomeKeys($url)
+    protected function removeLocaleHomeKeys($url, $localeContext = null)
     {
-        $homepageId = $this->polyglot->query()->getDefaultHomepageId();
-        $currentLocale = $this->polyglot->getCurrentLocale();
+        if (is_null($localeContext)) {
+            $localeContext = $this->polyglot->getCurrentLocale();
+        }
 
         // Check for a localized homepage
-        if ($currentLocale->isTranslationOfPost($homepageId)) {
-            $localizedPage = $currentLocale->getTranslatedPost($homepageId);
+        $homepageId = $this->polyglot->query()->getDefaultHomepageId();
+        if ($localeContext->isTranslationOfPost($homepageId)) {
+            $localizedPage = $localeContext->getTranslatedPost($homepageId);
             if ($localizedPage) {
                 return str_replace($localizedPage->post_name . "/", "", $url);
             }
         }
 
         return $url;
-    }
-
-    public function parentPreEdit($parent_post_id, $post_id)
-    {
-        $currentLocale = $this->polyglot->getCurrentLocale();
-        $translation = $currentLocale->getTranslatedPost($parent_post_id);
-        if ($translation) {
-            return $translation->ID;
-        }
-
-        return $parent_post_id;
-    }
-
-    public function termLink($termLink)
-    {
-        $locale = $this->polyglot->getCurrentLocale();
-        if ($locale && !$locale->isDefault()) {
-            // Don't replace already formatted urls.
-            $regexed = preg_quote($locale->getUrl(), '/');
-            if (!preg_match("/(index.php)?\/".$regexed."\//", $termLink)) {
-                $home = str_replace("//", "\/\/", preg_quote(WP_HOME));
-                $regex = "$home\/(index.php\/)?(.*)?";
-                return preg_replace("/$regex/", WP_HOME . "/$1" . $locale->getUrl() . "/$2", $termLink);
-            }
-        }
-
-        return $termLink;
     }
 
     private function shouldFallbackToDefault()
