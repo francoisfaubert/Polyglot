@@ -294,8 +294,10 @@ class QueryRewriter {
                     // Assign either the original term as backup or the localized
                     // term.
                     foreach (wp_get_post_terms($postId, $taxonomy) as $term) {
-                        $translatedTerm = $locale->getTranslatedTerm($term->term_id, $taxonomy);
-                        wp_add_object_terms($postId, $translatedTerm ? $translatedTerm->term_id : $term->term_id, $taxonomy);
+                        if ($term && !array_key_exists('invalid_taxonomy', $term)) {
+                            $translatedTerm = $locale->getTranslatedTerm($term->term_id, $taxonomy);
+                            wp_add_object_terms($postId, $translatedTerm ? $translatedTerm->term_id : $term->term_id, $taxonomy);
+                        }
                     }
                 }
             }
