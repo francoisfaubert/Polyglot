@@ -200,6 +200,7 @@ class WordpressAdaptor {
      * Appends meta tags with additional localization information and links to localized versions.
      * @return html (it actually echoes it)
      * @see wp_head
+     * @filters strata_polyglot_canonicals_meta_before_print, strata_polyglot_alternates_meta_before_print.
      */
     public function appendHeaderHtml()
     {
@@ -237,6 +238,9 @@ class WordpressAdaptor {
                 }
             }
         }
+
+        $alternates = apply_filters("strata_polyglot_alternates_meta_before_print", $alternates);
+        $canonicals = apply_filters("strata_polyglot_canonicals_meta_before_print", $canonicals);
 
         echo
             implode("\n", $alternates) . "\n" .
