@@ -236,11 +236,10 @@ class UrlRewriter {
                 if (!is_null($postLocale) && !is_null($post) && !wp_is_post_revision($post->ID)) {
                     return $this->parseLocalizablePostLink($postLink, $post, $postLocale);
                 }
-
              } elseif ($tree->isTranslationSetOf($postId, "WP_Post") && !wp_is_post_revision($postId)) {
-                // This occurs when we print a link from en_CH to a default en_US for instance.
+
                 $currentLocale = $this->polyglot->getCurrentLocale();
-                if ($this->shouldFallbackToDefault() && !$currentLocale->isDefault()) {
+                if (!$currentLocale->isDefault() && $this->shouldFallbackToDefault()) {
                     return $this->parseLocalizablePostLink($postLink, get_post($postId), $currentLocale);
                 }
 
