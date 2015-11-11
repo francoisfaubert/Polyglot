@@ -216,7 +216,11 @@ class WordpressAdaptor {
                 if ($locale->hasPostTranslation($currentPost->ID)) {
                     $translatedPost = $locale->getTranslatedPost($currentPost->ID);
                     if ($translatedPost && $translatedPost->post_status === "publish") {
-                       $alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(),  get_permalink($translatedPost->ID));
+                        $localizedUrl = get_permalink($translatedPost->ID);
+                        if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback")) {
+                            $localizedUrl = $this->rewriter->getLocalizedFallbackUrl($localizedUrl, $locale);
+                        }
+                        $alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(),  $localizedUrl);
                     }
                 } else {
                     // When we are fallbacking to default local on missing content but this
@@ -232,7 +236,9 @@ class WordpressAdaptor {
                         // On a forced translation page, if the current locale is pretending to exist but
                         // fallbacks to the global, say it's a canonical of that global translation.
                         if (!$currentLocale->isDefault() && $currentLocale->getCode() === $locale->getCode()) {
-                            $canonicals[] = sprintf('<link rel="canonical" href="%s">', $originalUrl);
+
+                            $localizedFakeUrl = $this->rewriter->getLocalizedFallbackUrl($originalUrl, $defaultLocale);
+                            $canonicals[] = sprintf('<link rel="canonical" href="%s">', $localizedFakeUrl);
                         }
                     }
                 }

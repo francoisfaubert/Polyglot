@@ -254,7 +254,16 @@ class UrlRewriter {
 
     public function getLocalizedFallbackUrl($originalUrl, $locale)
     {
-        return str_replace(WP_HOME . "/", WP_HOME . "/" . $locale->getUrl() . "/", $originalUrl);
+        $currentLocale = $this->polyglot->getCurrentLocale();
+        $localeUrl = $locale->isDefault() ? '/' : '/' . $locale->getUrl() . '/';
+
+        // Remove the possible fake url prefix when fallbacking
+        if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback") && !$currentLocale->isDefault()) {
+            $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME . "/"  . $currentLocale->getUrl(), "/"));
+            $originalUrl = preg_replace("/^$regexedBaseHomeUrl/", WP_HOME, $originalUrl);
+        }
+
+        return str_replace(WP_HOME . "/", WP_HOME . $localeUrl, $originalUrl);
     }
 
     public function termLink($termLink)
