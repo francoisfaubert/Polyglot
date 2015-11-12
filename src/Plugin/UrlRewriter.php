@@ -29,6 +29,8 @@ class UrlRewriter {
         add_filter('query_vars', array($this, 'addQueryVars'));
         add_filter('term_link', array($this, 'termLink'));
 
+        add_filter('wp_nav_menu_objects', array($this, 'wpNavMenuObjects'), 1, 2);
+
         if (!is_admin()) {
             $locale = $this->polyglot->getCurrentLocale();
             if (!$locale->isDefault()) {
@@ -71,6 +73,47 @@ class UrlRewriter {
         }
 
         return $routedUrl;
+    }
+
+    public function wpNavMenuObjects($sortedMenuItems, $args)
+    {
+        $currentLocale = $this->polyglot->getCurrentLocale();
+        $defaultLocale = $this->polyglot->getDefaultLocale();
+
+        if (!$currentLocale->isDefault()) {
+
+            $count = 1; // really starts at 1?!
+            $textdomain = $this->polyglot->getTextdomain();
+
+            foreach ($sortedMenuItems as $wpPost) {
+                if (is_a($wpPost, '\WP_Post')) {
+                    if ($currentLocale->hasPostTranslation($wpPost->object_id)) {
+
+                        $translatedInfo = $currentLocale->getTranslatedPost($wpPost->object_id);
+                        $defaultInfo = $defaultLocale->getTranslatedPost($wpPost->object_id);
+
+                        // The title isn't carried away, if it matches the post title,
+                        // then use the translation. Otherwise, pass it along gettext
+                        if ($defaultInfo->post_title === $wpPost->title) {
+                            $sortedMenuItems[$count]->title = $translatedInfo->post_title;
+                        } else {
+                            $sortedMenuItems[$count]->title = __($sortedMenuItems[$count]->title, $textdomain);
+                        }
+
+                        $sortedMenuItems[$count]->url = get_permalink($translatedInfo->ID);
+
+                        // Because we don't want to lose the added menu data of the previous item,
+                        // replace every matching key from this translation.
+                        foreach ($translatedInfo as $key => $data) {
+                            $sortedMenuItems[$count]->{$key} = $data;
+                        }
+                    }
+                }
+                $count++;
+            }
+        }
+
+        return $sortedMenuItems;
     }
 
     private function isLocalizedPost($originalPost, $localizedPost)
@@ -360,14 +403,17 @@ class UrlRewriter {
     {
         global $wp_rewrite;
 
-        $wp_rewrite->pagination_base = __('page', I18n::DOMAIN);
-        $wp_rewrite->author_base = __('author', I18n::DOMAIN);
-        $wp_rewrite->comments_base = __('comments', I18n::DOMAIN);
-        $wp_rewrite->feed_base = __('feed', I18n::DOMAIN);
-        $wp_rewrite->search_base = __('search', I18n::DOMAIN);
-        $wp_rewrite->set_category_base( __('category', I18n::DOMAIN) . "/");
-        $wp_rewrite->set_tag_base( __('tag', I18n::DOMAIN) . "/" );
+        $textdomain = $this->polyglot->getTextdomain();
+
+        $wp_rewrite->pagination_base = __('page', $textdomain);
+        $wp_rewrite->author_base = __('author', $textdomain);
+        $wp_rewrite->comments_base = __('comments', $textdomain);
+        $wp_rewrite->feed_base = __('feed', $textdomain);
+        $wp_rewrite->search_base = __('search', $textdomain);
+        $wp_rewrite->set_category_base( __('category', $textdomain) . "/");
+        $wp_rewrite->set_tag_base( __('tag', $textdomain) . "/" );
     }
+
 
     /**
      * Adds the basic rules for pointing the default locale
