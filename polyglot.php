@@ -20,6 +20,8 @@ if (class_exists("Polyglot\Plugin\Polyglot") && class_exists("Polyglot\Plugin\Ad
     $plugin = new Polyglot\Plugin\Adaptor\WordpressAdaptor();
     $plugin->register(__FILE__);
 
+    include("helpers.php");
+
 } else {
     Strata\Strata::app()->log("Though Polyglot is enabled, it could not be loaded.", "[Plugins:Polyglot]");
 }
