@@ -84,7 +84,7 @@ class UrlRewriter {
 
             $count = 1; // really starts at 1?!
             $textdomain = $this->polyglot->getTextdomain();
-
+            $currentPageId = (int)get_the_ID();
             foreach ($sortedMenuItems as $wpPost) {
                 if (is_a($wpPost, '\WP_Post')) {
                     if ($currentLocale->hasPostTranslation($wpPost->object_id)) {
@@ -94,6 +94,7 @@ class UrlRewriter {
 
                         // The title isn't carried away, if it matches the post title,
                         // then use the translation. Otherwise, pass it along gettext
+
                         if ($defaultInfo->post_title === $wpPost->title) {
                             $sortedMenuItems[$count]->title = $translatedInfo->post_title;
                         } else {
@@ -107,6 +108,12 @@ class UrlRewriter {
                         foreach ($translatedInfo as $key => $data) {
                             $sortedMenuItems[$count]->{$key} = $data;
                         }
+
+                        if ($currentPageId === (int)$translatedInfo->ID) {
+                            $sortedMenuItems[$count]->current = true;
+                            $sortedMenuItems[$count]->classes[] = "active";
+                        }
+
                     }
                 }
                 $count++;
