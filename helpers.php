@@ -2,18 +2,22 @@
 
 /**
  * Though these functions are made accessible the Wordpress preferred way, it should
- * be noted that Strata would want you to have a 'I18nHelper' file that would do additional
- * handling.
+ * be noted that Strata would rather want you to have a 'src/View/Helper/I18nHelper' file that would do
+ * the heavier modifications.
  */
 
 
 function get_i18n_permalink($post_ID = null, $locale = null) {
-    $translated_post = get_i18n_translation($post_ID);
-    return get_permalink($translated_post->ID);
+    $translated_post = get_i18n_post_translation($post_ID, $locale);
+    if ($translated_post) {
+        return get_permalink($translated_post->ID);
+    }
+
+    return get_permalink($post_ID);
 }
 
 
-function get_i18n_translation($post_ID = null, $locale = null)
+function get_i18n_post_translation($post_ID = null, $locale = null)
 {
     if (is_a($post_ID, "WP_Post")) {
         $post_ID = $post_ID->ID;
