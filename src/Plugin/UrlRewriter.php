@@ -413,11 +413,12 @@ class UrlRewriter {
 
         $textdomain = $this->polyglot->getTextdomain();
 
-        $wp_rewrite->pagination_base = __('page', $textdomain);
-        $wp_rewrite->author_base = __('author', $textdomain);
-        $wp_rewrite->comments_base = __('comments', $textdomain);
-        $wp_rewrite->feed_base = __('feed', $textdomain);
-        $wp_rewrite->search_base = __('search', $textdomain);
+        $wp_rewrite->pagination_base = __($wp_rewrite->pagination_base, $textdomain);
+        $wp_rewrite->author_base = __($wp_rewrite->author_base, $textdomain);
+        $wp_rewrite->comments_base = __($wp_rewrite->comments_base, $textdomain);
+        $wp_rewrite->feed_base = __($wp_rewrite->feed_base, $textdomain);
+        $wp_rewrite->search_base = __($wp_rewrite->search_base, $textdomain);
+
         $wp_rewrite->set_category_base( __('category', $textdomain) . "/");
         $wp_rewrite->set_tag_base( __('tag', $textdomain) . "/" );
     }
