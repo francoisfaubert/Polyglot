@@ -3,12 +3,14 @@
 namespace Polyglot\Plugin;
 
 use Strata\Strata;
+use Strata\Router\Router;
 use Strata\I18n\I18n;
 
 use Polyglot\Plugin\Polyglot;
 use Polyglot\Plugin\Locale;
 use Polyglot\Plugin\Db\Query;
 use Polyglot\Plugin\Db\Logger;
+
 
 use WP_Post;
 use Exception;
@@ -73,7 +75,7 @@ class QueryRewriter {
         // In the backend of when we are in the default locale,
         // prevent non-localized posts to show up. The correct way
         // to access these would be through the Locale objects.
-        if (is_admin() || $currentLocale->isDefault()) {
+        if ( (is_admin() && !Router::isFrontendAjax() ) || $currentLocale->isDefault()) {
 
             $this->logger->logQueryStart();
             $localizedPostIds = $this->polyglot->query()->listTranslatedEntitiesIds();
@@ -112,10 +114,10 @@ class QueryRewriter {
                 foreach ($currentTranslations as $translationEntity) {
                     $notIn[] = $translationEntity->translation_of;
                 }
-
+                
                 if (count($notIn)) {
                     $query->set("post__not_in", array_merge($query->get("post__not_in"), $notIn));
-                   # $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $notIn) . ")");
+                    // $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $notIn) . ")");
                 }
 
             // When we don't have to fallback, force the posts from the current locale.
