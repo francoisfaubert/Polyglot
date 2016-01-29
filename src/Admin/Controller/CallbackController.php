@@ -37,7 +37,8 @@ class CallbackController extends BaseController {
      */
     public function renderLocalizationColumn($column, $postId)
     {
-        if ($column === "polyglot_locales") {
+        if ($column === "polyglot_locales" && get_post_status() != "trash") {
+
             $this->view->set("obj_id", $postId);
             $this->view->set("obj_type", get_post_type());
             $this->view->set("objKind", "WP_Post");

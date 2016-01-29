@@ -115,14 +115,14 @@ class Polyglot extends \Strata\I18n\I18n {
          *  Hello,
          *
          *  If this exception is an hindrance to you, please go to our GitHub and
-         *  explain what you which to accomplish by creating a second instance of
+         *  explain what you wish to accomplish by creating a second instance of
          *  the Polyglot object.
          *
          *  I am writing this 'throw' early in the life of the plugin and I am still on the
          *  fence on whether it should exist.
          *
-         *  I am adding the 'throw' because I think it would slow the website to allow multiple
-         *  instances of Polyglot that maintain their own separate caches. I would
+         *  I am adding the 'throw' because I think it would noticeably slow the website if we
+         *  allow multiple instances of Polyglot that maintain their own separate caches. I would
          *  rather have a convenient list of API methods available on the global $polyglot object.
          *
          *  That's the idea anyways.

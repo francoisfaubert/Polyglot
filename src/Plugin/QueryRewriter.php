@@ -78,7 +78,7 @@ class QueryRewriter {
         if ( (is_admin() && !Router::isFrontendAjax() ) || $currentLocale->isDefault()) {
 
             $this->logger->logQueryStart();
-            $localizedPostIds = $this->polyglot->query()->listTranslatedEntitiesIds();
+            $localizedPostIds = $this->polyglot->query()->listTranslatedEntitiesIds("WP_Post");
             if (count($localizedPostIds)) {
                 $query->set("post__not_in", array_merge($query->get("post__not_in"), $localizedPostIds));
                 #$this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $localizedPostIds) . ")");
@@ -105,7 +105,10 @@ class QueryRewriter {
                 $notIn = array();
                 if (count($otherTranslations)) {
                     foreach ($otherTranslations as $translationEntity) {
-                        $notIn[] = $translationEntity->obj_id;
+                        echo $query->post_type . " " . $translationEntity->obj_type . "<br>";
+                        if ($query->post_type === $translationEntity->obj_type) {
+                            $notIn[] = $translationEntity->obj_id;
+                        }
                     }
                 }
 
@@ -114,17 +117,19 @@ class QueryRewriter {
                 foreach ($currentTranslations as $translationEntity) {
                     $notIn[] = $translationEntity->translation_of;
                 }
-                
+
                 if (count($notIn)) {
                     $query->set("post__not_in", array_merge($query->get("post__not_in"), $notIn));
-                    // $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $notIn) . ")");
+                    #$this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $notIn) . ")");
                 }
 
             // When we don't have to fallback, force the posts from the current locale.
             } else {
                 $in = array();
                 foreach ($currentTranslations as $translationEntity) {
-                    $in[] = $translationEntity->obj_id;
+                    if ($query->post_type === $translationEntity->obj_type) {
+                        $in[] = $translationEntity->obj_id;
+                    }
                 }
                 if (count($in)) {
                     $query->set("post__in", array_merge($query->get("post__in"), $in));

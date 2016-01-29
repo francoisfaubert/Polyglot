@@ -151,20 +151,47 @@ class WordpressAdaptor {
         $querier = new QueryRewriter();
         $querier->registerHooks();
 
+        $this->setupPostTrash();
+        $this->setupTermTrash();
+
         add_action('plugins_loaded', array($this, 'load'));
-        add_action('wp_trash_post', array($this, 'onTrashPost'));
-        add_action('delete_term_taxonomy', array($this, 'onTrashTerm'));
         add_action('widgets_init', array("\\Polyglot\\Widget\\LanguageMenu", "register"));
+    }
+
+    protected function setupPostTrash()
+    {
+        add_action('wp_trash_post', array($this, 'onTrashPost'));
+    }
+
+    protected function removePostTrash()
+    {
+        remove_action('wp_trash_post', array($this, 'onTrashPost'));
+    }
+
+    protected function setupTermTrash()
+    {
+        add_action('delete_term_taxonomy', array($this, 'onTrashTerm'));
+    }
+
+    protected function removeTermTrash()
+    {
+        remove_action('delete_term_taxonomy', array($this, 'onTrashTerm'));
     }
 
     public function onTrashTerm($termId)
     {
+        // We need to remove the listener because it would start infinite loops.
+        $this->removeTermTrash();
         Polyglot::instance()->query()->unlinkTranslationFor($termId, "Term");
+        $this->setupTermTrash();
     }
 
     public function onTrashPost($postId)
     {
+        // We need to remove the listener because it would start infinite loops.
+        $this->removePostTrash();
         Polyglot::instance()->query()->unlinkTranslationFor($postId, "WP_Post");
+        $this->setupPostTrash();
     }
 
     /**

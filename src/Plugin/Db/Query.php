@@ -70,9 +70,27 @@ class Query {
 
     public function unlinkTranslationFor($objectId, $objectKind)
     {
-        global $wpdb;
+        // Trash the translations' WP_Post first
+        global $polyglot, $wpdb;
+
+        foreach ($polyglot->getLocales() as $locale) {
+            if ($objectKind === "WP_Post" && $locale->isTranslationOfPost($objectId)) {
+                $translation = $locale->getTranslatedPost($objectId);
+                if (!is_null($translation)) {
+                    wp_trash_post($translation->ID);
+                }
+            } elseif($objectKind === "Term" && $locale->hasTermTranslation($objectId)) {
+                $translation = $locale->getTranslatedTerm($objectId);
+                if (!is_null($translation)) {
+                    wp_trash_term($translation->term_id);
+                }
+            }
+        }
+
+        // Then delete all the polyglot references
+        // to that original post.
         return $wpdb->delete($wpdb->prefix . 'polyglot', array(
-            "obj_id" => $objectId,
+            "translation_of" => $objectId,
             "obj_kind" => $objectKind
         ));
     }
