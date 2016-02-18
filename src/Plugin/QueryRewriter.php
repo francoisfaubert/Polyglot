@@ -105,7 +105,6 @@ class QueryRewriter {
                 $notIn = array();
                 if (count($otherTranslations)) {
                     foreach ($otherTranslations as $translationEntity) {
-                        echo $query->post_type . " " . $translationEntity->obj_type . "<br>";
                         if ($query->post_type === $translationEntity->obj_type) {
                             $notIn[] = $translationEntity->obj_id;
                         }
