@@ -71,17 +71,19 @@ class Polyglot extends \Strata\I18n\I18n {
     public function stealI18nInformation()
     {
         if (!$this->localized) {
-            $orignalLocaleCode = Strata::app()->i18n->getCurrentLocaleCode();
+            $app = Strata::app();
+            if ($app->hasConfig("i18n.locales")) {
+                $orignalLocaleCode = $app->i18n->getCurrentLocaleCode();
+                $this->locales = $this->rebuildLocaleList();
+                $this->localized = true;
 
-            $this->locales = $this->rebuildLocaleList();
-            $this->localized = true;
-
-            // Find our version of the original locale and
-            // reassign it.
-            if ($orignalLocaleCode) {
-                $this->setLocale($this->getLocaleByCode($orignalLocaleCode));
-            } elseif (is_null($this->setCurrentLocaleByContext())) {
-                $this->setLocale($this->getDefaultLocale());
+                // Find our version of the original locale and
+                // reassign it.
+                if ($orignalLocaleCode) {
+                    $this->setLocale($this->getLocaleByCode($orignalLocaleCode));
+                } elseif (is_null($this->setCurrentLocaleByContext())) {
+                    $this->setLocale($this->getDefaultLocale());
+                }
             }
         }
     }
@@ -94,7 +96,8 @@ class Polyglot extends \Strata\I18n\I18n {
      */
     protected function rebuildLocaleList()
     {
-        $original = Hash::normalize(Strata::config("i18n.locales"));
+        $app = Strata::app();
+        $original = Hash::normalize($app->getConfig("i18n.locales"));
         $newLocales = array();
 
         foreach ($original as $key => $config) {
