@@ -242,9 +242,8 @@ class UrlRewriter {
         // Rewrite for localized homepages.
         $this->addHomepagesRules();
 
-        // How about we deffer to the backend's permalink button?
-        // @todo : trigger intelligently
-        //flush_rewrite_rules();
+        // @todo : trigger intelligently.
+        flush_rewrite_rules();
     }
 
     public function forwardCanonicalUrls()
