@@ -160,25 +160,13 @@ class UrlRewriter {
     /**
      * Adds all the rewrites required by the current setup of the locale configuration.
      */
-    public function addLocaleRewrites()
+     public function addLocaleRewrites()
     {
         $configuration = $this->polyglot->getConfiguration();
         $regex = $this->getLocaleUrlsRegex();
 
         // Translate the default slugs
         $this->openRewriteForTranslations();
-
-        // Pages
-        if ($configuration->isTypeEnabled('page')) {
-            add_rewrite_rule('('.$regex.')/(.?.+?)/?$', 'index.php?pagename=$matches[2]&locale=$matches[1]', "top");
-            add_rewrite_rule('index.php('.$regex.')/(.?.+?)/?$', 'index.php?pagename=$matches[2]&locale=$matches[1]', "top");
-        }
-
-        // Posts
-        if ($configuration->isTypeEnabled('post')) {
-            add_rewrite_rule('('.$regex.')/([^/]+)/?$', 'index.php?name=$matches[2]&locale=$matches[1]', "top");
-            add_rewrite_rule('index.php/('.$regex.')/([^/]+)/?$', 'index.php?name=$matches[2]&locale=$matches[1]', "top");
-        }
 
         // Custom Post Types
         $postTypes = $configuration->getPostTypes();
@@ -229,9 +217,20 @@ class UrlRewriter {
 
                     add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]', "top");
                     add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[2]&cpage=$matches[3]&locale=$matches[1]', "top");
-
                 }
             }
+        }
+
+        // Pages
+        if ($configuration->isTypeEnabled('page')) {
+            add_rewrite_rule('('.$regex.')/(.?.+?)/?$', 'index.php?pagename=$matches[2]&locale=$matches[1]', "top");
+            add_rewrite_rule('index.php('.$regex.')/(.?.+?)/?$', 'index.php?pagename=$matches[2]&locale=$matches[1]', "top");
+        }
+
+        // Posts
+        if ($configuration->isTypeEnabled('post')) {
+            add_rewrite_rule('('.$regex.')/([^/]+)/?$', 'index.php?name=$matches[2]&locale=$matches[1]', "top");
+            add_rewrite_rule('index.php/('.$regex.')/([^/]+)/?$', 'index.php?name=$matches[2]&locale=$matches[1]', "top");
         }
 
         // Rewrite for categories
