@@ -86,33 +86,39 @@ class QueryRewriter {
 
         } else {
 
-            $currentTranslations = $this->polyglot->query()->findLocaleTranslations($currentLocale, "WP_Post");
+            $postType = null;
+            if (isset($query->query_vars['post_type'])) {
+                $postType = $query->query_vars['post_type'];
+            }
+
+            $currentTranslations = $this->polyglot->query()->findLocaleTranslations($currentLocale, "WP_Post", $postType);
             $this->logger->logQueryStart();
 
             if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback")) {
-
                 // Collect all locales that aren't the current one and prevent them.
                 // This massive filter allows for default posts and the properly localized
                 // ones to show.
+                // Except for the default locale because additional validation needs to be
+                // done on that one to chose whether the fallback is needed.
                 $otherTranslations = array();
-
                 foreach ($this->polyglot->getLocales() as $locale) {
-                    if ($locale->getCode() !== $currentLocale->getCode()) {
-                        $otherTranslations += $this->polyglot->query()->findLocaleTranslations($locale, "WP_Post");
+                    if ($locale->getCode() !== $currentLocale->getCode() && !$locale->isDefault() ) {
+                        $otherTranslations += $this->polyglot->query()->findLocaleTranslations($locale, "WP_Post", $postType);
                     }
                 }
 
                 $notIn = array();
                 if (count($otherTranslations)) {
                     foreach ($otherTranslations as $translationEntity) {
-                        if ($query->post_type === $translationEntity->obj_type) {
+                        if ($postType === $translationEntity->obj_type) {
                             $notIn[] = $translationEntity->obj_id;
                         }
                     }
                 }
 
                 // At the moment, we have filtered out other languages. There are duplicates
-                // because we have to prevent the translated posts to appear.
+                // with the default locale and we have to prevent the translation sources from
+                // appearing.
                 foreach ($currentTranslations as $translationEntity) {
                     $notIn[] = $translationEntity->translation_of;
                 }
@@ -126,7 +132,7 @@ class QueryRewriter {
             } else {
                 $in = array();
                 foreach ($currentTranslations as $translationEntity) {
-                    if ($query->post_type === $translationEntity->obj_type) {
+                    if ($postType === $translationEntity->obj_type) {
                         $in[] = $translationEntity->obj_id;
                     }
                 }

@@ -95,6 +95,19 @@ class Query {
         ));
     }
 
+    public function unlinkTranslation($translationId, $objectKind)
+    {
+        // Trash the translations' WP_Post first
+        global $polyglot, $wpdb;
+
+        // Then delete all the polyglot references
+        // to that original post.
+        return $wpdb->delete($wpdb->prefix . 'polyglot', array(
+            "obj_id" => $translationId,
+            "obj_kind" => $objectKind
+        ));
+    }
+
     public function addTranslation($originalId, $originalType, $originalKind, $targetLocale, $associationId)
     {
         global $wpdb;
@@ -300,17 +313,18 @@ class Query {
     }
 
 
-    public function findLocaleTranslations($locale, $kind = "WP_Post")
+    public function findLocaleTranslations($locale, $kind = "WP_Post", $type = null)
     {
         $data = array();
         $localeCode = $locale->getCode();
 
         // Lookup in the cache beforehand
-
         foreach ($this->cache->getByKind($kind) as $translationOf => $entities) {
             foreach ($entities as $entity) {
-                if ($entity->translation_locale === $localeCode) {
-                    $data[(int)$entity->polyglot_ID] = $entity;
+                if (!is_null($type) && $type === $entity->obj_type || is_null($type)) {
+                    if ($entity->translation_locale === $localeCode) {
+                        $data[(int)$entity->polyglot_ID] = $entity;
+                    }
                 }
             }
         }

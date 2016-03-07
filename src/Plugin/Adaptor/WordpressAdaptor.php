@@ -183,6 +183,7 @@ class WordpressAdaptor {
         // We need to remove the listener because it would start infinite loops.
         $this->removeTermTrash();
         Polyglot::instance()->query()->unlinkTranslationFor($termId, "Term");
+        Polyglot::instance()->query()->unlinkTranslation($termId, "Term");
         $this->setupTermTrash();
     }
 
@@ -191,6 +192,7 @@ class WordpressAdaptor {
         // We need to remove the listener because it would start infinite loops.
         $this->removePostTrash();
         Polyglot::instance()->query()->unlinkTranslationFor($postId, "WP_Post");
+        Polyglot::instance()->query()->unlinkTranslation($postId, "WP_Post");
         $this->setupPostTrash();
     }
 
