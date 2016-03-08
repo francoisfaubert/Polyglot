@@ -39,7 +39,7 @@ class Polyglot extends \Strata\I18n\I18n {
 
         // We need to rehook into setCurrentLocaleByContext because we need to
         // try again once global post objects are loaded.
-        add_action(is_admin() ? 'admin_init' : 'wp', array($this, "setCurrentLocaleByContext"));
+        add_action(is_admin() ? 'admin_init' : 'wp', array($this, "setCurrentLocaleByContext"), 1);
     }
 
     /**

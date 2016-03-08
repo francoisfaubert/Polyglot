@@ -82,7 +82,7 @@ class Locale extends StrataLocale {
         }
     }
 
-    public function hasTermTranslation($termId, $taxname)
+    public function hasTermTranslation($termId)
     {
         $tree = $this->getTranslationTree($termId, "Term");
 

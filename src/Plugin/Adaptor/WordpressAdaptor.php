@@ -106,6 +106,7 @@ class WordpressAdaptor {
     protected function addWebsiteCallbacks()
     {
         add_action('wp_head', array($this, "appendHeaderHtml"));
+        add_filter( 'body_class', array($this, "classHandler"));
     }
 
     /**
@@ -280,6 +281,26 @@ class WordpressAdaptor {
         echo
             implode("\n", $alternates) . "\n" .
             implode("\n", $canonicals) . "\n";
+    }
+
+    public function classHandler($classes)
+    {
+        // On a secondary locale, if the current page is a translation
+        // of the page on front, then replace the classes of the body correctly
+        $currentLocale = $this->polyglot->getCurrentLocale();
+        if (!$currentLocale->isDefault()) {
+            $blogPageId = get_option('page_on_front');
+            if ($currentLocale->isTranslationOfPost($blogPageId)) {
+                foreach ($classes as $idx => $class) {
+                    if (preg_match("/^page(\-.*)?/", $class)) {
+                        unset($classes[$idx]);
+                    }
+                }
+                array_splice($classes, 0, 0, "blog");
+            }
+        }
+
+        return $classes;
     }
 
     protected function getPluginLocalePath()
