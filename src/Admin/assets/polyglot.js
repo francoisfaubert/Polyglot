@@ -47,7 +47,8 @@
             'width'         : 500,
             'height'        : 500,
             'title'         : 'Polyglot',
-            'buttons'       : buttons
+            'buttons'       : buttons,
+            'zIndex'        : 1010
         });
 
         return node;
