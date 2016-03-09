@@ -35,47 +35,49 @@
     <p><?php echo sprintf(__("Searching for '%s'", "polyglot"), $searchQuery); ?></p>
 
 
+    <?php if (isset($addedString) && $addedString) : ?>
+        <p class="success"><?php _e("String added successfully", "polyglot"); ?></p>
+    <?php endif; ?>
+
     <?php if (isset($translations) && count($translations)) : ?>
 
         <?php echo $FormHelper->create(); ?>
             <?php echo $FormHelper->input("mode", array("type" => "hidden", "value" => "edit")); ?>
 
-        <?php $count = 0; ?>
         <?php foreach ($translations as $id => $translation) : ?>
 
-            <?php if ($count % 2 === 0) : ?>
+            <?php if ($id % 2 === 0) : ?>
                 <div class="group">
             <?php endif; ?>
 
                 <div class="col">
+                    <?php echo $FormHelper->input("translations[$id][id]", array("type" => "hidden", "value" => htmlentities($translation->getId()))); ?>
+                    <?php echo $FormHelper->input("translations[$id][original]", array("type" => "hidden", "value" => htmlentities($translation->getOriginal()))); ?>
+                    <?php echo $FormHelper->input("translations[$id][context]", array("type" => "hidden", "value" => htmlentities($translation->getContext()))); ?>
+                    <?php echo $FormHelper->input("translations[$id][plural]", array("type" => "hidden", "value" => "")); ?>
+                    <?php echo $FormHelper->input("translations[$id][pluralTranslation]", array("type" => "hidden", "value" => "")); ?>
+
                     <blockquote>
-                        "<?php echo htmlentities($translation->getOriginal()); ?>"
+                        "<?php echo htmlentities($translation->getId()); ?>"
                     </blockquote>
+
+                    <div>
+                        <label>
+                            <?php echo __("Translation", "polyglot"); ?>
+                            <?php echo $FormHelper->input("translations[$id][translation]", array("type" => "textarea", "value" => $translation->getTranslation())); ?>
+                        </label>
+                    </div>
 
                     <?php $references = $translation->getReferences(); ?>
                     <?php if (count($references)) : ?>
                         <div class="references"><?php echo basename($references[0][0]); ?>#<?php echo $references[0][1]; ?></div>
                     <?php endif; ?>
-
-                    <?php echo $FormHelper->input("translations[$count][id]", array("type" => "hidden", "value" => htmlentities($translation->getId()))); ?>
-                    <?php echo $FormHelper->input("translations[$count][original]", array("type" => "hidden", "value" => htmlentities($translation->getOriginal()))); ?>
-                    <?php echo $FormHelper->input("translations[$count][context]", array("type" => "hidden", "value" => htmlentities($translation->getContext()))); ?>
-                    <?php echo $FormHelper->input("translations[$count][plural]", array("type" => "hidden", "value" => "")); ?>
-                    <?php echo $FormHelper->input("translations[$count][pluralTranslation]", array("type" => "hidden", "value" => "")); ?>
-
-                    <div>
-                        <label>
-                            <?php echo __("Translation", "polyglot"); ?>
-                            <?php echo $FormHelper->input("translations[$count][translation]", array("type" => "textarea", "value" => $translation->getTranslation())); ?>
-                        </label>
-                    </div>
                 </div>
 
-            <?php if (($count+1)%2===0 || ($count+1) >= count($translations)) : ?>
+            <?php if (($id+1)%2===0 || ($id+1) >= count($translations)) : ?>
                 </div>
             <?php endif; ?>
 
-            <?php $count++; ?>
         <?php endforeach; ?>
 
             <?php echo $FormHelper->submit(array("label" => __("Save", "polyglot"), "class" => "button button-primary")); ?>

@@ -94,6 +94,7 @@ class QueryRewriter {
             $currentTranslations = $this->polyglot->query()->findLocaleTranslations($currentLocale, "WP_Post", $postType);
             $this->logger->logQueryStart();
 
+
             if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback")) {
                 // Collect all locales that aren't the current one and prevent them.
                 // This massive filter allows for default posts and the properly localized

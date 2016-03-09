@@ -291,13 +291,12 @@ class WordpressAdaptor {
         if (!$currentLocale->isDefault()) {
             $blogPageId = get_option('page_on_front');
             if ($currentLocale->isTranslationOfPost($blogPageId)) {
-                // foreach ($classes as $idx => $class) {
-                //     if (preg_match("/^page(\-.*)?/", $class)) {
-                //         unset($classes[$idx]);
-                //     }
-                // }
-                // array_splice($classes, 0, 0, "blog");
-                $classes[] = "blog";
+                foreach ($classes as $idx => $class) {
+                    if (preg_match("/^page(\-.*)?/", $class)) {
+                        unset($classes[$idx]);
+                    }
+                }
+                array_splice($classes, 0, 0, "blog");
             }
         }
 

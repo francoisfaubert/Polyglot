@@ -63,6 +63,7 @@ class AdminController extends BaseController {
 
         if ($this->request->isPost()) {
             $this->polyglot->saveTranslations($locale, $this->request->post("data.translations"));
+            $this->view->set("addedString", true);
         }
 
         $this->view->set("locale", $locale);
@@ -84,6 +85,7 @@ class AdminController extends BaseController {
 
         if ($this->request->isPost()) {
             $this->polyglot->saveTranslations($locale, $this->request->post("data.translations"));
+            $this->view->set("addedString", true);
         }
 
         $this->view->set("locale", $locale);
