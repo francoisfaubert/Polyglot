@@ -71,13 +71,13 @@ class QueryRewriter {
     public function preGetPosts($query)
     {
         $currentLocale = $this->polyglot->getCurrentLocale();
+        // $this->logger->logQueryStart();
 
         // In the backend of when we are in the default locale,
         // prevent non-localized posts to show up. The correct way
         // to access these would be through the Locale objects.
         if ( (is_admin() && !Router::isFrontendAjax() ) || $currentLocale->isDefault()) {
 
-            $this->logger->logQueryStart();
             $localizedPostIds = $this->polyglot->query()->listTranslatedEntitiesIds("WP_Post");
             if (count($localizedPostIds)) {
                 $query->set("post__not_in", array_merge($query->get("post__not_in"), $localizedPostIds));
@@ -92,7 +92,6 @@ class QueryRewriter {
             }
 
             $currentTranslations = $this->polyglot->query()->findLocaleTranslations($currentLocale, "WP_Post", $postType);
-            $this->logger->logQueryStart();
 
 
             if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback")) {
@@ -187,19 +186,34 @@ class QueryRewriter {
 
     public function getTermsArgs($args, $taxonomies)
     {
-        $locale = $this->polyglot->getCurrentLocale();
+        $currentLocale = $this->polyglot->getCurrentLocale();
+        // $this->logger->logQueryStart();
 
-        if (!$locale->isDefault()) {
-            $matches = $this->polyglot->query()->findTranslationIdsNotInLocale($locale, "Term");
-        } else {
-            $matches = $this->polyglot->query()->listTranslatedEntitiesIds("Term");
+        $notIn = array();
+        foreach ($taxonomies as $taxonomy) {
+
+            $currentTranslations = $this->polyglot->query()->findLocaleTranslations($currentLocale, "Term", $taxonomy);
+            $otherTranslations = array();
+
+            foreach ($this->polyglot->getLocales() as $locale) {
+                if ($locale->getCode() !== $currentLocale->getCode() && !$locale->isDefault() ) {
+                    $otherTranslations += $this->polyglot->query()->findLocaleTranslations($locale, "Term", $taxonomy);
+                }
+            }
+
+            if (count($otherTranslations)) {
+                foreach ($otherTranslations as $translationEntity) {
+                    $notIn[] = $translationEntity->obj_id;
+                }
+            }
+
+            foreach ($currentTranslations as $translationEntity) {
+                $notIn[] = $translationEntity->translation_of;
+            }
         }
 
-        // By excluding ids, we allow for fallback
-        // to the default locales.
-        $args['exclude'] = array();
-        foreach ((array)$matches as $id) {
-            $args['exclude'][] = $id;
+        if (count($notIn)) {
+            $args['exclude'] = $notIn;
         }
 
         return $args;
