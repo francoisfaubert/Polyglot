@@ -289,13 +289,8 @@ class WordpressAdaptor {
         // of the page on front, then replace the classes of the body correctly
         $currentLocale = $this->polyglot->getCurrentLocale();
         if (!$currentLocale->isDefault()) {
-            $blogPageId = get_option('page_on_front');
-            if ($currentLocale->isTranslationOfPost($blogPageId)) {
-                foreach ($classes as $idx => $class) {
-                    if (preg_match("/^page(\-.*)?/", $class)) {
-                        unset($classes[$idx]);
-                    }
-                }
+            $pageOnFront = $currentLocale->getTranslatedPost(get_option('page_on_front'));
+            if ($pageOnFront && $pageOnFront->ID == get_the_ID()) {
                 array_splice($classes, 0, 0, "blog");
             }
         }
