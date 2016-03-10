@@ -168,10 +168,19 @@ class UrlRewriter {
      public function addLocaleRewrites()
     {
         $configuration = $this->polyglot->getConfiguration();
-        $regex = $this->getLocaleUrlsRegex();
+        $currentConfigurationHash = md5(json_encode($configuration));
+        $lastConfigurationHash = get_option('polyglot_rewrite_settings');
 
         // Translate the default slugs
         $this->openRewriteForTranslations();
+
+        // Skip the process if the configuration hasn't changed since we
+        // have last generated the rules.
+        if ($currentConfigurationHash === $lastConfigurationHash) {
+            return false;
+        }
+
+        $regex = $this->getLocaleUrlsRegex();
 
         // Custom Post Types
         $postTypes = $configuration->getPostTypes();
@@ -246,8 +255,9 @@ class UrlRewriter {
         // Rewrite for localized homepages.
         $this->addHomepagesRules();
 
-        // @todo : trigger intelligently.
         flush_rewrite_rules();
+
+        return update_option('polyglot_rewrite_settings', $currentConfigurationHash);
     }
 
     public function forwardCanonicalUrls()
