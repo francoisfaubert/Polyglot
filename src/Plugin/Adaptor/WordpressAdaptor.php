@@ -106,7 +106,7 @@ class WordpressAdaptor {
     protected function addWebsiteCallbacks()
     {
         add_action('wp_head', array($this, "appendHeaderHtml"));
-        add_filter( 'body_class', array($this, "classHandler"));
+        add_filter('body_class', array($this, "classHandler"));
     }
 
     /**

@@ -84,6 +84,8 @@ class Polyglot extends \Strata\I18n\I18n {
                 } elseif (is_null($this->setCurrentLocaleByContext())) {
                     $this->setLocale($this->getDefaultLocale());
                 }
+
+                $app->i18n = $this;
             }
         }
     }

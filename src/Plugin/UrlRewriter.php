@@ -64,12 +64,17 @@ class UrlRewriter {
             // the default.
             $originalUrl = str_replace("/" . $currentLocale->getUrl(), "", get_permalink($originalPost->ID));
 
-            $originalPath =
+            // At this point we have a working permalink but maybe the
+            // original url had additional information afterwards.
+            // Ex: A case CPT registered sub pages url.
+            $remaningBits = str_replace(get_permalink($localizedPost->ID), "", WP_HOME . $_SERVER['REQUEST_URI']);
+            $originalUrl .= $remaningBits;
+
+            // Return just the path to the router
+            return
                 parse_url($originalUrl, PHP_URL_PATH) .
                 parse_url($originalUrl, PHP_URL_QUERY) .
                 parse_url($originalUrl, PHP_URL_FRAGMENT);
-
-            return $originalPath;
         }
 
         return $routedUrl;
