@@ -4,6 +4,8 @@ namespace Polyglot\Plugin;
 
 use Strata\Strata;
 use Strata\I18n\I18n;
+use Strata\Utility\Hash;
+use Strata\Model\CustomPostType\CustomPostType;
 
 use Polyglot\Plugin\Polyglot;
 use Polyglot\Plugin\Locale;
@@ -180,51 +182,27 @@ class UrlRewriter {
         $postTypes = $configuration->getPostTypes();
         if (count($postTypes)) {
             foreach ($postTypes as $postTypekey => $config) {
-                if ($postTypekey !== 'post' && $postTypekey !== 'page' && $postTypekey !== 'attachment') {
+                if ($postTypekey !== 'post' && $postTypekey !== 'page' && $postTypekey !== 'attachment' && $postTypekey !== 'revision') {
 
                     $slug = $postTypekey;
                     if (isset($config->rewrite) && isset($config->rewrite['slug'])) {
                         $slug = $config->rewrite['slug'];
                     }
 
-                    add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/?$', 'index.php?attachment=$matches[2]&locale=$matches[1]', "top");
-                    add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/?$', 'index.php?attachment=$matches[2]&locale=$matches[1]', "top");
+                    $this->addCustomPostTypeRewrites($regex, $slug, $postTypekey);
 
-                    add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/trackback/?$', 'index.php?attachment=$matches[2]&tb=1&locale=$matches[1]', "top");
-                    add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/trackback/?$', 'index.php?attachment=$matches[2]&tb=1&locale=$matches[1]', "top");
-
-                    add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]', "top");
-                    add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]', "top");
-
-                    add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[2]&cpage=$matches[3]&locale=$matches[1]', "top");
-                    add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[2]&cpage=$matches[3]&locale=$matches[1]', "top");
-
-                    add_rewrite_rule('('.$regex.')/'.$slug.'/([^/]+)/trackback/?$', 'index.php?'.$postTypekey.'=$matches[2]&tb=1&locale=$matches[1]', "top");
-                    add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/([^/]+)/trackback/?$', 'index.php?'.$postTypekey.'=$matches[2]&tb=1&locale=$matches[1]', "top");
-
-                    add_rewrite_rule('('.$regex.')/'.$slug.'/([^/]+)/page/?([0-9]{1,})/?$', 'index.php?'.$postTypekey.'=$matches[2]&paged=$matches[3]&locale=$matches[1]', "top");
-                    add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/([^/]+)/page/?([0-9]{1,})/?$', 'index.php?'.$postTypekey.'=$matches[2]&paged=$matches[3]&locale=$matches[1]', "top");
-
-                    add_rewrite_rule('('.$regex.')/'.$slug.'/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?'.$postTypekey.'=$matches[2]&cpage=$matches[3]&locale=$matches[1]', "top");
-                    add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?'.$postTypekey.'=$matches[2]&cpage=$matches[3]&locale=$matches[1]', "top");
-
-                    add_rewrite_rule('('.$regex.')/'.$slug.'/([^/]+)(/[0-9]+)?/?$', 'index.php?'.$postTypekey.'=$matches[2]&page=$matches[3]&locale=$matches[1]', "top");
-                    add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/([^/]+)(/[0-9]+)?/?$', 'index.php?'.$postTypekey.'=$matches[2]&page=$matches[3]&locale=$matches[1]', "top");
-
-                    add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/([^/]+)/?$', 'index.php?attachment=$matches[2]&locale=$matches[1]', "top");
-                    add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/([^/]+)/?$', 'index.php?attachment=$matches[2]&locale=$matches[1]', "top");
-
-                    add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/([^/]+)/trackback/?$', 'index.php?attachment=$matches[2]&tb=1&locale=$matches[1]', "top");
-                    add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/([^/]+)/trackback/?$', 'index.php?attachment=$matches[2]&tb=1&locale=$matches[1]', "top");
-
-                    add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]', "top");
-                    add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]', "top");
-
-                    add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]', "top");
-                    add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]', "top");
-
-                    add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]', "top");
-                    add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[2]&cpage=$matches[3]&locale=$matches[1]', "top");
+                    // The previous was good enough for vanilla CPT. Now check if there is
+                    // extra Strata configuration to translate the slugs.
+                    if (preg_match("/^cpt_.*/", $postTypekey)) {
+                        try {
+                            $cpt = CustomPostType::factory(substr($postTypekey, 4));
+                            foreach ((array)$cpt->extractConfig("i18n.{s}.rewrite.slug") as $translatedSlug) {
+                                $this->addCustomPostTypeRewrites($regex, $translatedSlug, $postTypekey);
+                            }
+                        } catch (Exception $e) {
+                            Strata::app()->log("Tried to translate $slug, but could not find the associated model.", "[Polyglot:UrlRewriter]");
+                        }
+                    }
                 }
             }
         }
@@ -477,6 +455,49 @@ class UrlRewriter {
         add_rewrite_rule('index.php/('.$regex.')/category/(.+?)/page/?([0-9]{1,})/?$', 'index.php?category_name=$matches[2]&paged=$matches[3]&locale=$matches[1]', 'top');
         add_rewrite_rule('index.php/('.$regex.')/category/(.+?)/?$', 'index.php?category_name=$matches[2]&locale=$matches[1]', 'top');
     }
+
+    private function addCustomPostTypeRewrites($regex, $slug, $postTypekey)
+    {
+        add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/?$', 'index.php?attachment=$matches[2]&locale=$matches[1]', "top");
+        add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/?$', 'index.php?attachment=$matches[2]&locale=$matches[1]', "top");
+
+        add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/trackback/?$', 'index.php?attachment=$matches[2]&tb=1&locale=$matches[1]', "top");
+        add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/trackback/?$', 'index.php?attachment=$matches[2]&tb=1&locale=$matches[1]', "top");
+
+        add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]', "top");
+        add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]', "top");
+
+        add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[2]&cpage=$matches[3]&locale=$matches[1]', "top");
+        add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[2]&cpage=$matches[3]&locale=$matches[1]', "top");
+
+        add_rewrite_rule('('.$regex.')/'.$slug.'/([^/]+)/trackback/?$', 'index.php?'.$postTypekey.'=$matches[2]&tb=1&locale=$matches[1]', "top");
+        add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/([^/]+)/trackback/?$', 'index.php?'.$postTypekey.'=$matches[2]&tb=1&locale=$matches[1]', "top");
+
+        add_rewrite_rule('('.$regex.')/'.$slug.'/([^/]+)/page/?([0-9]{1,})/?$', 'index.php?'.$postTypekey.'=$matches[2]&paged=$matches[3]&locale=$matches[1]', "top");
+        add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/([^/]+)/page/?([0-9]{1,})/?$', 'index.php?'.$postTypekey.'=$matches[2]&paged=$matches[3]&locale=$matches[1]', "top");
+
+        add_rewrite_rule('('.$regex.')/'.$slug.'/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?'.$postTypekey.'=$matches[2]&cpage=$matches[3]&locale=$matches[1]', "top");
+        add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?'.$postTypekey.'=$matches[2]&cpage=$matches[3]&locale=$matches[1]', "top");
+
+        add_rewrite_rule('('.$regex.')/'.$slug.'/([^/]+)(/[0-9]+)?/?$', 'index.php?'.$postTypekey.'=$matches[2]&page=$matches[3]&locale=$matches[1]', "top");
+        add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/([^/]+)(/[0-9]+)?/?$', 'index.php?'.$postTypekey.'=$matches[2]&page=$matches[3]&locale=$matches[1]', "top");
+
+        add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/([^/]+)/?$', 'index.php?attachment=$matches[2]&locale=$matches[1]', "top");
+        add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/([^/]+)/?$', 'index.php?attachment=$matches[2]&locale=$matches[1]', "top");
+
+        add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/([^/]+)/trackback/?$', 'index.php?attachment=$matches[2]&tb=1&locale=$matches[1]', "top");
+        add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/([^/]+)/trackback/?$', 'index.php?attachment=$matches[2]&tb=1&locale=$matches[1]', "top");
+
+        add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]', "top");
+        add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]', "top");
+
+        add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]', "top");
+        add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]', "top");
+
+        add_rewrite_rule('('.$regex.')/'.$slug.'/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]', "top");
+        add_rewrite_rule('index.php/('.$regex.')/'.$slug.'/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[2]&cpage=$matches[3]&locale=$matches[1]', "top");
+    }
+
 
     private function getTranslationTree($mixedId, $mixedKind = "WP_Post")
     {
