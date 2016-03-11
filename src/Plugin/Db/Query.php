@@ -15,7 +15,7 @@ use Exception;
 class Query {
 
     const WP_UNIQUE_KEY = "polyglot-plugin";
-    const DB_VERSION = "0.1.0";
+    const DB_VERSION = "0.1.1";
 
     protected $logger;
     private $cache;
