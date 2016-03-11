@@ -36,7 +36,7 @@ class UrlRewriter {
         if (!is_admin()) {
             $locale = $this->polyglot->getCurrentLocale();
             if (!$locale->isDefault()) {
-                add_action('strata_on_before_url_routing', array($this, "runOriginalRoute"), 1, 1);
+                add_action('strata_on_before_url_routing', array($this, "runOriginalRoute"), 5, 1);
             }
 
             add_action('wp_loaded', array($this, 'addLocaleRewrites'));
@@ -59,20 +59,28 @@ class UrlRewriter {
         // be in fallback to the original post.
         // When in fallback mode, we must send the original url stripped
         // locale code which is meaningless at that point.
-        if ($this->isLocalizedPost($originalPost, $localizedPost) || $this->isFallbackPost($originalPost, $localizedPost)) {
+        if ($localizedPost) {
+            if ($this->isLocalizedPost($originalPost, $localizedPost) || $this->isFallbackPost($originalPost, $localizedPost)) {
 
-            // Get permalink will append the current locale url when
-            // the configuration allows locales to present content form
-            // the default.
+                // Get permalink will append the current locale url when
+                // the configuration allows locales to present content form
+                // the default.
+                $originalUrl = str_replace("/" . $currentLocale->getUrl(), "", get_permalink($originalPost->ID));
+
+                // At this point we have a working permalink but maybe the
+                // original url had additional information afterwards.
+                // Ex: A case CPT registered sub pages url.
+                $remaningBits = str_replace(get_permalink($localizedPost->ID), "", WP_HOME . $_SERVER['REQUEST_URI']);
+                $originalUrl .= $remaningBits;
+
+                // Return just the path to the router
+                return
+                    parse_url($originalUrl, PHP_URL_PATH) .
+                    parse_url($originalUrl, PHP_URL_QUERY) .
+                    parse_url($originalUrl, PHP_URL_FRAGMENT);
+            }
+        } elseif($originalPost) {
             $originalUrl = str_replace("/" . $currentLocale->getUrl(), "", get_permalink($originalPost->ID));
-
-            // At this point we have a working permalink but maybe the
-            // original url had additional information afterwards.
-            // Ex: A case CPT registered sub pages url.
-            $remaningBits = str_replace(get_permalink($localizedPost->ID), "", WP_HOME . $_SERVER['REQUEST_URI']);
-            $originalUrl .= $remaningBits;
-
-            // Return just the path to the router
             return
                 parse_url($originalUrl, PHP_URL_PATH) .
                 parse_url($originalUrl, PHP_URL_QUERY) .
