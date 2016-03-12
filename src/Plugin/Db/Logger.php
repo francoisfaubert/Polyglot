@@ -1,11 +1,10 @@
 <?php
+
 namespace Polyglot\Plugin\Db;
 
-use Strata\Logger\Logger as StrataLogger;
+use Strata\Strata;
 
-class Logger extends StrataLogger {
-
-    public $color =  "\e[0;35m";
+class Logger {
 
     private $executionStart = 0;
 
@@ -19,8 +18,8 @@ class Logger extends StrataLogger {
         $executionTime = microtime(true) - $this->executionStart;
         $timer = sprintf(" (Done in %s seconds)", round($executionTime, 4));
         $oneLine = preg_replace('/\s+/', ' ', trim($sql));
+        $label = "<magenta>Polyglot:Query</magenta>";
 
-        $label = "[Plugins:Polyglot:Query]";
-        $this->log($oneLine . $timer, $label);
+        Strata::app()->log($oneLine . $timer, $label);
     }
 }
