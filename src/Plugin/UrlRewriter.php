@@ -74,17 +74,24 @@ class UrlRewriter {
                 $originalUrl .= $remaningBits;
 
                 // Return just the path to the router
-                return
-                    parse_url($originalUrl, PHP_URL_PATH) .
-                    parse_url($originalUrl, PHP_URL_QUERY) .
-                    parse_url($originalUrl, PHP_URL_FRAGMENT);
+                $path = parse_url($originalUrl, PHP_URL_PATH);
+                $query = parse_url($originalUrl, PHP_URL_QUERY);
+                $fragment = parse_url($originalUrl, PHP_URL_FRAGMENT);
+
+                return $path .
+                    (empty($query) ? $query : '?' . $query) .
+                    (empty($fragment) ? $fragment : '#' . $fragment);
             }
         } elseif($originalPost) {
             $originalUrl = str_replace("/" . $currentLocale->getUrl(), "", get_permalink($originalPost->ID));
-            return
-                parse_url($originalUrl, PHP_URL_PATH) .
-                parse_url($originalUrl, PHP_URL_QUERY) .
-                parse_url($originalUrl, PHP_URL_FRAGMENT);
+
+            $path = parse_url($originalUrl, PHP_URL_PATH);
+            $query = parse_url($originalUrl, PHP_URL_QUERY);
+            $fragment = parse_url($originalUrl, PHP_URL_FRAGMENT);
+
+            return $path .
+                (empty($query) ? $query : '?' . $query) .
+                (empty($fragment) ? $fragment : '#' . $fragment);
         }
 
         return $routedUrl;
