@@ -243,7 +243,7 @@ class UrlRewriter {
 
         // Skip the process if the configuration hasn't changed since we
         // have last generated the rules.
-        if ($currentConfigurationHash === $lastConfigurationHash) {
+        if ($currentConfigurationHash !== $lastConfigurationHash) {
             flush_rewrite_rules();
             return update_option('polyglot_rewrite_settings', $currentConfigurationHash);
         }
