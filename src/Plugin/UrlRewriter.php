@@ -43,7 +43,6 @@ class UrlRewriter {
             add_action('widgets_init', array($this, 'forwardCanonicalUrls'));
 
             add_filter('redirect_canonical', array($this, 'redirectCanonical'), 10, 2);
-
         }
     }
 
@@ -135,7 +134,6 @@ class UrlRewriter {
                             $sortedMenuItems[$count]->current = true;
                             $sortedMenuItems[$count]->classes[] = "active";
                         }
-
                     }
                 }
                 $count++;
