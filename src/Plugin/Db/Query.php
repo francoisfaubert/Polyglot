@@ -63,7 +63,7 @@ class Query {
         require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
         dbDelta($sql);
 
-        $this->logger->log("Created or updated the Polyglot table.", "[Plugins::Polyglot]");
+        Strata::app()->log("Created the Polyglot table.", "<magenta>Polyglot:Query</magenta>");
 
         add_option('polyglot_db_version', self::DB_VERSION);
     }
