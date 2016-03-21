@@ -64,12 +64,24 @@ class UrlRewriter {
                 // Get permalink will append the current locale url when
                 // the configuration allows locales to present content form
                 // the default.
-                $originalUrl = str_replace("/" . $currentLocale->getUrl(), "", get_permalink($originalPost->ID));
+                $originalUrl = str_replace($currentLocale->getHomeUrl(), $defaultLocale->getHomeUrl() . "/", get_permalink($originalPost->ID));
 
                 // At this point we have a working permalink but maybe the
                 // original url had additional information afterwards.
                 // Ex: A case CPT registered sub pages url.
-                $remaningBits = str_replace(get_permalink($localizedPost->ID), "", WP_HOME . $_SERVER['REQUEST_URI']);
+                $localizedUrl = get_permalink($localizedPost->ID);
+                $currentUrl = WP_HOME . $_SERVER['REQUEST_URI'];
+
+                if (!$currentLocale->isDefault()) {
+                    $cpt = CustomPostType::factoryFromKey($localizedPost->post_type);
+                    $key = "i18n.".$currentLocale->getCode().".rewrite.slug";
+                    if ($cpt->hasConfig($key)) {
+                        $localizedUrl = str_replace($cpt->getConfig($key), $cpt->getConfig("rewrite.slug"), $localizedUrl);
+                        $currentUrl = str_replace($cpt->getConfig($key), $cpt->getConfig("rewrite.slug"), $currentUrl);
+                    }
+                }
+
+                $remaningBits = str_replace($localizedUrl, "", $currentUrl);
                 $originalUrl .= $remaningBits;
 
                 // Return just the path to the router
@@ -194,25 +206,30 @@ class UrlRewriter {
             foreach ($postTypes as $postTypekey => $config) {
                 if ($postTypekey !== 'post' && $postTypekey !== 'page' && $postTypekey !== 'attachment' && $postTypekey !== 'revision') {
 
-                    $slug = $postTypekey;
-                    if (isset($config->rewrite) && isset($config->rewrite['slug'])) {
-                        $slug = $config->rewrite['slug'];
-                    }
-
-                    $this->addCustomPostTypeRewrites($regex, $slug, $postTypekey);
-
-                    // The previous was good enough for vanilla CPT. Now check if there is
-                    // extra Strata configuration to translate the slugs.
+                    // Look for Strata configuration that would help translate the slugs.
                     if (preg_match("/^cpt_.*/", $postTypekey)) {
                         try {
                             $cpt = CustomPostType::factory(substr($postTypekey, 4));
-                            foreach ((array)$cpt->extractConfig("i18n.{s}.rewrite.slug") as $translatedSlug) {
-                                $this->addCustomPostTypeRewrites($regex, $translatedSlug, $postTypekey);
-                            }
+
+                            $localizedSlugs = array_merge(
+                                array($cpt->hasConfig("rewrite.slug") ? $cpt->getConfig("rewrite.slug") : $postTypekey),
+                                $cpt->extractConfig("i18n.{s}.rewrite.slug")
+                            );
+
+                            $this->addCustomPostTypeRewrites($regex, implode("|", $localizedSlugs), $postTypekey);
+
                         } catch (Exception $e) {
                             Strata::app()->log("Tried to translate $slug, but could not find the associated model.", "[Polyglot:UrlRewriter]");
                         }
+                    // Handle vanilla custom post types
+                    } else {
+                        $slug = $postTypekey;
+                        if (isset($config->rewrite) && isset($config->rewrite['slug'])) {
+                            $slug = $config->rewrite['slug'];
+                        }
+                        $this->addCustomPostTypeRewrites($regex, $slug, $postTypekey);
                     }
+
                 }
             }
         }
@@ -455,18 +472,18 @@ class UrlRewriter {
     {
         $rewriter = Strata::app()->rewriter;
 
-        $rewriter->addRule('('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/?$', 'index.php?attachment=$matches[2]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/trackback/?$', 'index.php?attachment=$matches[2]&tb=1&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/'.$slug.'/[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[2]&cpage=$matches[3]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/'.$slug.'/([^/]+)/trackback/?$', 'index.php?'.$postTypekey.'=$matches[2]&tb=1&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/'.$slug.'/([^/]+)/page/?([0-9]{1,})/?$', 'index.php?'.$postTypekey.'=$matches[2]&paged=$matches[3]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/'.$slug.'/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?'.$postTypekey.'=$matches[2]&cpage=$matches[3]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/'.$slug.'/([^/]+)(/[0-9]+)?/?$', 'index.php?'.$postTypekey.'=$matches[2]&page=$matches[3]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/'.$slug.'/[^/]+/([^/]+)/trackback/?$', 'index.php?attachment=$matches[2]&tb=1&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/'.$slug.'/[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/'.$slug.'/[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/'.$slug.'/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[2]&feed=$matches[3]&locale=$matches[1]');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/attachment/([^/]+)/?$', 'index.php?attachment=$matches[3]&locale=$matches[1]');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/attachment/([^/]+)/trackback/?$', 'index.php?attachment=$matches[3]&tb=1&locale=$matches[1]');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[3]&feed=$matches[4]&locale=$matches[1]');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[3]&cpage=$matches[4]&locale=$matches[1]');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/trackback/?$', 'index.php?'.$postTypekey.'=$matches[3]&tb=1&locale=$matches[1]');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/page/?([0-9]{1,})/?$', 'index.php?'.$postTypekey.'=$matches[3]&paged=$matches[4]&locale=$matches[1]');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?'.$postTypekey.'=$matches[3]&cpage=$matches[4]&locale=$matches[1]');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)(/[0-9]+)?/?$', 'index.php?'.$postTypekey.'=$matches[3]&page=$matches[4]&locale=$matches[1]');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/([^/]+)/trackback/?$', 'index.php?attachment=$matches[3]&tb=1&locale=$matches[1]');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[3]&feed=$matches[4]&locale=$matches[1]');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[3]&feed=$matches[4]&locale=$matches[1]');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[3]&feed=$matches[4]&locale=$matches[1]');
     }
 
     private function getTranslationTree($mixedId, $mixedKind = "WP_Post")
