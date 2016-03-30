@@ -70,13 +70,14 @@ class QueryRewriter {
 
     public function preGetPosts($query)
     {
+
         $currentLocale = $this->polyglot->getCurrentLocale();
         // $this->logger->logQueryStart();
 
         // In the backend of when we are in the default locale,
         // prevent non-localized posts to show up. The correct way
         // to access these would be through the Locale objects.
-        if ( (is_admin() && !Router::isFrontendAjax() ) || $currentLocale->isDefault()) {
+        if ((is_admin() && !Router::isFrontendAjax() ) || $currentLocale->isDefault() || is_search()) {
 
             $localizedPostIds = $this->polyglot->query()->listTranslatedEntitiesIds("WP_Post");
             if (count($localizedPostIds)) {
@@ -92,7 +93,6 @@ class QueryRewriter {
             }
 
             $currentTranslations = $this->polyglot->query()->findLocaleTranslations($currentLocale, "WP_Post", $postType);
-
 
             if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback")) {
                 // Collect all locales that aren't the current one and prevent them.

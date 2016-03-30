@@ -54,6 +54,28 @@ class UrlRewriter {
         $originalPost = $defaultLocale->getTranslatedPost();
         $localizedPost = $currentLocale->getTranslatedPost();
 
+        $currentUrl = WP_HOME . $_SERVER['REQUEST_URI'];
+
+        // Account for search pages which behave differently than regular pages
+        if (!$currentLocale->isDefault() && is_search() && $currentLocale->hasConfig("rewrite.search_base")) {
+            global $wp_rewrite;
+            $impliedUrl = str_replace(
+                $currentLocale->getHomeUrl() . $currentLocale->getConfig("rewrite.search_base") . "/",
+                $defaultLocale->getHomeUrl() . "/" . $wp_rewrite->search_base . "/",
+                $currentUrl
+            );
+
+            // Return just the path to the router
+            $path = parse_url($impliedUrl, PHP_URL_PATH);
+            $query = parse_url($impliedUrl, PHP_URL_QUERY);
+            $fragment = parse_url($impliedUrl, PHP_URL_FRAGMENT);
+
+            return $path .
+                (empty($query) ? $query : '?' . $query) .
+                (empty($fragment) ? $fragment : '#' . $fragment);
+        }
+
+
         // Validate the presence of a localized version because we could
         // be in fallback to the original post.
         // When in fallback mode, we must send the original url stripped
@@ -70,7 +92,6 @@ class UrlRewriter {
                 // original url had additional information afterwards.
                 // Ex: A case CPT registered sub pages url.
                 $localizedUrl = get_permalink($localizedPost->ID);
-                $currentUrl = WP_HOME . $_SERVER['REQUEST_URI'];
 
                 if (!$currentLocale->isDefault()) {
                     $cpt = CustomPostType::factoryFromKey($localizedPost->post_type);
@@ -173,7 +194,8 @@ class UrlRewriter {
      * @return array
      */
     public function addQueryVars($qv)
-    {    $qv[] = 'locale';
+    {
+        $qv[] = 'locale';
         return $qv;
     }
 
@@ -198,7 +220,7 @@ class UrlRewriter {
         $regex = $this->getLocaleUrlsRegex();
 
         // Translate the default slugs
-        $this->openRewriteForTranslations();
+        $this->openRewriteForTranslations($regex);
 
         // Custom Post Types
         $postTypes = $configuration->getPostTypes();
@@ -413,22 +435,32 @@ class UrlRewriter {
     }
 
     // Allows renaming of the global slugs
-    private function openRewriteForTranslations()
+    private function openRewriteForTranslations($regex)
     {
-        global $wp_rewrite;
+        $rewriter = Strata::app()->rewriter;
+        $keys = array(
+            'pagination_base',
+            'author_base',
+            'comments_base',
+            'feed_base',
+            'search_base',
+            'category_base',
+            'tag_base'
+        );
 
-        $textdomain = $this->polyglot->getTextdomain();
+        foreach ($keys as $key) {
+            $possibleValues = array();
+            foreach ($this->polyglot->getLocales() as $locale) {
+                if ($locale->hasConfig("rewrite." . $key)) {
+                    $possibleValues[] = $locale->getConfig("rewrite." . $key);
+                }
+            }
 
-        $wp_rewrite->pagination_base = __($wp_rewrite->pagination_base, $textdomain);
-        $wp_rewrite->author_base = __($wp_rewrite->author_base, $textdomain);
-        $wp_rewrite->comments_base = __($wp_rewrite->comments_base, $textdomain);
-        $wp_rewrite->feed_base = __($wp_rewrite->feed_base, $textdomain);
-        $wp_rewrite->search_base = __($wp_rewrite->search_base, $textdomain);
-
-        $wp_rewrite->set_category_base( __('category', $textdomain) . "/");
-        $wp_rewrite->set_tag_base( __('tag', $textdomain) . "/" );
+            if (count($possibleValues)) {
+                $rewriter->addRule('('.$regex.')/('.implode("|", $possibleValues).')/(.+)$', 'index.php?s=$matches[3]&locale=$matches[1]');
+            }
+        }
     }
-
 
     /**
      * Adds the basic rules for pointing the default locale
