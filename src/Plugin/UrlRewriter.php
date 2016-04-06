@@ -50,41 +50,19 @@ class UrlRewriter {
 
         $originalPost = $defaultLocale->getTranslatedPost();
         $localizedPost = $currentLocale->getTranslatedPost();
-
         $currentUrl = WP_HOME . $_SERVER['REQUEST_URI'];
 
-
-        // When this is the default locale and a custom url has been defined
-        if ($currentLocale->isDefault() && $currentLocale->hasACustomUrl()) {
-            $impliedUrl = str_replace($currentLocale->getHomeUrl(), "/", $currentUrl);
-
-            // Return just the path to the router
-            $path = parse_url($impliedUrl, PHP_URL_PATH);
-            $query = parse_url($impliedUrl, PHP_URL_QUERY);
-            $fragment = parse_url($impliedUrl, PHP_URL_FRAGMENT);
-
-            return $path .
-                (empty($query) ? $query : '?' . $query) .
-                (empty($fragment) ? $fragment : '#' . $fragment);
-        }
-
         // Account for search pages which behave differently than regular pages
-        if (is_search() && $currentLocale->hasConfig("rewrite.search_base")) {
+        if (is_search() && ($currentLocale->hasConfig("rewrite.search_base") || $currentLocale->isDefault())) {
             global $wp_rewrite;
+
             $impliedUrl = str_replace(
                 $currentLocale->getHomeUrl() . $currentLocale->getConfig("rewrite.search_base") . "/",
-                $defaultLocale->getHomeUrl() . "/" . $wp_rewrite->search_base . "/",
+                $defaultLocale->getHomeUrl() . $wp_rewrite->search_base . "/",
                 $currentUrl
             );
 
-            // Return just the path to the router
-            $path = parse_url($impliedUrl, PHP_URL_PATH);
-            $query = parse_url($impliedUrl, PHP_URL_QUERY);
-            $fragment = parse_url($impliedUrl, PHP_URL_FRAGMENT);
-
-            return $path .
-                (empty($query) ? $query : '?' . $query) .
-                (empty($fragment) ? $fragment : '#' . $fragment);
+            return $this->makeUrlFragment($impliedUrl, $defaultLocale);
         }
 
         // Validate the presence of a localized version because we could
@@ -97,7 +75,6 @@ class UrlRewriter {
                 // Get permalink will append the current locale url when
                 // the configuration allows locales to present content form
                 // the default.
-
                 $originalUrl = str_replace($currentLocale->getHomeUrl(), "/", get_permalink($originalPost->ID));
 
                 // At this point we have a working permalink but maybe the
@@ -117,29 +94,29 @@ class UrlRewriter {
                 $remaningBits = str_replace($localizedUrl, "", $currentUrl);
                 $originalUrl .= $remaningBits;
 
-                // Return just the path to the router
-                $path = parse_url($originalUrl, PHP_URL_PATH);
-                $query = parse_url($originalUrl, PHP_URL_QUERY);
-                $fragment = parse_url($originalUrl, PHP_URL_FRAGMENT);
-
-                return $path .
-                    (empty($query) ? $query : '?' . $query) .
-                    (empty($fragment) ? $fragment : '#' . $fragment);
+                return $this->makeUrlFragment($originalUrl, $defaultLocale);
             }
         } elseif($originalPost) {
-
             $originalUrl = str_replace($currentLocale->getUrl(), "", get_permalink($originalPost->ID));
-
-            $path = parse_url($originalUrl, PHP_URL_PATH);
-            $query = parse_url($originalUrl, PHP_URL_QUERY);
-            $fragment = parse_url($originalUrl, PHP_URL_FRAGMENT);
-
-            return $path .
-                (empty($query) ? $query : '?' . $query) .
-                (empty($fragment) ? $fragment : '#' . $fragment);
+            return $this->makeUrlFragment($originalUrl, $defaultLocale);
         }
 
         return $routedUrl;
+    }
+
+    private function makeUrlFragment($impliedUrl, $inLocale)
+    {
+        if ($inLocale->hasACustomUrl()) {
+            $impliedUrl = str_replace($inLocale->getHomeUrl(), "/", $impliedUrl);
+        }
+
+        $path = parse_url($impliedUrl, PHP_URL_PATH);
+        $query = parse_url($impliedUrl, PHP_URL_QUERY);
+        $fragment = parse_url($impliedUrl, PHP_URL_FRAGMENT);
+
+        return $path .
+            (empty($query) ? $query : '?' . $query) .
+            (empty($fragment) ? $fragment : '#' . $fragment);
     }
 
     public function wpNavMenuObjects($sortedMenuItems, $args)
@@ -446,6 +423,7 @@ class UrlRewriter {
     // Allows renaming of the global slugs
     private function openRewriteForTranslations($regex)
     {
+        global $wp_rewrite;
         $rewriter = Strata::rewriter();
         $keys = array(
             'pagination_base',
@@ -462,6 +440,8 @@ class UrlRewriter {
             foreach ($this->polyglot->getLocales() as $locale) {
                 if ($locale->hasConfig("rewrite." . $key)) {
                     $possibleValues[] = $locale->getConfig("rewrite." . $key);
+                } elseif ($locale->isDefault() && $locale->hasACustomUrl() && property_exists($wp_rewrite, $key)) {
+                    $possibleValues[] = $wp_rewrite->{$key};
                 }
             }
 
