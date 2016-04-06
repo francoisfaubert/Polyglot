@@ -416,7 +416,7 @@ class UrlRewriter {
 
     private function shouldFallbackToDefault()
     {
-        return (bool)Strata::app()->getConfig("i18n.default_locale_fallback");
+        return (bool)Strata::config("i18n.default_locale_fallback");
     }
 
     private function getLocaleUrls()
@@ -446,7 +446,7 @@ class UrlRewriter {
     // Allows renaming of the global slugs
     private function openRewriteForTranslations($regex)
     {
-        $rewriter = Strata::app()->rewriter;
+        $rewriter = Strata::rewriter();
         $keys = array(
             'pagination_base',
             'author_base',
@@ -482,7 +482,7 @@ class UrlRewriter {
         $rewriter = Strata::app()->rewriter;
 
         foreach ($this->polyglot->getLocales() as $locale) {
-            if (!$locale->hasACustomUrl()) {
+            if ($locale->hasACustomUrl()) {
                 $localizedPage = $locale->getTranslatedPost($homepageId);
 
                 if (is_null($localizedPage) && $this->shouldFallbackToDefault()) {
