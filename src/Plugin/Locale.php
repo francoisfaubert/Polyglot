@@ -138,15 +138,6 @@ class Locale extends StrataLocale {
         }
     }
 
-    public function getHomeUrl()
-    {
-        if ($this->isDefault()) {
-            return get_home_url();
-        }
-
-        return get_home_url() . "/" . $this->getUrl() . "/";
-    }
-
     public function getEditUrl()
     {
         return admin_url('options-general.php?page=polyglot-plugin&polyglot_action=editLocale&locale='.$this->getCode());

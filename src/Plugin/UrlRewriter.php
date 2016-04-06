@@ -34,10 +34,7 @@ class UrlRewriter {
         add_filter('wp_nav_menu_objects', array($this, 'wpNavMenuObjects'), 1, 2);
 
         if (!is_admin()) {
-            $locale = $this->polyglot->getCurrentLocale();
-            if (!$locale->isDefault()) {
-                add_action('strata_on_before_url_routing', array($this, "runOriginalRoute"), 5, 1);
-            }
+            add_action('strata_on_before_url_routing', array($this, "runOriginalRoute"), 5, 1);
 
             add_action('init', array($this, 'addLocaleRewrites'));
             add_action('widgets_init', array($this, 'forwardCanonicalUrls'));
@@ -56,8 +53,23 @@ class UrlRewriter {
 
         $currentUrl = WP_HOME . $_SERVER['REQUEST_URI'];
 
+
+        // When this is the default locale and a custom url has been defined
+        if ($currentLocale->isDefault() && $currentLocale->hasACustomUrl()) {
+            $impliedUrl = str_replace($currentLocale->getHomeUrl(), "/", $currentUrl);
+
+            // Return just the path to the router
+            $path = parse_url($impliedUrl, PHP_URL_PATH);
+            $query = parse_url($impliedUrl, PHP_URL_QUERY);
+            $fragment = parse_url($impliedUrl, PHP_URL_FRAGMENT);
+
+            return $path .
+                (empty($query) ? $query : '?' . $query) .
+                (empty($fragment) ? $fragment : '#' . $fragment);
+        }
+
         // Account for search pages which behave differently than regular pages
-        if (!$currentLocale->isDefault() && is_search() && $currentLocale->hasConfig("rewrite.search_base")) {
+        if (is_search() && $currentLocale->hasConfig("rewrite.search_base")) {
             global $wp_rewrite;
             $impliedUrl = str_replace(
                 $currentLocale->getHomeUrl() . $currentLocale->getConfig("rewrite.search_base") . "/",
@@ -75,7 +87,6 @@ class UrlRewriter {
                 (empty($fragment) ? $fragment : '#' . $fragment);
         }
 
-
         // Validate the presence of a localized version because we could
         // be in fallback to the original post.
         // When in fallback mode, we must send the original url stripped
@@ -86,7 +97,8 @@ class UrlRewriter {
                 // Get permalink will append the current locale url when
                 // the configuration allows locales to present content form
                 // the default.
-                $originalUrl = str_replace($currentLocale->getHomeUrl(), $defaultLocale->getHomeUrl() . "/", get_permalink($originalPost->ID));
+
+                $originalUrl = str_replace($currentLocale->getHomeUrl(), "/", get_permalink($originalPost->ID));
 
                 // At this point we have a working permalink but maybe the
                 // original url had additional information afterwards.
@@ -115,7 +127,8 @@ class UrlRewriter {
                     (empty($fragment) ? $fragment : '#' . $fragment);
             }
         } elseif($originalPost) {
-            $originalUrl = str_replace("/" . $currentLocale->getUrl(), "", get_permalink($originalPost->ID));
+
+            $originalUrl = str_replace($currentLocale->getUrl(), "", get_permalink($originalPost->ID));
 
             $path = parse_url($originalUrl, PHP_URL_PATH);
             $query = parse_url($originalUrl, PHP_URL_QUERY);
@@ -333,16 +346,12 @@ class UrlRewriter {
 
     public function getLocalizedFallbackUrl($originalUrl, $locale)
     {
-        $currentLocale = $this->polyglot->getCurrentLocale();
-        $localeUrl = $locale->isDefault() ? '/' : '/' . $locale->getUrl() . '/';
-
         // Remove the possible fake url prefix when fallbacking
-        if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback") && !$currentLocale->isDefault()) {
-            $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME . "/"  . $currentLocale->getUrl(), "/"));
-            $originalUrl = preg_replace("/^$regexedBaseHomeUrl/", WP_HOME, $originalUrl);
+        if ((bool)Strata::config("i18n.default_locale_fallback")) {
+            return str_replace(Strata::i18n()->getCurrentLocale()->getHomeUrl(), $locale->getHomeUrl(), $originalUrl);
         }
 
-        return str_replace(WP_HOME . "/", WP_HOME . $localeUrl, $originalUrl);
+        return str_replace(get_home_url(), $locale->getHomeUrl(), $originalUrl);
     }
 
     public function termLink($termLink)
@@ -368,7 +377,7 @@ class UrlRewriter {
         // Before leaving, check if we are expected to build localized urls when
         // the page does not exist. This ensures the default content is displayed as-if it
         // was a localization of the current locale. (ex: en_US could be the invisible fallback for en_CA).
-        if ($this->shouldFallbackToDefault() && !$currentLocale->isDefault()) {
+        if ($this->shouldFallbackToDefault() && $currentLocale->hasACustomUrl()) {
             $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
             return preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . "/" . $currentLocale->getUrl(), $postLink);
         }
@@ -379,7 +388,7 @@ class UrlRewriter {
     {
         // If not already present, add the locale url keys
         $regexedBaseHomeUrl = str_replace("//", "\/\/", preg_quote(WP_HOME, "/"));
-        $replacementUrl = $postLocale->isDefault() ? '' : "/" . $postLocale->getUrl();
+        $replacementUrl = !$postLocale->hasACustomUrl() ? '' : "/" . $postLocale->getUrl();
         $localizedUrl = preg_replace("/^$regexedBaseHomeUrl/", WP_HOME . $replacementUrl, $postLink);
 
         // We have a translated url, but if it happens to be the homepage we
@@ -473,7 +482,7 @@ class UrlRewriter {
         $rewriter = Strata::app()->rewriter;
 
         foreach ($this->polyglot->getLocales() as $locale) {
-            if (!$locale->isDefault()) {
+            if (!$locale->hasACustomUrl()) {
                 $localizedPage = $locale->getTranslatedPost($homepageId);
 
                 if (is_null($localizedPage) && $this->shouldFallbackToDefault()) {
