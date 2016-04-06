@@ -43,7 +43,7 @@ class UrlRewriter {
         }
     }
 
-    public function runOriginalRoute($routedUrl)
+    public function runOriginalRoute($routedUrl = null)
     {
         $defaultLocale = $this->polyglot->getDefaultLocale();
         $currentLocale = $this->polyglot->getCurrentLocale();
@@ -101,7 +101,7 @@ class UrlRewriter {
             return $this->makeUrlFragment($originalUrl, $defaultLocale);
         }
 
-        return $routedUrl;
+        return $this->makeUrlFragment($currentUrl, $currentLocale);
     }
 
     private function makeUrlFragment($impliedUrl, $inLocale)
@@ -440,7 +440,7 @@ class UrlRewriter {
             foreach ($this->polyglot->getLocales() as $locale) {
                 if ($locale->hasConfig("rewrite." . $key)) {
                     $possibleValues[] = $locale->getConfig("rewrite." . $key);
-                } elseif ($locale->isDefault() && $locale->hasACustomUrl() && property_exists($wp_rewrite, $key)) {
+                } elseif ($locale->hasACustomUrl() && property_exists($wp_rewrite, $key)) {
                     $possibleValues[] = $wp_rewrite->{$key};
                 }
             }
