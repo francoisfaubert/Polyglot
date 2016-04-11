@@ -52,6 +52,7 @@ class UrlRewriter {
         $localizedPost = $currentLocale->getTranslatedPost();
         $currentUrl = WP_HOME . $_SERVER['REQUEST_URI'];
 
+
         // Account for search pages which behave differently than regular pages
         if (is_search() && ($currentLocale->hasConfig("rewrite.search_base") || $currentLocale->isDefault())) {
             global $wp_rewrite;
@@ -80,7 +81,7 @@ class UrlRewriter {
                 // At this point we have a working permalink but maybe the
                 // original url had additional information afterwards.
                 // Ex: A case CPT registered sub pages url.
-                $localizedUrl = get_permalink($localizedPost->ID);
+                $localizedUrl = str_replace($currentLocale->getHomeUrl(), "/", get_permalink($localizedPost->ID));
 
                 if (!$currentLocale->isDefault()) {
                     $cpt = CustomPostType::factoryFromKey($localizedPost->post_type);
@@ -91,8 +92,10 @@ class UrlRewriter {
                     }
                 }
 
-                $remaningBits = str_replace($localizedUrl, "", $currentUrl);
+                $remaningBits = str_replace(get_home_url() . $localizedUrl, "", $currentUrl);
                 $originalUrl .= $remaningBits;
+
+                debug($originalUrl);
 
                 return $this->makeUrlFragment($originalUrl, $defaultLocale);
             }
