@@ -81,7 +81,7 @@ class UrlRewriter {
                 // At this point we have a working permalink but maybe the
                 // original url had additional information afterwards.
                 // Ex: A case CPT registered sub pages url.
-                $localizedUrl = str_replace($currentLocale->getHomeUrl(), "/", get_permalink($localizedPost->ID));
+                $localizedUrl = get_permalink($localizedPost->ID);
 
                 if (!$currentLocale->isDefault()) {
                     $cpt = CustomPostType::factoryFromKey($localizedPost->post_type);
@@ -92,7 +92,7 @@ class UrlRewriter {
                     }
                 }
 
-                $remaningBits = str_replace(get_home_url() . $localizedUrl, "", $currentUrl);
+                $remaningBits = str_replace($localizedUrl, "", $currentUrl);
                 $originalUrl .= $remaningBits;
 
                 return $this->makeUrlFragment($originalUrl, $defaultLocale);
