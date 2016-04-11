@@ -95,8 +95,6 @@ class UrlRewriter {
                 $remaningBits = str_replace(get_home_url() . $localizedUrl, "", $currentUrl);
                 $originalUrl .= $remaningBits;
 
-                debug($originalUrl);
-
                 return $this->makeUrlFragment($originalUrl, $defaultLocale);
             }
         } elseif($originalPost) {
