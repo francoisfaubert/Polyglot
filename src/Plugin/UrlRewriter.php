@@ -25,9 +25,9 @@ class UrlRewriter {
 
     public function registerHooks()
     {
-        add_filter('post_link', array($this, 'postLink'), 1, 3);
-        add_filter('post_type_link', array($this, 'postLink'), 1, 3);
-        add_filter('page_link', array($this, 'postLink'), 1, 3);
+        add_filter('post_link', array($this, 'postLink'), 1, 2);
+        add_filter('post_type_link', array($this, 'postLink'), 1, 2);
+        add_filter('page_link', array($this, 'postLink'), 1, 2);
         add_filter('query_vars', array($this, 'addQueryVars'));
         add_filter('term_link', array($this, 'termLink'));
 
@@ -50,17 +50,19 @@ class UrlRewriter {
 
         $originalPost = $defaultLocale->getTranslatedPost();
         $localizedPost = $currentLocale->getTranslatedPost();
-        $currentUrl = WP_HOME . $_SERVER['REQUEST_URI'];
 
+        if (is_null($routedUrl)) {
+            $routedUrl = $_SERVER['REQUEST_URI'];
+        }
 
         // Account for search pages which behave differently than regular pages
         if (is_search() && ($currentLocale->hasConfig("rewrite.search_base") || $currentLocale->isDefault())) {
             global $wp_rewrite;
 
-            $impliedUrl = str_replace(
-                $currentLocale->getHomeUrl() . $currentLocale->getConfig("rewrite.search_base") . "/",
-                $defaultLocale->getHomeUrl() . $wp_rewrite->search_base . "/",
-                $currentUrl
+            $impliedUrl = $this->replaceFirstOccurance(
+                $currentLocale->getHomeUrl(false) . $currentLocale->getConfig("rewrite.search_base") . "/",
+                $defaultLocale->getHomeUrl(false) . $wp_rewrite->search_base . "/",
+                $routedUrl
             );
 
             return $this->makeUrlFragment($impliedUrl, $defaultLocale);
@@ -76,39 +78,42 @@ class UrlRewriter {
                 // Get permalink will append the current locale url when
                 // the configuration allows locales to present content form
                 // the default.
-                $originalUrl = str_replace($currentLocale->getHomeUrl(), "/", get_permalink($originalPost->ID));
+                $routedUrl = $this->replaceFirstOccurance($localizedPost->post_name, $originalPost->post_name, $routedUrl);
+                $originalUrl = $this->replaceFirstOccurance($currentLocale->getHomeUrl(false), "/", $routedUrl);
 
                 // At this point we have a working permalink but maybe the
                 // original url had additional information afterwards.
                 // Ex: A case CPT registered sub pages url.
-                $localizedUrl = get_permalink($localizedPost->ID);
+                if (preg_match('/'.preg_quote($localizedPost->post_name).'\/(.+?)$/', $routedUrl, $matches)) {
+                    $additionalParameters = $matches[1];
 
-                if (!$currentLocale->isDefault()) {
-                    $cpt = CustomPostType::factoryFromKey($localizedPost->post_type);
-                    $key = "i18n.".$currentLocale->getCode().".rewrite.slug";
-                    if ($cpt->hasConfig($key)) {
-                        $localizedUrl = str_replace($cpt->getConfig($key), $cpt->getConfig("rewrite.slug"), $localizedUrl);
-                        $currentUrl = str_replace($cpt->getConfig($key), $cpt->getConfig("rewrite.slug"), $currentUrl);
+                    // Localize back the parameters in the default language
+                    if (!$currentLocale->isDefault()) {
+                        $cpt = CustomPostType::factoryFromKey($localizedPost->post_type);
+                        $key = "i18n.".$currentLocale->getCode().".rewrite.slug";
+                        if ($cpt->hasConfig($key)) {
+                            $additionalParameters = $this->replaceFirstOccurance($cpt->getConfig($key), $cpt->getConfig("rewrite.slug"), $additionalParameters);
+                        }
                     }
+
+                    $originalUrl .= $additionalParameters;
                 }
 
-                $remaningBits = str_replace($localizedUrl, "", $currentUrl);
-                $originalUrl .= $remaningBits;
 
                 return $this->makeUrlFragment($originalUrl, $defaultLocale);
             }
         } elseif($originalPost) {
-            $originalUrl = str_replace($currentLocale->getUrl(), "", get_permalink($originalPost->ID));
+            $originalUrl = $this->replaceFirstOccurance($currentLocale->getHomeUrl(), "/", $routedUrl);
             return $this->makeUrlFragment($originalUrl, $defaultLocale);
         }
 
-        return $this->makeUrlFragment($currentUrl, $currentLocale);
+        return $this->makeUrlFragment($routedUrl, $currentLocale);
     }
 
     private function makeUrlFragment($impliedUrl, $inLocale)
     {
         if ($inLocale->hasACustomUrl()) {
-            $impliedUrl = str_replace($inLocale->getHomeUrl(), "/", $impliedUrl);
+            $impliedUrl = $this->replaceFirstOccurance($inLocale->getHomeUrl(false), "/", $impliedUrl);
         }
 
         $path = parse_url($impliedUrl, PHP_URL_PATH);
@@ -525,4 +530,9 @@ class UrlRewriter {
         return (int)$mixedId;
     }
 
+    private function replaceFirstOccurance($from, $to, $subject)
+    {
+        $from = '/' . preg_quote($from, '/') . '/';
+        return preg_replace($from, $to, $subject, 1);
+    }
 }
