@@ -82,7 +82,7 @@ class Query {
             } elseif($objectKind === "Term" && $locale->hasTermTranslation($objectId)) {
                 $translation = $locale->getTranslatedTerm($objectId);
                 if (!is_null($translation)) {
-                    wp_trash_term($translation->term_id);
+                    wp_delete_term($translation->term_id);
                 }
             }
         }
