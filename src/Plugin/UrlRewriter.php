@@ -8,9 +8,16 @@ use Strata\Utility\Hash;
 use Strata\Model\CustomPostType\CustomPostType;
 use Strata\Model\Taxonomy\Taxonomy;
 
+
 use Polyglot\Plugin\Polyglot;
 use Polyglot\Plugin\Locale;
 use Polyglot\Plugin\Db\Query;
+
+use Polyglot\I18n\Request\Router\PolyglotRouter;
+use Polyglot\I18n\Request\Rewriter\TaxonomyRewriter;
+use Polyglot\I18n\Request\Rewriter\CustomPostTypeRewriter;
+use Polyglot\I18n\Request\Rewriter\DefaultWordpressRewriter;
+use Polyglot\I18n\Request\Rewriter\HomepageRewriter;
 
 use WP_Post;
 use WP_Term;
@@ -45,86 +52,40 @@ class UrlRewriter {
         }
     }
 
-    public function runOriginalRoute($routedUrl = null)
+    public function runOriginalRoute($route = null)
     {
-        $defaultLocale = $this->polyglot->getDefaultLocale();
-        $currentLocale = $this->polyglot->getCurrentLocale();
-
-        $originalPost = $defaultLocale->getTranslatedPost();
-        $localizedPost = $currentLocale->getTranslatedPost();
-
-        if (is_null($routedUrl)) {
-            $routedUrl = $_SERVER['REQUEST_URI'];
-        }
-
-        // Account for search pages which behave differently than regular pages
-        if (is_search() && ($currentLocale->hasConfig("rewrite.search_base") || $currentLocale->isDefault())) {
-            global $wp_rewrite;
-
-            $impliedUrl = $this->replaceFirstOccurance(
-                $currentLocale->getHomeUrl(false) . $currentLocale->getConfig("rewrite.search_base") . "/",
-                $defaultLocale->getHomeUrl(false) . $wp_rewrite->search_base . "/",
-                $routedUrl
-            );
-
-            return $this->makeUrlFragment($impliedUrl, $defaultLocale);
-        }
-
-        // Validate the presence of a localized version because we could
-        // be in fallback to the original post.
-        // When in fallback mode, we must send the original url stripped
-        // locale code which is meaningless at that point.
-        if ($localizedPost) {
-            if ($this->isLocalizedPost($originalPost, $localizedPost) || $this->isFallbackPost($originalPost, $localizedPost)) {
-
-                // Get permalink will append the current locale url when
-                // the configuration allows locales to present content form
-                // the default.
-                $routedUrl = $this->replaceFirstOccurance($localizedPost->post_name, $originalPost->post_name, $routedUrl);
-                $originalUrl = $this->replaceFirstOccurance($currentLocale->getHomeUrl(false), "/", $routedUrl);
-
-                // At this point we have a working permalink but maybe the
-                // original url had additional information afterwards.
-                // Ex: A case CPT registered sub pages url.
-                if (preg_match('/'.preg_quote($localizedPost->post_name).'\/(.+?)$/', $routedUrl, $matches)) {
-                    $additionalParameters = $matches[1];
-
-                    // Localize back the parameters in the default language
-                    if (!$currentLocale->isDefault()) {
-                        $cpt = CustomPostType::factoryFromKey($localizedPost->post_type);
-                        $key = "i18n.".$currentLocale->getCode().".rewrite.slug";
-                        if ($cpt->hasConfig($key)) {
-                            $additionalParameters = $this->replaceFirstOccurance($cpt->getConfig($key), $cpt->getConfig("rewrite.slug"), $additionalParameters);
-                        }
-                    }
-
-                    $originalUrl .= $additionalParameters;
-                }
-
-
-                return $this->makeUrlFragment($originalUrl, $defaultLocale);
-            }
-        } elseif($originalPost) {
-            $originalUrl = $this->replaceFirstOccurance($currentLocale->getHomeUrl(), "/", $routedUrl);
-            return $this->makeUrlFragment($originalUrl, $defaultLocale);
-        }
-
-        return $this->makeUrlFragment($routedUrl, $currentLocale);
+        global $wp_query;
+        return PolyglotRouter::localizeRouteByQuery($wp_query, $route);
     }
 
-    private function makeUrlFragment($impliedUrl, $inLocale)
+    /**
+     * Adds all the rewrites required by the current setup of the locale configuration.
+     */
+    public function addLocaleRewrites()
     {
-        if ($inLocale->hasACustomUrl()) {
-            $impliedUrl = $this->replaceFirstOccurance($inLocale->getHomeUrl(false), "/", $impliedUrl);
-        }
+        $configuration = $this->polyglot->getConfiguration();
+        $strataRewriter = Strata::rewriter();
+        $i18n = Strata::i18n();
 
-        $path = parse_url($impliedUrl, PHP_URL_PATH);
-        $query = parse_url($impliedUrl, PHP_URL_QUERY);
-        $fragment = parse_url($impliedUrl, PHP_URL_FRAGMENT);
+        // Taxonomies
+        $rewriter = new TaxonomyRewriter($i18n, $strataRewriter);
+        $rewriter->setConfiguration($configuration);
+        $rewriter->rewrite();
 
-        return $path .
-            (empty($query) ? $query : '?' . $query) .
-            (empty($fragment) ? $fragment : '#' . $fragment);
+        // Custom Post Types
+        $rewriter = new CustomPostTypeRewriter($i18n, $strataRewriter);
+        $rewriter->setConfiguration($configuration);
+        $rewriter->rewrite();
+
+        // Translate the default slugs
+        $rewriter = new DefaultWordpressRewriter($i18n, $strataRewriter);
+        $rewriter->setConfiguration($configuration);
+        $rewriter->rewrite();
+
+        // Translate homepages
+        $rewriter = new HomepageRewriter($i18n, $strataRewriter);
+        $rewriter->setDefaultHomepageId($this->polyglot->query()->getDefaultHomepageId());
+        $rewriter->rewrite();
     }
 
     public function wpNavMenuObjects($sortedMenuItems, $args)
@@ -174,16 +135,6 @@ class UrlRewriter {
         return $sortedMenuItems;
     }
 
-    private function isLocalizedPost($originalPost, $localizedPost)
-    {
-        return !is_null($originalPost) && !is_null($localizedPost);
-    }
-
-    private function isFallbackPost($originalPost, $localizedPost)
-    {
-        return !is_null($originalPost) && is_null($localizedPost);
-    }
-
 
     /**
      * Declares the query parameter for the locale.
@@ -207,102 +158,6 @@ class UrlRewriter {
         }
 
         return $redirectUrl;
-    }
-
-    /**
-     * Adds all the rewrites required by the current setup of the locale configuration.
-     */
-    public function addLocaleRewrites()
-    {
-        $configuration = $this->polyglot->getConfiguration();
-        $regex = $this->getLocaleUrlsRegex();
-
-        // Translate the default slugs
-        $this->openRewriteForTranslations($regex);
-
-        // Custom Post Types
-        $postTypes = $configuration->getPostTypes();
-        if (count($postTypes)) {
-            foreach ($postTypes as $postTypekey => $config) {
-                if ($postTypekey !== 'post' && $postTypekey !== 'page' && $postTypekey !== 'attachment' && $postTypekey !== 'revision') {
-
-                    // Look for Strata configuration that would help translate the slugs.
-                    if (preg_match("/^cpt_.*/", $postTypekey)) {
-                        try {
-                            $cpt = CustomPostType::factory(substr($postTypekey, 4));
-
-                            $localizedSlugs = array_merge(
-                                array($cpt->hasConfig("rewrite.slug") ? $cpt->getConfig("rewrite.slug") : $postTypekey),
-                                $cpt->extractConfig("i18n.{s}.rewrite.slug")
-                            );
-
-                            $this->addCustomPostTypeRewrites($regex, implode("|", $localizedSlugs), $postTypekey);
-
-                        } catch (Exception $e) {
-                            Strata::app()->log("Tried to translate $slug, but could not find the associated model.", "<magenta>Polyglot:UrlRewriter</magenta>");
-                        }
-                    // Handle vanilla custom post types
-                    } else {
-                        $slug = $postTypekey;
-                        if (isset($config->rewrite) && isset($config->rewrite['slug'])) {
-                            $slug = $config->rewrite['slug'];
-                        }
-                        $this->addCustomPostTypeRewrites($regex, $slug, $postTypekey);
-                    }
-
-                }
-            }
-        }
-
-        // Taxonomies
-        $taxonomies = $configuration->getTaxonomies();
-        if (count($taxonomies)) {
-            foreach ($taxonomies as $taxonomyKey => $config) {
-
-                // Look for Strata configuration that would help translate the slugs.
-                if (preg_match("/^tax_.*$/", $taxonomyKey)) {
-                    try {
-                        $taxonomy = Taxonomy::factory(substr($taxonomyKey, 4));
-
-                        $localizedSlugs = array_merge(
-                            array($taxonomy->hasConfig("rewrite.slug") ? $taxonomy->getConfig("rewrite.slug") : $taxonomyKey),
-                            $taxonomy->extractConfig("i18n.{s}.rewrite.slug")
-                        );
-
-                        $this->addTaxonomyRewrites($regex, implode("|", $localizedSlugs), $taxonomyKey);
-
-                    } catch (Exception $e) {
-                        Strata::app()->log("Tried to translate $taxonomyKey, but could not find the associated model.", "<magenta>Polyglot:UrlRewriter</magenta>");
-                    }
-
-                // Handle vanilla taxonomies
-                } else {
-                    $slug = $taxonomyKey;
-                    if (isset($config->rewrite) && isset($config->rewrite['slug'])) {
-                        $slug = $config->rewrite['slug'];
-                    }
-                    $this->addTaxonomyRewrites($regex, $slug, $taxonomyKey);
-                }
-            }
-        }
-
-        // Pages
-        if ($configuration->isTypeEnabled('page')) {
-            Strata::app()->rewriter->addRule('('.$regex.')/(.?.+?)/?$', 'index.php?pagename=$matches[2]&locale=$matches[1]');
-        }
-
-        // Posts
-        if ($configuration->isTypeEnabled('post')) {
-            Strata::app()->rewriter->addRule('('.$regex.')/([^/]+)/?$', 'index.php?name=$matches[2]&locale=$matches[1]');
-        }
-
-        // Rewrite for categories
-        if (count($configuration->getTaxonomies())) {
-            $this->addCategoryRules();
-        }
-
-        // Rewrite for localized homepages.
-        $this->addHomepagesRules();
     }
 
     public function forwardCanonicalUrls()
@@ -443,16 +298,6 @@ class UrlRewriter {
         return (bool)Strata::config("i18n.default_locale_fallback");
     }
 
-    private function getLocaleUrls()
-    {
-        return array_map(function($locale) { return $locale->getUrl(); }, $this->polyglot->getLocales());
-    }
-
-    private function getLocaleUrlsRegex()
-    {
-        return implode("|", $this->getLocaleUrls());
-    }
-
     private function isATranslatedPost($post)
     {
         if (is_null($post)) {
@@ -467,103 +312,6 @@ class UrlRewriter {
         return count($this->polyglot->query()->findDetailsById($post->ID)) > 0;
     }
 
-    // Allows renaming of the global slugs
-    private function openRewriteForTranslations($regex)
-    {
-        global $wp_rewrite;
-        $rewriter = Strata::rewriter();
-        $keys = array(
-            'pagination_base',
-            'author_base',
-            'comments_base',
-            'feed_base',
-            'search_base',
-            'category_base',
-            'tag_base'
-        );
-
-        foreach ($keys as $key) {
-            $possibleValues = array();
-            foreach ($this->polyglot->getLocales() as $locale) {
-                if ($locale->hasConfig("rewrite." . $key)) {
-                    $possibleValues[] = $locale->getConfig("rewrite." . $key);
-                } elseif ($locale->hasACustomUrl() && property_exists($wp_rewrite, $key)) {
-                    $possibleValues[] = $wp_rewrite->{$key};
-                }
-            }
-
-            if (count($possibleValues)) {
-                $rewriter->addRule('('.$regex.')/('.implode("|", $possibleValues).')/(.+)$', 'index.php?s=$matches[3]&locale=$matches[1]');
-            }
-        }
-    }
-
-    /**
-     * Adds the basic rules for pointing the default locale
-     * directory to the translated version of the homepage.
-     */
-    private function addHomepagesRules()
-    {
-        $homepageId = $this->polyglot->query()->getDefaultHomepageId();
-        $defaultLocale = $this->polyglot->getDefaultLocale();
-        $rewriter = Strata::app()->rewriter;
-
-        foreach ($this->polyglot->getLocales() as $locale) {
-            if ($locale->hasACustomUrl()) {
-                $localizedPage = $locale->getTranslatedPost($homepageId);
-
-                if (is_null($localizedPage) && $this->shouldFallbackToDefault()) {
-                    $localizedPage = $defaultLocale->getTranslatedPost($homepageId);
-                }
-
-                if (!is_null($localizedPage)) {
-                    $pagename = $localizedPage->post_name;
-                    $url = $locale->getUrl();
-                    $rewriter->addRule("$url/?$", "index.php?pagename=$pagename");
-                }
-            }
-        }
-    }
-
-    private function addCategoryRules()
-    {
-        $regex = $this->getLocaleUrlsRegex();
-        $rewriter = Strata::app()->rewriter;
-
-        $rewriter->addRule('('.$regex.')/category/(.+?)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?category_name=$matches[2]&feed=$matches[3]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/category/(.+?)/(feed|rdf|rss|rss2|atom)/?$', 'index.php?category_name=$matches[2]&feed=$matches[3]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/category/(.+?)/page/?([0-9]{1,})/?$', 'index.php?category_name=$matches[2]&paged=$matches[3]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/category/(.+?)/?$', 'index.php?category_name=$matches[2]&locale=$matches[1]');
-    }
-
-    private function addCustomPostTypeRewrites($regex, $slug, $postTypekey)
-    {
-        $rewriter = Strata::app()->rewriter;
-
-        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/attachment/([^/]+)/?$', 'index.php?attachment=$matches[3]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/attachment/([^/]+)/trackback/?$', 'index.php?attachment=$matches[3]&tb=1&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/attachment/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[3]&feed=$matches[4]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/attachment/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[3]&cpage=$matches[4]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/trackback/?$', 'index.php?'.$postTypekey.'=$matches[3]&tb=1&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/page/?([0-9]{1,})/?$', 'index.php?'.$postTypekey.'=$matches[3]&paged=$matches[4]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?'.$postTypekey.'=$matches[3]&cpage=$matches[4]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)(/[0-9]+)?/?$', 'index.php?'.$postTypekey.'=$matches[3]&page=$matches[4]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/([^/]+)/trackback/?$', 'index.php?attachment=$matches[3]&tb=1&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[3]&feed=$matches[4]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[3]&feed=$matches[4]&locale=$matches[1]');
-        $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[3]&feed=$matches[4]&locale=$matches[1]');
-    }
-
-    private function addTaxonomyRewrites($regex, $slug, $taxonomyKey)
-    {
-        $rewriter = Strata::app()->rewriter;
-
-        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?'.$taxonomyKey.'=$matches[1]&feed=$matches[2]');
-        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/(feed|rdf|rss|rss2|atom)/?$', 'index.php?'.$taxonomyKey.'=$matches[1]&feed=$matches[2]');
-        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/embed/?$', 'index.php?'.$taxonomyKey.'=$matches[1]&embed=true');
-        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/page/?([0-9]{1,})/?$', 'index.php?'.$taxonomyKey.'=$matches[1]&paged=$matches[2]');
-        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/?$', 'index.php?'.$taxonomyKey.'=$matches[1]');
-    }
 
     private function getTranslationTree($mixedId, $mixedKind = "WP_Post")
     {
