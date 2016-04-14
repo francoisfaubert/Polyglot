@@ -12,6 +12,7 @@ use Polyglot\Plugin\Locale;
 use Polyglot\Plugin\Db\Query;
 
 use WP_Post;
+use WP_Term;
 use Exception;
 
 class UrlRewriter {
@@ -29,7 +30,7 @@ class UrlRewriter {
         add_filter('post_type_link', array($this, 'postLink'), 1, 2);
         add_filter('page_link', array($this, 'postLink'), 1, 2);
         add_filter('query_vars', array($this, 'addQueryVars'));
-        add_filter('term_link', array($this, 'termLink'));
+        add_filter('term_link', array($this, 'termLink'), 1, 3);
 
         add_filter('wp_nav_menu_objects', array($this, 'wpNavMenuObjects'), 1, 2);
 
@@ -337,16 +338,23 @@ class UrlRewriter {
         return str_replace(get_home_url(), $locale->getHomeUrl(), $originalUrl);
     }
 
-    public function termLink($termLink)
+    /**
+     * Returns the default term link to add the current locale prefix
+     * to the generated link, if applicable.
+     * @param  string $url
+     * @param  WP_Term $term
+     * @param  string $taxonomy
+     * @return string
+     */
+    public function termLink($url, WP_Term $term, $taxonomy)
     {
-        $locale = $this->polyglot->getCurrentLocale();
-        if ($locale && !$locale->isDefault()) {
-            // Don't replace already formatted urls.
-            $regexed = preg_quote($locale->getUrl(), '/');
-            if (!preg_match("/(index.php)?\/".$regexed."\//", $termLink)) {
-                $home = str_replace("//", "\/\/", preg_quote(WP_HOME));
-                $regex = "$home\/(index.php\/)?(.*)?";
-                return preg_replace("/$regex/", WP_HOME . "/$1" . $locale->getUrl() . "/$2", $termLink);
+        $configuration = $this->polyglot->getConfiguration();
+        if ($configuration->isTaxonomyEnabled($taxonomy)) {
+            $locale = $this->polyglot->getCurrentLocale();
+            if ($locale && $locale->hasACustomUrl()) {
+                $taxonomyDetails = get_taxonomy($taxonomy);
+                $taxonomyRootSlug = $taxonomyDetails->rewrite['slug'];
+                return $this->replaceFirstOccurance('/' . $taxonomyRootSlug, $locale->getHomeUrl(false) . $taxonomyRootSlug, $url);
             }
         }
 
