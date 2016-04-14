@@ -6,6 +6,7 @@ use Strata\Strata;
 use Strata\I18n\I18n;
 use Strata\Utility\Hash;
 use Strata\Model\CustomPostType\CustomPostType;
+use Strata\Model\Taxonomy\Taxonomy;
 
 use Polyglot\Plugin\Polyglot;
 use Polyglot\Plugin\Locale;
@@ -238,7 +239,7 @@ class UrlRewriter {
                             $this->addCustomPostTypeRewrites($regex, implode("|", $localizedSlugs), $postTypekey);
 
                         } catch (Exception $e) {
-                            Strata::app()->log("Tried to translate $slug, but could not find the associated model.", "[Polyglot:UrlRewriter]");
+                            Strata::app()->log("Tried to translate $slug, but could not find the associated model.", "<magenta>Polyglot:UrlRewriter</magenta>");
                         }
                     // Handle vanilla custom post types
                     } else {
@@ -249,6 +250,38 @@ class UrlRewriter {
                         $this->addCustomPostTypeRewrites($regex, $slug, $postTypekey);
                     }
 
+                }
+            }
+        }
+
+        // Taxonomies
+        $taxonomies = $configuration->getTaxonomies();
+        if (count($taxonomies)) {
+            foreach ($taxonomies as $taxonomyKey => $config) {
+
+                // Look for Strata configuration that would help translate the slugs.
+                if (preg_match("/^tax_.*$/", $taxonomyKey)) {
+                    try {
+                        $taxonomy = Taxonomy::factory(substr($taxonomyKey, 4));
+
+                        $localizedSlugs = array_merge(
+                            array($taxonomy->hasConfig("rewrite.slug") ? $taxonomy->getConfig("rewrite.slug") : $taxonomyKey),
+                            $taxonomy->extractConfig("i18n.{s}.rewrite.slug")
+                        );
+
+                        $this->addTaxonomyRewrites($regex, implode("|", $localizedSlugs), $taxonomyKey);
+
+                    } catch (Exception $e) {
+                        Strata::app()->log("Tried to translate $taxonomyKey, but could not find the associated model.", "<magenta>Polyglot:UrlRewriter</magenta>");
+                    }
+
+                // Handle vanilla taxonomies
+                } else {
+                    $slug = $taxonomyKey;
+                    if (isset($config->rewrite) && isset($config->rewrite['slug'])) {
+                        $slug = $config->rewrite['slug'];
+                    }
+                    $this->addTaxonomyRewrites($regex, $slug, $taxonomyKey);
                 }
             }
         }
@@ -519,6 +552,17 @@ class UrlRewriter {
         $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[3]&feed=$matches[4]&locale=$matches[1]');
         $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/([^/]+)/(feed|rdf|rss|rss2|atom)/?$', 'index.php?attachment=$matches[3]&feed=$matches[4]&locale=$matches[1]');
         $rewriter->addRule('('.$regex.')/('.$slug.')/[^/]+/([^/]+)/comment-page-([0-9]{1,})/?$', 'index.php?attachment=$matches[3]&feed=$matches[4]&locale=$matches[1]');
+    }
+
+    private function addTaxonomyRewrites($regex, $slug, $taxonomyKey)
+    {
+        $rewriter = Strata::app()->rewriter;
+
+        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/feed/(feed|rdf|rss|rss2|atom)/?$', 'index.php?'.$taxonomyKey.'=$matches[1]&feed=$matches[2]');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/(feed|rdf|rss|rss2|atom)/?$', 'index.php?'.$taxonomyKey.'=$matches[1]&feed=$matches[2]');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/embed/?$', 'index.php?'.$taxonomyKey.'=$matches[1]&embed=true');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/page/?([0-9]{1,})/?$', 'index.php?'.$taxonomyKey.'=$matches[1]&paged=$matches[2]');
+        $rewriter->addRule('('.$regex.')/('.$slug.')/([^/]+)/?$', 'index.php?'.$taxonomyKey.'=$matches[1]');
     }
 
     private function getTranslationTree($mixedId, $mixedKind = "WP_Post")
