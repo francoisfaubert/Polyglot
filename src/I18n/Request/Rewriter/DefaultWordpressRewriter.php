@@ -22,6 +22,7 @@ class DefaultWordpressRewriter extends PolyglotRewriter {
         $this->translateBases();
 
         if ($this->translatePages) {
+           $this->rewriter->addRule('('.$this->urlRegex.')/([^/]+)/page/?([0-9]{1,})/?$', 'index.php?pagename=$matches[2]&locale=$matches[1]&paged=$matches[3]');
            $this->rewriter->addRule('('.$this->urlRegex.')/(.?.+?)/?$', 'index.php?pagename=$matches[2]&locale=$matches[1]');
         }
 

@@ -79,7 +79,7 @@ class PostRouter extends PolyglotRouter {
             $additionalParameters = $matches[1];
 
             // Localize back the parameters in the default language
-            if (!$currentLocale->isDefault()) {
+            if (!$this->currentLocale->isDefault()) {
                 $cpt = CustomPostType::factoryFromKey($localizedPost->post_type);
                 $key = "i18n.".$currentLocale->getCode().".rewrite.slug";
                 if ($cpt->hasConfig($key)) {
