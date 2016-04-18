@@ -26,6 +26,7 @@ class PostRouter extends PolyglotRouter {
             return $this->localizeContentFallbackRoute($route);
         }
 
+
         return $this->makeUrlFragment($route, $this->currentLocale);
     }
 
@@ -72,9 +73,35 @@ class PostRouter extends PolyglotRouter {
         $routedUrl = $this->replaceFirstOccurance($localizedPost->post_name, $originalPost->post_name, $route);
         $originalUrl = $this->replaceFirstOccurance($this->currentLocale->getHomeUrl(false), "/", $routedUrl);
 
-        // At this point we have a working permalink but maybe the
-        // original url had additional information afterwards.
-        // Ex: A case CPT registered sub pages url.
+        // Translate each parent url parts based on the default locale
+        if ((int)$originalPost->post_parent > 0) {
+            $originalParentPost = $this->defaultLocale->getTranslatedPost($originalPost->post_parent);
+            $localizedParentPost = $this->currentLocale->getTranslatedPost($originalPost->post_parent);
+            if ($originalParentPost && $localizedParentPost) {
+                $originalUrl = $this->localizeContentRoute($route, $localizedParentPost, $originalParentPost);
+            }
+        }
+
+        // Carry over get variables or trailing urls parts that aren't linked to the
+        // permalink.
+        $originalUrl = $this->localizeStaticSlugs($localizedPost, $routedUrl, $originalUrl);
+
+        return $this->makeUrlFragment($originalUrl, $this->defaultLocale);
+    }
+
+    // When in fallback mode, we must send the original url stripped
+    // locale code which is meaningless at that point.
+    public function localizeContentFallbackRoute($route)
+    {
+        $originalUrl = $this->replaceFirstOccurance($this->currentLocale->getHomeUrl(), "/", $route);
+        return $this->makeUrlFragment($originalUrl, $this->defaultLocale);
+    }
+
+    // At this point we have a working permalink but maybe the
+    // original url had additional information afterwards.
+    // Ex: A case CPT registered sub pages url.
+    protected function localizeStaticSlugs($localizedPost, $routedUrl, $originalUrl)
+    {
         if (preg_match('/'.preg_quote($localizedPost->post_name).'\/(.+?)$/', $routedUrl, $matches)) {
             $additionalParameters = $matches[1];
 
@@ -90,15 +117,6 @@ class PostRouter extends PolyglotRouter {
             $originalUrl .= $additionalParameters;
         }
 
-
-        return $this->makeUrlFragment($originalUrl, $this->defaultLocale);
-    }
-
-    // When in fallback mode, we must send the original url stripped
-    // locale code which is meaningless at that point.
-    public function localizeContentFallbackRoute($route)
-    {
-        $originalUrl = $this->replaceFirstOccurance($this->currentLocale->getHomeUrl(), "/", $route);
-        return $this->makeUrlFragment($originalUrl, $this->defaultLocale);
+        return $originalUrl;
     }
 }
