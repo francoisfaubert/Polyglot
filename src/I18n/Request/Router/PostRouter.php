@@ -64,7 +64,7 @@ class PostRouter extends PolyglotRouter {
         return $this->makeUrlFragment($impliedUrl, $this->defaultLocale);
     }
 
-    protected function localizeContentRoute($route, $originalPost, $localizedPost)
+    protected function localizeContentRoute($route, $localizedPost, $originalPost)
     {
         // Get permalink will append the current locale url when
         // the configuration allows locales to present content form

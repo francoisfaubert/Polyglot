@@ -77,14 +77,14 @@ class UrlRewriter {
         $rewriter->setConfiguration($configuration);
         $rewriter->rewrite();
 
-        // Translate the default slugs
-        $rewriter = new DefaultWordpressRewriter($i18n, $strataRewriter);
-        $rewriter->setConfiguration($configuration);
-        $rewriter->rewrite();
-
         // Translate homepages
         $rewriter = new HomepageRewriter($i18n, $strataRewriter);
         $rewriter->setDefaultHomepageId($this->polyglot->query()->getDefaultHomepageId());
+        $rewriter->rewrite();
+
+        // Translate the default slugs
+        $rewriter = new DefaultWordpressRewriter($i18n, $strataRewriter);
+        $rewriter->setConfiguration($configuration);
         $rewriter->rewrite();
     }
 
