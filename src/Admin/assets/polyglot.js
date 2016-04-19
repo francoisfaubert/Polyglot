@@ -46,7 +46,7 @@
             'closeOnEscape' : true,
             'width'         : 500,
             'height'        : 500,
-            'title'         : 'Polyglot',
+            'title'         : 'Localization',
             'buttons'       : buttons,
             'zIndex'        : 1010
         });

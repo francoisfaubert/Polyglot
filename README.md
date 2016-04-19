@@ -24,34 +24,3 @@ $strata = array(
 return $strata;
 ?>
 ~~~
-
-## Code Examples:
-
-This early in the creation of the plugin, in lieu of actual documentation, here are common code examples.
-
-### Link to translations of current post
-
-~~~ php
-<?php global $polyglot; ?>
-
-<ul>
-<?php foreach ($polyglot->getLocales() as $locale) : ?>
-    <?php if ($locale->hasTranslation()) :
-        $localizedPost = $locale->getTranslatedPost(); ?>
-        <li><a href="<?php echo get_permalink($localizedPost->ID); ?>" hreflang="<?php echo $locale->getCode(); ?>"><?php echo $localizedPost->post_title; ?></a></li>
-    <?php endif; ?>
-<?php endforeach; ?>
-</ul>
-~~~
-
-### Link to translations at their homepage
-
-~~~ php
-<?php global $polyglot; ?>
-
-<ul>
-<?php foreach ($polyglot->getLocales() as $locale) : ?>
-    <li><a href="<?php echo $locale->getHomeUrl(); ?>" hreflang="<?php echo $locale->getCode(); ?>"><?php echo $locale->getNativeLabel(); ?></a></li>
-<?php endforeach;   ?>
-</ul>
-~~~

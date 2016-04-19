@@ -85,7 +85,7 @@ class CallbackController extends BaseController {
      */
     public function addTaxonomyLocaleSelect($taxonomy)
     {
-        $configuration = $this->polyglot->getConfiguration();
+        $configuration = $this->i18n->getConfiguration();
 
         if (!is_null($taxonomy) && $configuration->isTaxonomyEnabled($taxonomy->taxonomy)) {
             $this->view->set("obj_id", $taxonomy->term_id);
@@ -121,7 +121,7 @@ class CallbackController extends BaseController {
      */
     private function preventTranslatedMetaBoxes()
     {
-        $locale = $this->polyglot->getCurrentLocale();
+        $locale = $this->i18n->getCurrentLocale();
         if ($locale && !$locale->isDefault()) {
             remove_meta_box("formatdiv", "post", "side");
             remove_meta_box("categorydiv", "post", "side");

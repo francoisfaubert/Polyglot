@@ -6,6 +6,8 @@ use Strata\Strata;
 use Strata\I18n\I18n;
 use Strata\Router\Rewriter;
 
+use Polyglot\I18n\Utility;
+
 abstract class PolyglotRewriter {
 
     abstract public function rewrite();
@@ -24,16 +26,6 @@ abstract class PolyglotRewriter {
         $this->currentLocale = $i18n->getCurrentLocale();
         $this->defaultLocale = $i18n->getDefaultLocale();
 
-        $this->urlRegex = $this->getLocaleUrlsRegex();
-    }
-
-    private function getLocaleUrlsRegex()
-    {
-        return implode("|", $this->getLocaleUrls());
-    }
-
-    private function getLocaleUrls()
-    {
-        return array_map(function($locale) { return $locale->getUrl(); }, $this->i18n->getLocales());
+        $this->urlRegex = Utility::getLocaleUrlsRegex();
     }
 }

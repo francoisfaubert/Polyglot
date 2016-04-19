@@ -1,7 +1,7 @@
 <?php
 namespace Polyglot\Plugin\Translator;
 
-use Polyglot\Plugin\Polyglot;
+use Strata\Strata;
 use Exception;
 
 abstract class TranslatorBase {
@@ -40,12 +40,12 @@ abstract class TranslatorBase {
 
     protected function getTranslationLocale()
     {
-        return Polyglot::instance()->getLocaleByCode($this->translatedTo);
+        return Strata::i18n()->getLocaleByCode($this->translatedTo);
     }
 
     protected function saveInformationToPolyglot()
     {
-        return Polyglot::instance()->query()->addTranslation(
+        return Strata::i18n()->query()->addTranslation(
             $this->originalId,
             $this->originalType,
             $this->originalKind,
@@ -61,8 +61,8 @@ abstract class TranslatorBase {
 
     private function translationExists()
     {
-        $polyglot = Polyglot::instance();
-        $tree = $polyglot->query()->findTranlationsOfId($this->originalId, $this->originalKind);
-        return $tree && $tree->hasTranslationFor($polyglot->getLocaleByCode($this->translatedTo));
+        $i18n = Strata::i18n();
+        $tree = $i18n->query()->findTranlationsOfId($this->originalId, $this->originalKind);
+        return $tree && $tree->hasTranslationFor($i18n->getLocaleByCode($this->translatedTo));
     }
 }

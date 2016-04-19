@@ -1,7 +1,7 @@
 <?php
-namespace Polyglot\Plugin\Db;
+namespace Polyglot\I18n\Db;
 
-use Polyglot\Plugin\TranslationEntity\TranslationEntity;
+use Polyglot\I18n\Translation\TranslationEntity;
 
 /**
  * This cache is meant to store entities on each rendering pass.
@@ -25,21 +25,24 @@ class Cache  {
 
     public function addEntity(TranslationEntity $entity)
     {
-        if (!$this->idWasCached($entity->obj_id, $entity->obj_kind)) {
+        $id = $entity->getObjectId();
+        $kind = $entity->getObjectKind();
 
-            $tOfKey = $this->translationOfKeyPrefix . $entity->translation_of;
-            $idKey = $this->pIdKeyPrefix . $entity->obj_id;
+        if (!$this->idWasCached($id, $kind)) {
 
-            if (!array_key_exists($entity->obj_kind, $this->entitiesMap)) {
-                $this->entitiesMap[$entity->obj_kind] = array();
+            $tOfKey = $this->translationOfKeyPrefix . $entity->getOriginalObjectId();
+            $idKey = $this->pIdKeyPrefix . $id;
+
+            if (!array_key_exists($kind, $this->entitiesMap)) {
+                $this->entitiesMap[$kind] = array();
             }
 
-            if (!array_key_exists($tOfKey, $this->entitiesMap[$entity->obj_kind])) {
-                $this->entitiesMap[$entity->obj_kind][$tOfKey] = array();
+            if (!array_key_exists($tOfKey, $this->entitiesMap[$kind])) {
+                $this->entitiesMap[$kind][$tOfKey] = array();
             }
 
-            $this->entitiesMap[$entity->obj_kind][$tOfKey][] = $entity;
-            $this->entitiesIds[$entity->obj_kind][$idKey] = $entity;
+            $this->entitiesMap[$kind][$tOfKey][] = $entity;
+            $this->entitiesIds[$kind][$idKey] = $entity;
         }
     }
 
@@ -91,7 +94,7 @@ class Cache  {
         // behaves in real life
         foreach ($byKind as $translationsOfId) {
             foreach ($translationsOfId as $entity) {
-                if ((int)$entity->obj_id === (int)$objId) {
+                if ((int)$entity->getObjectId() === (int)$objId) {
                     return $entity;
                 }
             }

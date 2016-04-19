@@ -4,6 +4,7 @@ namespace Polyglot\I18n\Request\Router;
 
 use Strata\Strata;
 use Strata\Model\CustomPostType\CustomPostType;
+use Polyglot\I18n\Utility;
 
 class PostRouter extends PolyglotRouter {
 
@@ -56,7 +57,7 @@ class PostRouter extends PolyglotRouter {
     {
         global $wp_rewrite;
 
-        $impliedUrl = $this->replaceFirstOccurance(
+        $impliedUrl = Utility::replaceFirstOccurence(
             $this->currentLocale->getHomeUrl(false) . $this->currentLocale->getConfig("rewrite.search_base") . "/",
             $this->defaultLocale->getHomeUrl(false) . $wp_rewrite->search_base . "/",
             $route
@@ -70,8 +71,9 @@ class PostRouter extends PolyglotRouter {
         // Get permalink will append the current locale url when
         // the configuration allows locales to present content form
         // the default.
-        $routedUrl = $this->replaceFirstOccurance($localizedPost->post_name, $originalPost->post_name, $route);
-        $originalUrl = $this->replaceFirstOccurance($this->currentLocale->getHomeUrl(false), "/", $routedUrl);
+        $routedUrl = Utility::replaceFirstOccurence($localizedPost->post_name, $originalPost->post_name, $route);
+        $originalUrl = Utility::replaceFirstOccurence($this->currentLocale->getHomeUrl(false), "/", $routedUrl);
+
 
         // Translate each parent url parts based on the default locale
         if ((int)$originalPost->post_parent > 0) {
@@ -93,7 +95,7 @@ class PostRouter extends PolyglotRouter {
     // locale code which is meaningless at that point.
     public function localizeContentFallbackRoute($route)
     {
-        $originalUrl = $this->replaceFirstOccurance($this->currentLocale->getHomeUrl(), "/", $route);
+        $originalUrl = Utility::replaceFirstOccurence($this->currentLocale->getHomeUrl(), "/", $route);
         return $this->makeUrlFragment($originalUrl, $this->defaultLocale);
     }
 
@@ -102,19 +104,15 @@ class PostRouter extends PolyglotRouter {
     // Ex: A case CPT registered sub pages url.
     protected function localizeStaticSlugs($localizedPost, $routedUrl, $originalUrl)
     {
-        if (preg_match('/'.preg_quote($localizedPost->post_name).'\/(.+?)$/', $routedUrl, $matches)) {
-            $additionalParameters = $matches[1];
-
-            // Localize back the parameters in the default language
-            if (!$this->currentLocale->isDefault()) {
+        // Localize back the parameters in the default language
+        if (!$this->currentLocale->isDefault()) {
+            if (preg_match('/'.preg_quote($localizedPost->post_name).'\/(.+?)$/', $routedUrl, $matches)) {
                 $cpt = CustomPostType::factoryFromKey($localizedPost->post_type);
                 $key = "i18n.".$currentLocale->getCode().".rewrite.slug";
                 if ($cpt->hasConfig($key)) {
-                    $additionalParameters = $this->replaceFirstOccurance($cpt->getConfig($key), $cpt->getConfig("rewrite.slug"), $additionalParameters);
+                    $additionalParameters = Utility::replaceFirstOccurence($cpt->getConfig($key), $cpt->getConfig("rewrite.slug"), $additionalParameters);
                 }
             }
-
-            $originalUrl .= $additionalParameters;
         }
 
         return $originalUrl;

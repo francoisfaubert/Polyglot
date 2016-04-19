@@ -1,14 +1,12 @@
 <?php
-namespace Polyglot\Plugin\Db;
+namespace Polyglot\I18n\Db;
 
-use Polyglot\Plugin\TranslationEntity\PostTranslationEntity;
-use Polyglot\Plugin\TranslationEntity\TermTranslationEntity;
-use Polyglot\Plugin\TranslationEntity\TranslationEntity;
-use Polyglot\Plugin\TranslationTree;
-use Polyglot\Plugin\Db\Cache;
-use Polyglot\Plugin\Db\Logger;
+use Polyglot\I18n\Db\Cache;
+use Polyglot\I18n\Db\Logger;
 
-use WP_Post;
+use Polyglot\I18n\Translation\Tree;
+use Polyglot\I18n\Translation\TranslationEntity;
+
 use Strata\Strata;
 use Exception;
 
@@ -71,9 +69,9 @@ class Query {
     public function unlinkTranslationFor($objectId, $objectKind)
     {
         // Trash the translations' WP_Post first
-        global $polyglot, $wpdb;
+        global $wpdb;
 
-        foreach ($polyglot->getLocales() as $locale) {
+        foreach (Strata::i18n()->getLocales() as $locale) {
             if ($objectKind === "WP_Post" && $locale->isTranslationOfPost($objectId)) {
                 $translation = $locale->getTranslatedPost($objectId);
                 if (!is_null($translation)) {
@@ -148,13 +146,13 @@ class Query {
         $alreadyPresent = $this->cache->findTranlationsOf($id, $kind);
         if (is_array($alreadyPresent)) {
             foreach ($alreadyPresent as $entity) {
-                $data[(int)$entity->polyglot_ID] = $entity;
+                $data[(int)$entity->getId()] = $entity;
             }
         }
 
         // Bail when we know they aren't any other results.
         if($this->cacheIsComplete()) {
-            return new TranslationTree($id, $kind, array_values($data));
+            return array_values($data);
         }
 
         $notIn = count($data) ? 'AND polyglot_ID NOT IN ('.implode(array_keys($data)).')' : '';
@@ -177,11 +175,11 @@ class Query {
             // cache a page around this id.
             $this->cachePageAtId($results[0]->polyglot_ID);
             foreach ($this->rowsToEntities($results) as $entity) {
-                $data[(int)$entity->polyglot_ID] = $entity;
+                $data[(int)$entity->getId()] = $entity;
             }
         }
 
-        return new TranslationTree($id, $kind, array_values($data));
+        return array_values($data);
     }
 
     /**
@@ -321,9 +319,9 @@ class Query {
         // Lookup in the cache beforehand
         foreach ($this->cache->getByKind($kind) as $translationOf => $entities) {
             foreach ($entities as $entity) {
-                if (!is_null($type) && $type === $entity->obj_type || is_null($type)) {
-                    if ($entity->translation_locale === $localeCode) {
-                        $data[(int)$entity->polyglot_ID] = $entity;
+                if (!is_null($type) && $type === $entity->getObjectType() || is_null($type)) {
+                    if ($entity->getTranslationLocaleCode() === $localeCode) {
+                        $data[(int)$entity->getId()] = $entity;
                     }
                 }
             }
@@ -353,7 +351,7 @@ class Query {
             $entities = $this->rowsToEntities($results);
             foreach ($entities as $entity) {
                 $this->cache->addEntity($entity);
-                $data[(int)$entity->polyglot_ID] = $entity;
+                $data[(int)$entity->getId()] = $entity;
             }
         }
 
@@ -403,8 +401,8 @@ class Query {
         // Lookup in the cache beforehand
         foreach ($this->cache->getByKind($kind) as $translationOf => $cachedEntities) {
             foreach ($cachedEntities as $entity) {
-                if (!array_key_exists((int)$entity->obj_id, $entities)) {
-                    $entities[(int)$entity->obj_id] = $entity->obj_id;
+                if (!array_key_exists((int)$entity->getObjectId(), $entities)) {
+                    $entities[(int)$entity->getObjectId()] = $entity->getObjectId();
                 }
             }
         }
@@ -431,7 +429,7 @@ class Query {
         if (!is_null($results) && count($results)) {
             foreach ($this->rowsToEntities($results) as $entity) {
                 $this->cache->addEntity($entity);
-                $entities[(int)$entity->obj_id] = $entity->obj_id;
+                $entities[(int)$entity->getObjectId()] = $entity->getObjectId();
             }
         }
 
@@ -446,15 +444,13 @@ class Query {
      */
     public function findObjectLocale($translatedObj)
     {
-        global $polyglot;
-
         $details = $this->findDetails($translatedObj);
 
         if (is_null($details)) {
-            return $polyglot->getDefaultLocale();
+            return Strata::i18n()->getDefaultLocale();
         }
 
-        return $polyglot->getLocaleByCode($details->translation_locale);
+        return Strata::i18n()->getLocaleByCode($details->getTranslationLocaleCode());
     }
 
     /**

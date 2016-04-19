@@ -18,7 +18,7 @@
 
     <h2><?php _e("Active locales", "polyglot"); ?></h2>
 
-    <?php if ($polyglot->hasActiveLocales()) : ?>
+    <?php if ($i18n->hasActiveLocales()) : ?>
         <div class="active-locales">
             <table class="widefat striped">
                 <thead>
@@ -34,7 +34,7 @@
                     </th>
                 </thead>
                 <tbody>
-                <?php $idx = 0; foreach ($polyglot->getLocales() as $code => $locale) : ?>
+                <?php $idx = 0; foreach ($i18n->getLocales() as $code => $locale) : ?>
                     <tr class="<?php echo ($idx % 2) === 0 ? "even" : "odd" ?>">
                        <td>
                             <?php if ($locale->isDefault()) : ?>

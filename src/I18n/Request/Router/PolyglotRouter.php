@@ -4,20 +4,21 @@ namespace Polyglot\I18n\Request\Router;
 
 use Strata\Strata;
 use Strata\I18n\I18n;
+use Polyglot\I18n\Utility;
 use WP_Query;
 
 abstract class PolyglotRouter {
 
-    public static function localizeRouteByQuery(WP_Query $wp_query, $route = null)
+    public static function localizeRouteByQuery($wp_query, $route = null)
     {
         if (is_null($route)) {
             $route = $_SERVER['REQUEST_URI'];
         }
 
         if ($wp_query->is_tax()) {
-            $router = new TaxonomyRouter(Strata::i18n());
+            $router = new TaxonomyRouter(Strata::i18n(), $wp_query);
         } else {
-            $router = new PostRouter(Strata::i18n());
+            $router = new PostRouter(Strata::i18n(), $wp_query);
         }
 
 
@@ -28,9 +29,12 @@ abstract class PolyglotRouter {
 
     protected $currentLocale;
     protected $defaultLocale;
+    protected $wp_query;
 
-    public function __construct(I18n $i18n)
+    public function __construct(I18n $i18n, WP_Query $wp_query)
     {
+        $this->wp_query = $wp_query;
+
         $this->currentLocale = $i18n->getCurrentLocale();
         $this->defaultLocale = $i18n->getDefaultLocale();
     }
@@ -38,7 +42,7 @@ abstract class PolyglotRouter {
     protected function makeUrlFragment($impliedUrl, $inLocale)
     {
         if ($inLocale->hasACustomUrl()) {
-            $impliedUrl = $this->replaceFirstOccurance($inLocale->getHomeUrl(false), "/", $impliedUrl);
+            $impliedUrl = Utility::replaceFirstOccurence($inLocale->getHomeUrl(false), "/", $impliedUrl);
         }
 
         $path = parse_url($impliedUrl, PHP_URL_PATH);
@@ -48,11 +52,5 @@ abstract class PolyglotRouter {
         return $path .
             (empty($query) ? $query : '?' . $query) .
             (empty($fragment) ? $fragment : '#' . $fragment);
-    }
-
-    protected function replaceFirstOccurance($from, $to, $subject)
-    {
-        $from = '/' . preg_quote($from, '/') . '/';
-        return preg_replace($from, $to, $subject, 1);
     }
 }

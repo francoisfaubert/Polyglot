@@ -1,15 +1,15 @@
 <?php
 
-namespace Polyglot\Plugin;
+namespace Polyglot\I18n;
 
 use Strata\Strata;
 use Strata\Utility\Hash;
 use Strata\Controller\Request;
 
-use Polyglot\Plugin\Locale;
-use Polyglot\Plugin\TranslationEntity;
+use Polyglot\I18n\Locale\Locale;
+use Polyglot\I18n\TranslationEntity;
 
-use Polyglot\Plugin\Db\Query;
+use Polyglot\I18n\Db\Query;
 
 use WP_Post;
 use Exception;

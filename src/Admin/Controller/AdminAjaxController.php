@@ -17,7 +17,7 @@ class AdminAjaxController extends BaseController {
      */
     public function viewPostTypeList()
     {
-        $this->view->set("configuration", $this->polyglot->getConfiguration());
+        $this->view->set("configuration", $this->i18n->getConfiguration());
         $this->render("postTypeList");
     }
 
@@ -27,7 +27,7 @@ class AdminAjaxController extends BaseController {
      */
     public function viewTaxonomyList()
     {
-        $this->view->set("configuration", $this->polyglot->getConfiguration());
+        $this->view->set("configuration", $this->i18n->getConfiguration());
         $this->render("taxonomyList");
     }
 
@@ -37,7 +37,7 @@ class AdminAjaxController extends BaseController {
      */
     public function togglePostType()
     {
-        $configuration = $this->polyglot->getConfiguration();
+        $configuration = $this->i18n->getConfiguration();
         $configuration->togglePostType($this->request->post("param"));
         $this->viewPostTypeList();
     }
@@ -48,7 +48,7 @@ class AdminAjaxController extends BaseController {
      */
     public function toggleTaxonomy()
     {
-        $configuration = $this->polyglot->getConfiguration();
+        $configuration = $this->i18n->getConfiguration();
         $configuration->toggleTaxonomy($this->request->post("param"));
         $this->viewTaxonomyList();
     }
@@ -71,6 +71,7 @@ class AdminAjaxController extends BaseController {
 
         throw new Exception("That is not a type we understand.");
     }
+
 
     /**
      * Returns the template file path base directory.
@@ -99,7 +100,7 @@ class AdminAjaxController extends BaseController {
      */
     protected function switchPostTranslation($objId)
     {
-        $defaultLocale = $this->polyglot->getDefaultLocale();
+        $defaultLocale = $this->i18n->getDefaultLocale();
         $orignalPost = $defaultLocale->getTranslatedPost($objId);
 
         $this->view->set("objKind", "WP_Post");
@@ -116,7 +117,7 @@ class AdminAjaxController extends BaseController {
      */
     protected function switchTermTranslation($objId, $objType, $customPostType = null)
     {
-        $defaultLocale = $this->polyglot->getDefaultLocale();
+        $defaultLocale = $this->i18n->getDefaultLocale();
         $orignalTerm = $defaultLocale->getTranslatedTerm($objId, $objType);
 
         $this->view->set("contextualPostType", is_null($customPostType) ? null : $customPostType);

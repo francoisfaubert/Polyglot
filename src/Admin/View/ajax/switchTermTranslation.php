@@ -5,7 +5,7 @@
     </tr>
 </thead>
 <tbody>
-<?php $idx = 0; foreach ($polyglot->getLocales() as $code => $locale) : ?>
+<?php $idx = 0; foreach ($i18n->getLocales() as $code => $locale) : ?>
 
     <tr class="<?php echo ($idx % 2) === 0 ? "even" : "odd" ?>">
         <td>

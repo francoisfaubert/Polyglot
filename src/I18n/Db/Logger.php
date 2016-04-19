@@ -1,6 +1,6 @@
 <?php
 
-namespace Polyglot\Plugin\Db;
+namespace Polyglot\I18n\Db;
 
 use Strata\Strata;
 
@@ -18,7 +18,7 @@ class Logger {
         $executionTime = microtime(true) - $this->executionStart;
         $timer = sprintf(" (Done in %s seconds)", round($executionTime, 4));
         $oneLine = preg_replace('/\s+/', ' ', trim($sql));
-        $label = "<magenta>Polyglot:Query</magenta>";
+        $label = "<magenta>Polyglot</magenta>";
 
         Strata::app()->log($oneLine . $timer, $label);
     }

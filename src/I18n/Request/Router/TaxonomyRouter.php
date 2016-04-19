@@ -2,6 +2,7 @@
 
 namespace Polyglot\I18n\Request\Router;
 
+use Polyglot\I18n\Utility;
 use WP_Term;
 
 class TaxonomyRouter extends PolyglotRouter {
@@ -22,8 +23,8 @@ class TaxonomyRouter extends PolyglotRouter {
         $localizedTerm = $this->currentLocale->getTranslatedTerm($term->term_id, $term->taxonomy);
         $originalTerm = $this->defaultLocale->getTranslatedTerm($term->term_id, $term->taxonomy);
 
-        $route = $this->replaceFirstOccurance($localizedTerm->slug, $originalTerm->slug, $route);
-        $localizedRoute = $this->replaceFirstOccurance($this->currentLocale->getHomeUrl(false), "/", $route);
+        $route = Utility::replaceFirstOccurence($localizedTerm->slug, $originalTerm->slug, $route);
+        $localizedRoute = Utility::replaceFirstOccurence($this->currentLocale->getHomeUrl(false), "/", $route);
 
         if ((int)$originalTerm->parent > 0) {
             $originalParentTerm = $this->defaultLocale->getTranslatedTerm($term->parent, $term->taxonomy);

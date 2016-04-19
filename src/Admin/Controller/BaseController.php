@@ -1,7 +1,6 @@
 <?php
 namespace Polyglot\Admin\Controller;
 
-use Polyglot\Plugin\Polyglot;
 use Strata\Strata;
 use Strata\View\Template;
 
@@ -15,9 +14,6 @@ class BaseController extends \Strata\Controller\Controller {
     /** @var string plugin location */
     protected $adaptor;
 
-    /** @var Polyglot local reference to the global object */
-    protected $polyglot;
-
     /** @var i18n local reference to Strata's i18n object */
     protected $i18n;
 
@@ -26,11 +22,8 @@ class BaseController extends \Strata\Controller\Controller {
      */
     public function before()
     {
-        $this->polyglot = Polyglot::instance();
-        $this->view->set("polyglot", $this->polyglot);
-
-        $app = Strata::app();
-        $this->view->set("i18n", $app->i18n);
+        $this->i18n = Strata::i18n();
+        $this->view->set("i18n", $this->i18n);
     }
 
     /**
@@ -64,7 +57,8 @@ class BaseController extends \Strata\Controller\Controller {
      */
     protected function getTemplatePath()
     {
-        $paths = array(dirname($this->adaptor->loaderPath), 'src', 'Admin', 'View');
+        $dirname = dirname(Strata::config('runtime.polyglot.loaderPath'));
+        $paths = array($dirname, 'src', 'Admin', 'View');
         return  implode(DIRECTORY_SEPARATOR, $paths) . DIRECTORY_SEPARATOR;
     }
 }

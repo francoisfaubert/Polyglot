@@ -23,7 +23,7 @@ class AdminController extends BaseController {
      */
     public function index()
     {
-        $locale = $this->polyglot->getDefaultLocale();
+        $locale = $this->i18n->getDefaultLocale();
         $modifiedDate = $locale->hasPoFile() ? date("F d Y H:i:s.", filemtime($locale->getPoFilePath())) : null;
         $this->view->set("modifiedDate", $modifiedDate);
 
@@ -39,7 +39,7 @@ class AdminController extends BaseController {
         $this->view->loadHelper("Form");
 
         $localeCode = $this->request->get("locale");
-        $locale = $this->polyglot->getLocaleByCode($localeCode);
+        $locale = $this->i18n->getLocaleByCode($localeCode);
         $this->view->set("locale", $locale);
 
         $modifiedDate = $locale->hasPoFile() ? date("F d Y H:i:s.", filemtime($locale->getPoFilePath())) : null;
@@ -47,7 +47,7 @@ class AdminController extends BaseController {
 
         if ($this->request->isPost()) {
             $newString = array($this->request->post("data.translation"));
-            $this->polyglot->saveTranslations($locale, $newString);
+            $this->i18n->saveTranslations($locale, $newString);
             $this->view->set("addedString", true);
         }
 
@@ -59,17 +59,17 @@ class AdminController extends BaseController {
         $this->view->loadHelper("Form");
 
         $localeCode = $this->request->get("locale");
-        $locale = $this->polyglot->getLocaleByCode($localeCode);
+        $locale = $this->i18n->getLocaleByCode($localeCode);
 
         if ($this->request->isPost()) {
-            $this->polyglot->saveTranslations($locale, $this->request->post("data.translations"));
+            $this->i18n->saveTranslations($locale, $this->request->post("data.translations"));
             $this->view->set("addedString", true);
         }
 
         $this->view->set("locale", $locale);
 
         try {
-            $this->view->set("translations", $this->polyglot->getTranslations($localeCode));
+            $this->view->set("translations", $this->i18n->getTranslations($localeCode));
         } catch (Exception $e) {
         }
 
@@ -81,10 +81,10 @@ class AdminController extends BaseController {
         $this->view->loadHelper("Form");
 
         $localeCode = $this->request->get("locale");
-        $locale = $this->polyglot->getLocaleByCode($localeCode);
+        $locale = $this->i18n->getLocaleByCode($localeCode);
 
         if ($this->request->isPost()) {
-            $this->polyglot->saveTranslations($locale, $this->request->post("data.translations"));
+            $this->i18n->saveTranslations($locale, $this->request->post("data.translations"));
             $this->view->set("addedString", true);
         }
 
@@ -94,7 +94,7 @@ class AdminController extends BaseController {
 
         $matchingTranslations = array();
         try {
-            $translations = $this->polyglot->getTranslations($localeCode);
+            $translations = $this->i18n->getTranslations($localeCode);
 
             foreach ($translations as $translation) {
                 $match = preg_quote($query, "/");
@@ -148,10 +148,17 @@ class AdminController extends BaseController {
 
         if ($this->request->hasGet("backToLocale")) {
             $localeCode = $this->request->get("backToLocale");
-            $this->view->set("returnLocale", $this->polyglot->getLocaleByCode($localeCode));
+            $this->view->set("returnLocale", $this->i18n->getLocaleByCode($localeCode));
         }
 
         $this->render("scan");
+    }
+
+    public function deleteTermLocalization()
+    {
+        $this->view->set("success", wp_delete_term($this->request->get("termId"), $this->request->get("taxonomy")));
+        $this->view->set("destinationLink", admin_url('edit-tags.php?taxonomy=' . $this->request->get("taxonomy")));
+        $this->render('deleteTerm');
     }
 
     private function runCLIExtractCommand()

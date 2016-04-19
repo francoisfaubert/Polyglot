@@ -1,13 +1,13 @@
 <?php
 
-namespace Polyglot\Plugin;
+namespace Polyglot\I18n;
 
 use Strata\Strata;
 use Strata\Utility\Hash;
 use Strata\Controller\Request;
 
-use Polyglot\Plugin\Locale;
-use Polyglot\Plugin\Db\Query;
+use Polyglot\I18n\Locale\Locale;
+use Polyglot\I18n\Db\Query;
 
 use Exception;
 
@@ -17,29 +17,18 @@ use Exception;
  */
 class Polyglot extends \Strata\I18n\I18n {
 
-    /**
-     * Returns the active Polyglot instance.
-     * @return Polyglot
-     */
-    public static function instance()
-    {
-        // At least this creates an elegant bridge between WP and OO programming.
-        global $polyglot;
-        return is_null($polyglot) ? new self() : $polyglot;
-    }
-
     protected $query = null;
     protected $configuration = null;
     protected $localized = false;
 
     function __construct()
     {
-        $this->throwIfGlobalExists();
         $this->stealI18nInformation();
+    }
 
-        // We need to rehook into setCurrentLocaleByContext because we need to
-        // try again once global post objects are loaded.
-        add_action(is_admin() ? 'admin_init' : 'wp', array($this, "setCurrentLocaleByContext"), 3);
+    public function shouldFallbackToDefaultLocale()
+    {
+        return (bool)Strata::config("i18n.default_locale_fallback");
     }
 
     /**
@@ -68,7 +57,7 @@ class Polyglot extends \Strata\I18n\I18n {
         return $this->configuration;
     }
 
-    public function stealI18nInformation()
+    protected function stealI18nInformation()
     {
         if (!$this->localized) {
             $app = Strata::app();
@@ -107,37 +96,5 @@ class Polyglot extends \Strata\I18n\I18n {
         }
 
         return $newLocales;
-    }
-
-    /**
-     * If there are multiple instances of Polyglot running at the same time,
-     * an exception should be raised.
-     * @throws Exception
-     */
-    private function throwIfGlobalExists()
-    {
-        /**
-         *  Hello,
-         *
-         *  If this exception is an hindrance to you, please go to our GitHub and
-         *  explain what you wish to accomplish by creating a second instance of
-         *  the Polyglot object.
-         *
-         *  I am writing this 'throw' early in the life of the plugin and I am still on the
-         *  fence on whether it should exist.
-         *
-         *  I am adding the 'throw' because I think it would noticeably slow the website if we
-         *  allow multiple instances of Polyglot that maintain their own separate caches. I would
-         *  rather have a convenient list of API methods available on the global $polyglot object.
-         *
-         *  That's the idea anyways.
-         *  Cheers,
-         *
-         *  - Frank.
-         */
-        global $polyglot;
-        if (!is_null($polyglot)) {
-            throw new Exception("There should only be one active reference to Polyglot. Please use global \$polyglot to get the instance.");
-        }
     }
 }
