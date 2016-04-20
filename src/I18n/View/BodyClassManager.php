@@ -30,9 +30,11 @@ class BodyClassManager {
 
     protected function isLocalizedBlogPage()
     {
-        $pageOnFront = $this->currentLocale->getTranslatedPost(get_option('page_on_front'));
+        return false;
 
-        return $pageOnFront && $pageOnFront->ID == get_the_ID();
+        // This doesn't work
+        // $pageOnFront = $this->currentLocale->getTranslatedPost(get_option('page_on_front'));
+        // return $pageOnFront && $pageOnFront->ID == get_the_ID();
     }
 
     protected function localizeBlogClasses()
