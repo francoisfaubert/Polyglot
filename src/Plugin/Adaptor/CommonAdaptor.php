@@ -34,9 +34,9 @@ class CommonAdaptor {
         add_action("pre_get_posts", array($querier, "preGetPosts"));
         add_filter('get_previous_post_where', array($querier, 'filterAdjacentWhere'));
         add_filter('get_next_post_where', array($querier, 'filterAdjacentWhere'));
-        add_action('save_post', array($querier, 'localizePostTerms'), 1, 3);
-        add_filter('wp_insert_post_data', array($querier, 'localizeParentId'), 10, 2);
-        add_action('created_term', array($querier, 'localizeExistingTerms'), 1, 3);
+        // add_action('save_post', array($querier, 'localizePostTerms'), 1, 3);
+        // add_filter('wp_insert_post_data', array($querier, 'localizeParentId'), 10, 2);
+        // add_action('created_term', array($querier, 'localizeExistingTerms'), 1, 3);
 
         if (is_admin()) {
             add_filter('get_terms', array($querier, 'getTerms'), 1, 3);
