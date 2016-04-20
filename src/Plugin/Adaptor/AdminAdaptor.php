@@ -15,7 +15,7 @@ class AdminAdaptor {
         add_action('admin_init', array($adaptor, 'adminInit'));
         add_action('admin_enqueue_scripts', array($adaptor, 'enqueueScripts'));
 
-        add_action('plugins_loaded', array($adaptor, 'loadTextDomain'));
+        add_action('plugins_loaded', array($adaptor, 'loadPluginTextdomain'));
 
         $configuration = Strata::i18n()->getConfiguration();
         $router = new Router();
