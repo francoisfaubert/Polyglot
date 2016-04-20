@@ -74,13 +74,12 @@ class PostRouter extends PolyglotRouter {
         $routedUrl = Utility::replaceFirstOccurence($localizedPost->post_name, $originalPost->post_name, $route);
         $originalUrl = Utility::replaceFirstOccurence($this->currentLocale->getHomeUrl(false), "/", $routedUrl);
 
-
         // Translate each parent url parts based on the default locale
         if ((int)$originalPost->post_parent > 0) {
             $originalParentPost = $this->defaultLocale->getTranslatedPost($originalPost->post_parent);
             $localizedParentPost = $this->currentLocale->getTranslatedPost($originalPost->post_parent);
             if ($originalParentPost && $localizedParentPost) {
-                $originalUrl = $this->localizeContentRoute($route, $localizedParentPost, $originalParentPost);
+                $originalUrl = $this->localizeContentRoute($originalUrl, $localizedParentPost, $originalParentPost);
             }
         }
 
