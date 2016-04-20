@@ -12,7 +12,6 @@ class AdminAdaptor {
         $adaptor = new self();
 
         add_action('admin_menu', array($adaptor, 'adminMenu'));
-        add_action('admin_init', array($adaptor, 'adminInit'));
         add_action('admin_enqueue_scripts', array($adaptor, 'enqueueScripts'));
 
         add_action('plugins_loaded', array($adaptor, 'loadPluginTextdomain'));
