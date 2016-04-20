@@ -79,7 +79,7 @@ class QueryRewriter {
 
             if ($this->postTypeIsSupported($postType)) {
 
-                $thiscurrentTranslations = $this->query->findLocaleTranslations($this->currentLocale, "WP_Post", $postType);
+                $currentTranslations = $this->query->findLocaleTranslations($this->currentLocale, "WP_Post", $postType);
 
                 if ((bool)Strata::app()->getConfig("i18n.default_locale_fallback")) {
                     // Collect all locales that aren't the current one and prevent them.
