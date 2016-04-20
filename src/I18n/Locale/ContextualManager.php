@@ -87,6 +87,7 @@ class ContextualManager {
     private function getLocaleByPostId($postId)
     {
         $tree = Tree::grow($postId, "WP_Post");
+
         if ($tree->isLocalized()) {
             return $tree->getLocalizationLocaleById($postId);
         }

@@ -38,10 +38,8 @@ class CommonAdaptor {
         // add_filter('wp_insert_post_data', array($querier, 'localizeParentId'), 10, 2);
         // add_action('created_term', array($querier, 'localizeExistingTerms'), 1, 3);
 
-        if (is_admin()) {
-            add_filter('get_terms', array($querier, 'getTerms'), 1, 3);
-        } else {
-            add_filter('get_terms_args', array($querier, 'getTermsArgs'), 10, 2);
-        }
+
+        add_filter('get_terms', array($querier, 'getTerms'), 5, 3);
+        add_filter('get_terms_args', array($querier, 'getTermsArgs'), 10, 2);
     }
 }

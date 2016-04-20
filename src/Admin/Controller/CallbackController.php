@@ -128,7 +128,7 @@ class CallbackController extends BaseController {
             remove_meta_box("tagsdiv-post_tag", "post", "side");
             remove_meta_box("formatdiv", "page", "side");
             remove_meta_box("categorydiv", "page", "side");
-            // remove_meta_box("pageparentdiv", "page", "side");
+            remove_meta_box("pageparentdiv", "page", "side");
             remove_meta_box("tagsdiv-post_tag", "page", "side");
         }
     }
