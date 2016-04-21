@@ -143,7 +143,7 @@ class QueryRewriter {
      */
     public function getTerms($terms, $taxonomies)
     {
-        if (!$this->taxonomyGroupIsSupported()) {
+        if (!$this->taxonomyGroupIsSupported($taxonomies)) {
             return $terms;
         }
 
