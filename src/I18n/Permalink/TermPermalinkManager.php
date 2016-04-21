@@ -31,6 +31,6 @@ class TermPermalinkManager extends PermalinkManager {
             }
         }
 
-        return $termLink;
+        return $url;
     }
 }
