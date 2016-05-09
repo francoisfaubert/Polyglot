@@ -4,6 +4,7 @@ namespace Polyglot\Plugin\Adaptor;
 
 use Polyglot\I18n\Locale\ContextualManager;
 use Polyglot\I18n\Translation\TrashManager;
+use Polyglot\I18n\Translation\PostMetaManager;
 use Polyglot\I18n\Permalink\PostPermalinkManager;
 use Polyglot\I18n\Permalink\TermPermalinkManager;
 use Polyglot\I18n\Db\QueryRewriter;
@@ -42,8 +43,11 @@ class CommonAdaptor {
         add_filter('get_previous_post_where', array($querier, 'filterAdjacentWhere'));
         add_filter('get_next_post_where', array($querier, 'filterAdjacentWhere'));
 
+
+        $metaManager = new PostMetaManager();
+        add_action('save_post', array($metaManager, 'filter_onSavePost'), 1, 3);
+
         // On the ice for the moment.
-        // add_action('save_post', array($querier, 'localizePostTerms'), 1, 3);
         // add_filter('wp_insert_post_data', array($querier, 'localizeParentId'), 10, 2);
         // add_action('created_term', array($querier, 'localizeExistingTerms'), 1, 3);
 
