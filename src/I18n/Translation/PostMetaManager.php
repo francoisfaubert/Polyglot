@@ -14,6 +14,7 @@ class PostMetaManager {
     {
         if ($this->isAKnownPost($postId)) {
             $this->distributeMenuOrder();
+            $this->distributeTemplate();
         }
     }
 
