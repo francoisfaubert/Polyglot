@@ -3,6 +3,7 @@
 namespace Polyglot\I18n\Permalink;
 
 use Strata\Strata;
+use Strata\Model\CustomPostType\ModelEntity;
 use Strata\I18n\I18n;
 use Strata\I18n\I18n\Locale;
 
@@ -89,9 +90,30 @@ class PostPermalinkManager extends PermalinkManager {
             $permalink
         );
 
+        $localizedUrl = $this->localizePostSlug($localizedUrl, $post, $postLocale);
+
         // We have a translated url, but if it happens to be the homepage we
         // need to remove the slug
         return $this->removeLocaleHomeKeys($localizedUrl, $postLocale);
+    }
+
+    protected function localizePostSlug($permalink, $post, $postLocale)
+    {
+        try {
+            $modelEntity = ModelEntity::factoryFromString($post->post_type);
+            $model = $modelEntity->getModel();
+            if ($model->hasConfig("i18n." . $postLocale->getCode() . ".rewrite.slug")) {
+                return Utility::replaceFirstOccurence(
+                    $model->getConfig("rewrite.slug"),
+                    $model->getConfig("i18n." . $postLocale->getCode() . ".rewrite.slug"),
+                    $permalink
+                );
+            }
+        } catch(Exception $e) {
+            // we dont care
+        }
+
+        return $permalink;
     }
 
     protected function removeLocaleHomeKeys($permalink, $localeContext = null)
