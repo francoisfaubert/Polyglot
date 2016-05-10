@@ -24,6 +24,7 @@ class Polyglot extends \Strata\I18n\I18n {
     function __construct()
     {
         $this->stealI18nInformation();
+        Strata::app()->setConfig("runtime.i18n.polyglot", true);
     }
 
     public function shouldFallbackToDefaultLocale()
