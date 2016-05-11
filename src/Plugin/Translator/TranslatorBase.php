@@ -62,7 +62,15 @@ abstract class TranslatorBase {
     private function translationExists()
     {
         $i18n = Strata::i18n();
-        $tree = $i18n->query()->findTranlationsOfId($this->originalId, $this->originalKind);
-        return $tree && $tree->hasTranslationFor($i18n->getLocaleByCode($this->translatedTo));
+        $translations = $i18n->query()->findTranlationsOfId($this->originalId, $this->originalKind);
+        $targetLocale = $this->getTranslationLocale();
+
+        foreach ($translations as $translation) {
+            if ($targetLocale->getCode() === $translation->getTranslationLocaleCode()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
