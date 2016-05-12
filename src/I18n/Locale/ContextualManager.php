@@ -15,15 +15,15 @@ use Strata\Strata;
  */
 class ContextualManager {
 
-    public function filter_onSetStrataContext()
+    public function filter_onSetStrataContext($locale)
     {
-        $locale = is_admin() ?
-            $this->getByAdminContext() :
-            $this->getByFrontContext();
-
-        if (!is_null($locale)) {
-            Strata::i18n()->setLocale($locale);
+        if (is_null($locale)) {
+            return is_admin() ?
+                $this->getByAdminContext() :
+                $this->getByFrontContext();
         }
+
+        return $locale;
     }
 
     /**
@@ -74,8 +74,8 @@ class ContextualManager {
             return $this->getLocaleByPostId($postId);
         }
 
-        if (preg_match('/^('. Utility::getLocaleUrlsRegex() .')/', $_SERVER['REQUEST_URI'])) {
-            return $locale;
+        if (preg_match('/^('. Utility::getLocaleUrlsRegex() .')/', $_SERVER['REQUEST_URI'], $matches)) {
+            return Strata::i18n()->getLocaleByUrl($matches[1]);
         }
     }
 

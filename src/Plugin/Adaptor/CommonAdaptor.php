@@ -21,7 +21,7 @@ class CommonAdaptor {
     {
         $context = new ContextualManager();
         add_filter('query_vars', array($context, 'filter_onQueryVars'));
-        add_filter('strata_i18n_set_current_locale_by_context', array($context, "filter_onSetStrataContext"));
+        add_filter('strata_i18n_set_current_locale_by_context', array($context, "filter_onSetStrataContext"), 3, 1);
 
         $trash = new TrashManager();
         $trash->setQuerier(Strata::i18n()->query());
