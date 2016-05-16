@@ -103,22 +103,33 @@ class PostPermalinkManager extends PermalinkManager {
 
     protected function localizePostSlug($permalink, $post, $postLocale)
     {
-        try {
-            $modelEntity = ModelEntity::factoryFromString($post->post_type);
-            $model = $modelEntity->getModel();
+        if (preg_match('/cpt_/', $post->post_type)) {
+            try {
+                $modelEntity = ModelEntity::factoryFromString($post->post_type);
+                $model = $modelEntity->getModel();
 
-            if (!$postLocale->isDefault() && $model->hasConfig("i18n." . $postLocale->getCode() . ".rewrite.slug")) {
-                return Utility::replaceFirstOccurence(
-                    $model->getConfig("rewrite.slug"),
-                    $model->getConfig("i18n." . $postLocale->getCode() . ".rewrite.slug"),
-                    $permalink
-                );
+                if ($this->shouldRewriteModelSlug($postLocale, $model)) {
+                    return Utility::replaceFirstOccurence(
+                        $model->getConfig("rewrite.slug"),
+                        $model->getConfig("i18n." . $this->currentLocale->getCode() . ".rewrite.slug"),
+                        $permalink
+                    );
+                }
+            } catch(Exception $e) {
+                // we dont care
             }
-        } catch(Exception $e) {
-            // we dont care
         }
 
         return $permalink;
+    }
+
+    private function shouldRewriteModelSlug($locale, $model)
+    {
+        if (!$locale->isDefault() || Strata::i18n()->shouldFallbackToDefaultLocale()) {
+            return $model->hasConfig("i18n." . $this->currentLocale->getCode() . ".rewrite.slug");
+        }
+
+        return false;
     }
 
     protected function removeLocaleHomeKeys($permalink, $localeContext = null)
