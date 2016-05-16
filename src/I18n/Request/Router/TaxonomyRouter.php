@@ -21,16 +21,20 @@ class TaxonomyRouter extends PolyglotRouter {
     protected function replaceTermLevel(WP_Term $term, $route)
     {
         $localizedTerm = $this->currentLocale->getTranslatedTerm($term->term_id, $term->taxonomy);
-        $originalTerm = $this->defaultLocale->getTranslatedTerm($term->term_id, $term->taxonomy);
+        $localizedRoute = $route;
 
-        $route = Utility::replaceFirstOccurence($localizedTerm->slug, $originalTerm->slug, $route);
-        $localizedRoute = Utility::replaceFirstOccurence($this->currentLocale->getHomeUrl(false), "/", $route);
+        if (!is_null($localizedTerm)) {
+            $originalTerm = $this->defaultLocale->getTranslatedTerm($term->term_id, $term->taxonomy);
+            $localizedRoute = Utility::replaceFirstOccurence($localizedTerm->slug, $originalTerm->slug, $localizedRoute);
+        }
 
+        // Translate up the tree
         if ((int)$originalTerm->parent > 0) {
             $originalParentTerm = $this->defaultLocale->getTranslatedTerm($term->parent, $term->taxonomy);
             $localizedRoute = $this->replaceTermLevel($originalParentTerm, $localizedRoute);
         }
 
-        return $localizedRoute;
+        // Remove the locale code
+        return Utility::replaceFirstOccurence($this->currentLocale->getHomeUrl(false), "/", $route);
     }
 }
