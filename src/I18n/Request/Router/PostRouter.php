@@ -4,7 +4,9 @@ namespace Polyglot\I18n\Request\Router;
 
 use Strata\Strata;
 use Strata\Model\CustomPostType\CustomPostType;
+use Strata\Model\CustomPostType\ModelEntity;
 use Polyglot\I18n\Utility;
+use Exception;
 
 class PostRouter extends PolyglotRouter {
 
@@ -17,18 +19,48 @@ class PostRouter extends PolyglotRouter {
         $localizedPost = $this->currentLocale->getTranslatedPost();
         $originalPost = $this->defaultLocale->getTranslatedPost();
 
-        if ($localizedPost) {
-            if ($this->isTranslatedContent($localizedPost, $originalPost)) {
+        if ($originalPost) {
+            $route = $this->removeLocalizedModelSlug($route, $originalPost->post_type);
+
+            if ($localizedPost && $this->isTranslatedContent($localizedPost, $originalPost)) {
                 return $this->localizeContentRoute($route, $localizedPost, $originalPost);
+            }
+
+            return $this->removeCurrentLocaleHomeUrl($route);
+        }
+
+        return $this->makeUrlFragment($route, $this->currentLocale);
+    }
+
+    private function removeLocalizedModelSlug($route, $postType)
+    {
+        if (preg_match('/^cpt_/', $postType)) {
+            try {
+                $modelEntity = ModelEntity::factoryFromString($postType);
+                $model = $modelEntity->getModel();
+
+                if ($this->shouldRewriteModelSlug($model)) {
+                    return Utility::replaceFirstOccurence(
+                        $model->getConfig("i18n." . $this->currentLocale->getCode() . ".rewrite.slug"),
+                        $model->getConfig("rewrite.slug"),
+                        $route
+                    );
+                }
+            } catch (Exception $e) {
+                // don't care, not a strata model.
             }
         }
 
-        if ($originalPost) {
-            return $this->localizeContentFallbackRoute($route);
+        return $route;
+    }
+
+    private function shouldRewriteModelSlug($model)
+    {
+        if (!$this->currentLocale->isDefault() || Strata::i18n()->shouldFallbackToDefaultLocale()) {
+            return $model->hasConfig("i18n." . $this->currentLocale->getCode() . ".rewrite.slug");
         }
 
-
-        return $this->makeUrlFragment($route, $this->currentLocale);
+        return false;
     }
 
     // Account for search pages which behave differently than regular pages
@@ -92,9 +124,9 @@ class PostRouter extends PolyglotRouter {
 
     // When in fallback mode, we must send the original url stripped
     // locale code which is meaningless at that point.
-    public function localizeContentFallbackRoute($route)
+    public function removeCurrentLocaleHomeUrl($route)
     {
-        $originalUrl = Utility::replaceFirstOccurence($this->currentLocale->getHomeUrl(), "/", $route);
+        $originalUrl = Utility::replaceFirstOccurence($this->currentLocale->getHomeUrl(false), "/", $route);
         return $this->makeUrlFragment($originalUrl, $this->defaultLocale);
     }
 
