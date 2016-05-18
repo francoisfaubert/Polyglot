@@ -4,6 +4,7 @@ namespace Polyglot\Plugin\Adaptor;
 
 use Strata\Strata;
 use Polyglot\Admin\Router;
+use Strata\Router\Router as StrataRouter;
 
 class AdminAdaptor {
 
@@ -15,6 +16,8 @@ class AdminAdaptor {
         add_action('admin_enqueue_scripts', array($adaptor, 'enqueueScripts'));
 
         add_action('plugins_loaded', array($adaptor, 'loadPluginTextdomain'));
+        add_filter('wp_dropdown_pages', array($adaptor, 'onFilter_DropdownPages'), 10, 3);
+
 
         $configuration = Strata::i18n()->getConfiguration();
         $router = new Router();
@@ -43,7 +46,6 @@ class AdminAdaptor {
         load_plugin_textdomain('polyglot-plugin', false, $this->getPluginLocalePath());
     }
 
-
     /**
      * Registers the option menu entry.
      */
@@ -52,6 +54,29 @@ class AdminAdaptor {
         $router = new Router();
         $router->contextualize($this);
         add_options_page('Localization', 'Localization', 'manage_options', 'polyglot-plugin', array($router, 'autoroute'));
+    }
+
+    public function onFilter_DropdownPages($output, $r, $pages)
+    {
+        if (!StrataRouter::isFrontendAjax()) {
+            $currentLocale = Strata::i18n()->getCurrentLocale();
+            if ($currentLocale->isDefault()) {
+                $selectAsArray = explode("\n", $output);
+                foreach ($pages as $idx => $page) {
+                    $translation = $currentLocale->getTranslatedPost($page->ID);
+
+                    if (is_null($translation) || (int)$translation->ID !== (int)$page->ID) {
+                        $output = preg_replace('/<option.+?value="'.$page->ID.'".+?<\/option>/', '', $output);
+                    }
+                }
+
+                return $output;
+            }
+
+            return __("Parent page is determined by the default locale.", "polyglot");
+        }
+
+        return $output;
     }
 
     protected function getAdminJsPath()
