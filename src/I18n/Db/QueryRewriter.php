@@ -62,6 +62,7 @@ class QueryRewriter {
         // In the backend of when we are in the default locale,
         // prevent non-localized posts to show up. The correct way
         // to access these would be through the Locale objects.
+
         if ((is_admin() && !Router::isFrontendAjax() ) || $this->currentLocale->isDefault() || is_search()) {
 
             $localizedPostIds = $this->query->listTranslatedEntitiesIds("WP_Post");
@@ -136,7 +137,6 @@ class QueryRewriter {
 
 
     /**
-     * This is only ran in the admin
      * @param  [type] $terms      [description]
      * @param  [type] $taxonomies [description]
      * @return [type]             [description]
@@ -148,6 +148,7 @@ class QueryRewriter {
         }
 
         // The current locale gets lost in metabox queries.
+        // in the admin
         if (is_admin() && !Router::isAjax()) {
             $context = new ContextualManager();
             $locale = $context->getByAdminContext();
@@ -171,15 +172,19 @@ class QueryRewriter {
         }
 
         $localized = array();
+        $shouldFallback = Strata::i18n()->shouldFallbackToDefaultLocale();
         foreach ($terms as $term) {
             $termIdToMatch = is_string($term) ? $term : $term->term_id;
             if ((int)$termIdToMatch > 0) {
+
                 if ($this->currentLocale->isDefault()) {
                     if (!in_array((int)$termIdToMatch, $termIds)) {
                         $localized[] = $term;
                     }
-                } elseif (in_array((int)$termIdToMatch, $termIds)) {
-                    $localized[] = $term;
+                } else {
+                    if (in_array((int)$termIdToMatch, $termIds) || $shouldFallback) {
+                        $localized[] = $term;
+                    }
                 }
             }
         }
@@ -190,14 +195,25 @@ class QueryRewriter {
     public function getTermsArgs($args, $taxonomies)
     {
         $notIn = array();
+        $i18n = Strata::i18n();
+        $locales = $i18n->getLocales();
+        $shouldFallbackToDefault = $i18n->shouldFallbackToDefaultLocale();
+
         foreach ($taxonomies as $taxonomy) {
 
+            // Remove references to the original object
             $currentTranslations = $this->query->findLocaleTranslations($this->currentLocale, "Term", $taxonomy);
-            $otherTranslations = array();
+            foreach ($currentTranslations as $translationEntity) {
+                $notIn[] = $translationEntity->getOriginalObjectId();
+            }
 
-            foreach (Strata::i18n()->getLocales() as $locale) {
-                if ($locale->getCode() !== $this->currentLocale->getCode() && !$locale->isDefault() ) {
-                    $otherTranslations += $this->query->findLocaleTranslations($locale, "Term", $taxonomy);
+            // Remove translations in other locales
+            $otherTranslations = array();
+            foreach ($locales as $locale) {
+                if ($locale->getCode() !== $this->currentLocale->getCode()) {
+                    if (!$locale->isDefault() && !$this->currentLocale->isDefault()) {
+                        $otherTranslations += $this->query->findLocaleTranslations($locale, "Term", $taxonomy);
+                    }
                 }
             }
 
@@ -205,10 +221,6 @@ class QueryRewriter {
                 foreach ($otherTranslations as $translationEntity) {
                     $notIn[] = $translationEntity->getObjectId();
                 }
-            }
-
-            foreach ($currentTranslations as $translationEntity) {
-                $notIn[] = $translationEntity->getOriginalObjectId();
             }
         }
 
