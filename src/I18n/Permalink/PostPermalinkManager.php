@@ -12,6 +12,7 @@ use Polyglot\I18n\Utility;
 
 use WP_Post;
 use WP_Term;
+use Exception;
 
 class PostPermalinkManager extends PermalinkManager {
 
