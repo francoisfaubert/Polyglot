@@ -5,6 +5,7 @@ namespace Polyglot\I18n\Permalink;
 use Strata\Strata;
 use Strata\I18n\I18n;
 use Polyglot\I18n\Locale\Locale;
+use Polyglot\I18n\Utility;
 
 class CanonicalManager {
 
@@ -19,7 +20,9 @@ class CanonicalManager {
 
     public function filter_onWpHead()
     {
-        $this->printMetaTags();
+        if (!is_404() && !is_search()) {
+            $this->printMetaTags();
+        }
     }
 
     public function filter_onWidgetInit()
@@ -45,7 +48,7 @@ class CanonicalManager {
     }
 
     /**
-     * Home urls should not display the post_name slug on translated versions.
+     *
      */
     public function forwardCanonicalUrls()
     {
@@ -53,6 +56,7 @@ class CanonicalManager {
         $homepageId = $i18n->query()->getDefaultHomepageId();
         $currentLocale = $i18n->getCurrentLocale();
 
+        // Home urls should not display the post_name slug on translated versions.
         if ($currentLocale->isTranslationOfPost($homepageId)) {
             $localizedPage = $currentLocale->getTranslatedPost($homepageId);
             if ($localizedPage) {
@@ -88,51 +92,92 @@ class CanonicalManager {
     {
         $currentPost = get_post();
         if ($currentPost) {
-            foreach (Strata::i18n()->getLocales() as $locale) {
-                $this->generateMetaTagsForPostByLocale($currentPost, $locale);
+            return $this->generatePostTags($currentPost);
+        }
+
+        global $wp_query;
+        $taxonomy = $wp_query->queried_object;
+        if (is_a($taxonomy, "WP_Term")) {
+            return $this->generateTaxonomyTags($taxonomy);
+        }
+    }
+
+    private function generatePostTags($currentPost)
+    {
+        $shouldFallback = (bool)Strata::config("i18n.default_locale_fallback");
+        $defaultLocale = Strata::i18n()->getDefaultLocale();
+        $currentLocale = Strata::i18n()->getCurrentLocale();
+        $permalinkManager = new PostPermalinkManager();
+
+        $currentPermalink = get_permalink($currentPost->ID);
+        if ($currentLocale->hasACustomUrl()) {
+            $currentPermalink = Utility::replaceFirstOccurence(
+                $currentLocale->getHomeUrl(),
+                "",
+                $currentPermalink
+            );
+        }
+
+        // Keep the default url handy
+        $defaultFallbackUrl = "";
+        if ($shouldFallback) {
+            $permalinkManager->enforceLocale($defaultLocale);
+            $defaultFallbackUrl = $permalinkManager->generatePermalink($currentPermalink, $currentPost->ID);
+        }
+
+        foreach (Strata::i18n()->getLocales() as $locale) {
+
+            $permalinkManager->enforceLocale($locale);
+            $localizedUrl = $permalinkManager->generatePermalink($currentPermalink, $currentPost->ID);
+
+            $destinationIsTheSame = $localizedUrl === $currentPermalink;
+            $isNotDefaultButIsNotTheCurrent = !$locale->isDefault() && $locale->getCode() !== $currentLocale->getCode();
+
+            if ($isNotDefaultButIsNotTheCurrent && $destinationIsTheSame && $shouldFallback) {
+                $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(),  $locale->getHomeUrl() . $defaultFallbackUrl);
+                $this->canonicals[] = sprintf('<link rel="canonical" href="%s">', $locale->getHomeUrl() . $defaultFallbackUrl);
+            } else {
+                $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(),  $locale->getHomeUrl() . $localizedUrl);
             }
         }
     }
 
-    protected function generateMetaTagsForPostByLocale($post, Locale $locale)
+
+    private function generateTaxonomyTags($taxonomy)
     {
-        if ($locale->hasPostTranslation($post->ID)) {
-            $translatedPost = $locale->getTranslatedPost($post->ID);
-            if ($translatedPost && $translatedPost->post_status === "publish") {
+        $shouldFallback = (bool)Strata::config("i18n.default_locale_fallback");
+        $defaultLocale = Strata::i18n()->getDefaultLocale();
+        $currentLocale = Strata::i18n()->getCurrentLocale();
+        $permalinkManager = new TermPermalinkManager();
 
-                $localizedUrl = get_permalink($translatedPost->ID);
-                if (Strata::i18n()->shouldFallbackToDefaultLocale()) {
-                    $localizedUrl = $this->permalinkManager->getLocalizedFallbackUrl($localizedUrl, $locale);
-                }
-
-                $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(),  $localizedUrl);
-            }
-
-        } else {
-            $this->generateMetaTagsForFallbackPostByLocale($post, $locale);
+        $currentPermalink = get_term_link($taxonomy->term_id, $taxonomy->taxonomy);
+        if ($currentLocale->hasACustomUrl()) {
+            $currentPermalink = Utility::replaceFirstOccurence(
+                $currentLocale->getHomeUrl(),
+                "",
+                $currentPermalink
+            );
         }
-    }
 
-    protected function generateMetaTagsForFallbackPostByLocale($post, Locale $locale)
-    {
-        // When we are fallbacking to default local on missing content but this
-        // is not the default locale, we need canonicals too.
-        $i18n = Strata::i18n();
-        if ($i18n->shouldFallbackToDefaultLocale() && $post->post_status === "publish") {
+        // Keep the default url handy
+        $defaultFallbackUrl = "";
+        if ($shouldFallback) {
+            $permalinkManager->enforceLocale($defaultLocale);
+            $defaultFallbackUrl = $permalinkManager->generatePermalink($currentPermalink, $taxonomy->taxonomy);
+        }
 
-            $currentLocale = $i18n->getCurrentLocale();
-            $defaultLocale = $i18n->getDefaultLocale();
-            $originalPost = $defaultLocale->getTranslatedPost($post->ID);
-            $originalUrl = get_permalink($originalPost);
-            $localizedFakeUrl = $this->permalinkManager->getLocalizedFallbackUrl($originalUrl, $locale);
+        foreach (Strata::i18n()->getLocales() as $locale) {
+            $permalinkManager->enforceLocale($locale);
+            $localizedUrl = $permalinkManager->generatePermalink($currentPermalink, $taxonomy->taxonomy);
 
-            $alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $localizedFakeUrl);
+            $destinationIsTheSame = $localizedUrl === $currentPermalink;
+            $isNotDefaultButIsNotTheCurrent = !$locale->isDefault() && $locale->getCode() !== $currentLocale->getCode();
 
-            // On a forced translation page, if the current locale is pretending to exist but
-            // fallbacks to the global, say it's a canonical of that global translation.
-            if (!$currentLocale->isDefault() && $currentLocale->getCode() === $locale->getCode()) {
-                $localizedFakeUrl = $this->permalinkManager->getLocalizedFallbackUrl($originalUrl, $defaultLocale);
-                $canonicals[] = sprintf('<link rel="canonical" href="%s">', $localizedFakeUrl);
+            if ($isNotDefaultButIsNotTheCurrent && $destinationIsTheSame && $shouldFallback) {
+                $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $defaultFallbackUrl);
+                $this->canonicals[] = sprintf('<link rel="canonical" href="%s">', $defaultFallbackUrl);
+            } else {
+                $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $localizedUrl);
             }
         }
     }

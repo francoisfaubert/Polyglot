@@ -14,52 +14,10 @@ use WP_Post;
 use WP_Term;
 use Exception;
 
+use Polyglot\I18n\Locale\ContextualManager;
+use Strata\Router\Router;
+
 class PostPermalinkManager extends PermalinkManager {
-
-    /**
-     * Ensures post and page links are wrapped in the current active
-     * country.
-     * @param  string $permalink
-     * @param  int $postId
-     * @return string
-     */
-    public function filter_onPostLink($permalink, $postId)
-    {
-        $postId = is_object($postId) ? $mixed->ID : $postId;
-
-        if (wp_is_post_revision($postId)) {
-            return $this->parseIgnoredPostLink($permalink);
-        }
-
-        $tree = Tree::grow($postId, "WP_Post");
-        if ($tree->isLocalized()) {
-            $localizedEntity = $tree->getLocalizedObjectById($postId);
-            if ($localizedEntity) {
-
-                $obj = $localizedEntity->getWordpressObject();
-                $postLocale = $localizedEntity->getTranslationLocale();
-                $permalink = $this->localizePostSlug($permalink, $obj, $postLocale);
-
-                return $this->parseLocalizablePostLink(
-                    $permalink,
-                    $obj,
-                    $postLocale
-                );
-
-            } elseif ($tree->isLocalizedSetOf($postId)) {
-                if ($this->shouldLocalizeByFallback) {
-                    $permalink = $this->localizePostSlug($permalink, get_post($postId), $this->defaultLocale);
-                    return $this->parseLocalizablePostLink($permalink, get_post($postId), $this->currentLocale);
-                }
-
-                return $this->parseLocalizablePostLink($permalink, get_post($postId), $this->defaultLocale);
-            }
-        }
-
-        // We haven't found an associated post,
-        // therefore the link provided is the correct one.
-        return $this->parseIgnoredPostLink($permalink);
-    }
 
     /**
      * Ensures post and page links are wrapped in the current active
@@ -73,10 +31,90 @@ class PostPermalinkManager extends PermalinkManager {
         return $this->filter_onPostLink($permalink, $post->ID);
     }
 
+    /**
+     * Ensures post and page links are wrapped in the current active
+     * country.
+     * @param  string $permalink
+     * @param  int $postId
+     * @return string
+     */
+    public function filter_onPostLink($permalink, $postId)
+    {
+        $this->enforceLocale();
+        return $this->generatePermalink($permalink, $postId);
+    }
+
+    public function generatePermalink($permalink, $postId)
+    {
+        $postId = is_object($postId) ? $mixed->ID : $postId;
+
+        if (wp_is_post_revision($postId)) {
+            return $this->addLocaleHomeUrl($permalink);
+        }
+
+        $postAttempingToTranslate = get_post($postId);
+        if (!$postAttempingToTranslate) {
+            return $this->addLocaleHomeUrl($permalink);
+        }
+
+        // Translate the current post_name.
+        $tree = Tree::grow($postAttempingToTranslate->ID, "WP_Post");
+        if ($tree->isLocalized()) {
+            $permalink = $this->translatePostName($postAttempingToTranslate, $permalink);
+        }
+
+        // Translate up the tree should the post have parents.
+        $generationPointer = $postAttempingToTranslate;
+        while ($generationPointer && (int)$generationPointer->post_parent > 0) {
+            $parent = get_post($generationPointer->post_parent);
+            $parentTree = Tree::grow($parent->ID, "WP_Post");
+            if ($parentTree->isLocalized($parent->ID)) {
+                $permalink = $this->translatePostName($parent, $permalink);
+                $generationPointer = $parent;
+            }
+        }
+
+        // Translate the default Wordpress custom post type slug
+        $model = $this->getStrataModel($postAttempingToTranslate);
+        if (!is_null($model) && $this->shouldRewriteModelSlug($model)) {
+            $permalink = $this->localizeDefaultSlug($model, $permalink);
+        }
+
+        return $this->addLocaleHomeUrl($permalink);
+    }
+
+    public function enforceLocale($locale = null)
+    {
+        // The current locale gets lost in metabox queries.
+        // in the admin
+        if (is_null($locale) && is_admin() && !Router::isAjax()) {
+            $context = new ContextualManager();
+            $locale = $context->getByAdminContext();
+        }
+
+        if (!is_null($locale)) {
+            $this->currentLocale = $locale;
+        }
+    }
+
+    private function translatePostName($post, $permalink)
+    {
+        if ($this->currentLocale->hasPostTranslation($post->ID)) {
+            $translation = $this->currentLocale->getTranslatedPost($post->ID);
+            return Utility::replaceFirstOccurence(
+                $post->post_name,
+                $translation->post_name,
+                $permalink
+            );
+        }
+
+        return $permalink;
+    }
+
     // Before leaving, check if we are expected to build localized urls when
     // the page does not exist. This ensures the default content is displayed as if it
     // was a localization of the current locale. (ex: en_US could be the invisible fallback for en_CA).
-    protected function parseIgnoredPostLink($permalink)
+    protected function addLocaleHomeUrl($permalink)
     {
         if ($this->currentLocale->hasACustomUrl()) {
             return Utility::replaceFirstOccurence(
@@ -89,74 +127,33 @@ class PostPermalinkManager extends PermalinkManager {
         return $permalink;
     }
 
-    protected function parseLocalizablePostLink($permalink, $post, $postLocale)
+    private function localizeDefaultSlug($model, $permalink)
     {
-        $localizedUrl = Utility::replaceFirstOccurence(
-            get_home_url(). "/",
-            $postLocale->getHomeUrl(),
+        return Utility::replaceFirstOccurence(
+            $model->getConfig("rewrite.slug"),
+            $model->getConfig("i18n." . $this->currentLocale->getCode() . ".rewrite.slug"),
             $permalink
         );
-
-        // We have a translated url, but if it happens to be the homepage we
-        // need to remove the slug
-        return $this->removeLocaleHomeKeys($localizedUrl, $postLocale);
     }
 
-    protected function localizePostSlug($permalink, $post, $postLocale)
+    private function getStrataModel($post)
     {
         if (preg_match('/cpt_/', $post->post_type)) {
             try {
                 $modelEntity = ModelEntity::factoryFromString($post->post_type);
-                $model = $modelEntity->getModel();
-
-                if ($this->shouldRewriteModelSlug($postLocale, $model)) {
-                    return Utility::replaceFirstOccurence(
-                        $model->getConfig("rewrite.slug"),
-                        $model->getConfig("i18n." . $this->currentLocale->getCode() . ".rewrite.slug"),
-                        $permalink
-                    );
-                }
+                return $modelEntity->getModel();
             } catch(Exception $e) {
-                // we dont care
+                // we dont care not a Strata model
             }
         }
-
-        return $permalink;
     }
 
-    private function shouldRewriteModelSlug($locale, $model)
+    private function shouldRewriteModelSlug($model)
     {
-        if (!$locale->isDefault() || Strata::i18n()->shouldFallbackToDefaultLocale()) {
+        if (!$this->currentLocale->isDefault() || Strata::i18n()->shouldFallbackToDefaultLocale()) {
             return $model->hasConfig("i18n." . $this->currentLocale->getCode() . ".rewrite.slug");
         }
 
         return false;
-    }
-
-    protected function removeLocaleHomeKeys($permalink, $localeContext = null)
-    {
-        if (is_null($localeContext)) {
-            $localeContext = $this->currentLocale;
-        }
-
-        $homepageId = Strata::i18n()->query()->getDefaultHomepageId();
-        if ($localeContext->isTranslationOfPost($homepageId)) {
-            $localizedPage = $localeContext->getTranslatedPost($homepageId);
-            if ($localizedPage) {
-                return Utility::replaceFirstOccurence($localizedPage->post_name . "/", "", $permalink);
-            }
-        }
-
-        return $permalink;
-    }
-
-    public function getLocalizedFallbackUrl($permalink, $locale)
-    {
-        // Remove the possible fake url prefix when fallbacking
-        if ((bool)Strata::config("i18n.default_locale_fallback")) {
-            return str_replace(Strata::i18n()->getCurrentLocale()->getHomeUrl(), $locale->getHomeUrl(), $permalink);
-        }
-
-        return str_replace(get_home_url(), $locale->getHomeUrl(), $permalink);
     }
 }

@@ -21,15 +21,29 @@ class TermPermalinkManager extends PermalinkManager {
     {
         $configuration = Strata::i18n()->getConfiguration();
         if ($configuration->isTaxonomyEnabled($taxonomy)) {
+            return $this->generatePermalink($url, $taxonomy);
+        }
 
-            $taxonomyDetails = get_taxonomy($taxonomy);
-            if ($this->currentLocale->hasACustomUrl($taxonomy)) {
-                $url = $this->replaceLocaleHomeUrl($url, $taxonomyDetails);
-            }
+        return $url;
+    }
 
-            if ($this->taxonomyWasLocalizedInStrata($taxonomy)) {
-                $url = $this->replaceDefaultTaxonomySlug($url, $taxonomyDetails);
-            }
+    public function enforceLocale($locale = null)
+    {
+        if (!is_null($locale)) {
+            $this->currentLocale = $locale;
+        }
+    }
+
+    public function generatePermalink($url, $taxonomy)
+    {
+        $taxonomyDetails = get_taxonomy($taxonomy);
+
+        if ($this->currentLocale->hasACustomUrl($taxonomy->taxonomy)) {
+            $url = $this->replaceLocaleHomeUrl($url, $taxonomyDetails);
+        }
+
+        if ($this->taxonomyWasLocalizedInStrata($taxonomy->taxonomy)) {
+            $url = $this->replaceDefaultTaxonomySlug($url, $taxonomyDetails);
         }
 
         return $url;
@@ -40,7 +54,7 @@ class TermPermalinkManager extends PermalinkManager {
         $taxonomyRootSlug = $taxonomyDetails->rewrite['slug'];
 
         return Utility::replaceFirstOccurence(
-            '/' . $taxonomyRootSlug,
+            "/" . $taxonomyRootSlug,
             $this->currentLocale->getHomeUrl(false) . $taxonomyRootSlug,
             $permalink
         );
@@ -55,7 +69,7 @@ class TermPermalinkManager extends PermalinkManager {
     {
         $localeCode = $this->currentLocale->getCode();
 
-        if (Hash::check($taxonomyDetails->i18n, "$localeCode.rewrite.slug")) {
+        if (Hash::check((array)$taxonomyDetails->i18n, "$localeCode.rewrite.slug")) {
             return Utility::replaceFirstOccurence(
                 $taxonomyDetails->rewrite['slug'],
                 Hash::get($taxonomyDetails->i18n, "$localeCode.rewrite.slug"),
