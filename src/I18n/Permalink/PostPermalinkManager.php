@@ -90,9 +90,11 @@ class PostPermalinkManager extends PermalinkManager {
             }
         }
 
+        $avant = $permalink;
+
         // Translate the default Wordpress custom post type slug
         $model = $this->getStrataModel($postAttempingToTranslate);
-        if (!is_null($model) && $this->shouldRewriteModelSlug($model)) {
+        if (!is_null($model)) {
             $permalink = $this->localizeDefaultSlug($model, $permalink);
         }
 
@@ -153,16 +155,39 @@ class PostPermalinkManager extends PermalinkManager {
 
     private function localizeDefaultSlug($model, $permalink)
     {
-        return Utility::replaceFirstOccurence(
-            $model->getConfig("rewrite.slug"),
-            $model->getConfig("i18n." . $this->currentLocale->getCode() . ".rewrite.slug"),
-            $permalink
-        );
+        $defaultSlug = $model->getConfig("rewrite.slug");
+
+        if ($defaultSlug) {
+            $slugs = array();
+
+            foreach ($model->extractConfig("i18n.{s}.rewrite.slug") as $slug) {
+                $slugs[] = $slug;
+            }
+
+            if (count($slugs)) {
+                $permalink = preg_replace(
+                    '#/('.implode("|", $slugs).')/#',
+                    '/' . $defaultSlug . '/',
+                    $permalink
+                );
+            }
+
+            if (!$this->currentLocale->isDefault() && $model->hasConfig("i18n." . $this->currentLocale->getCode() . ".rewrite.slug")) {
+                return Utility::replaceFirstOccurence(
+                    $defaultSlug,
+                    $model->getConfig("i18n." . $this->currentLocale->getCode() . ".rewrite.slug"),
+                    $permalink
+                );
+            }
+
+        }
+
+        return $permalink;
     }
 
     private function getStrataModel($post)
     {
-        if (preg_match('/cpt_/', $post->post_type)) {
+        if (preg_match('/^cpt_/', $post->post_type)) {
             try {
                 $modelEntity = ModelEntity::factoryFromString($post->post_type);
                 return $modelEntity->getModel();
@@ -170,14 +195,5 @@ class PostPermalinkManager extends PermalinkManager {
                 // we dont care not a Strata model
             }
         }
-    }
-
-    private function shouldRewriteModelSlug($model)
-    {
-        if (!$this->currentLocale->isDefault() || Strata::i18n()->shouldFallbackToDefaultLocale()) {
-            return $model->hasConfig("i18n." . $this->currentLocale->getCode() . ".rewrite.slug");
-        }
-
-        return false;
     }
 }
