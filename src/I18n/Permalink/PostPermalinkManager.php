@@ -74,6 +74,20 @@ class PostPermalinkManager extends PermalinkManager {
                     $generationPointer = $parent;
                 }
             }
+
+            // Home urls should not display the post_name slug on translated versions.
+            if (!$this->currentLocale->isDefault()) {
+                $homepageId = Strata::i18n()->query()->getDefaultHomepageId();
+                $tree = Tree::grow($homepageId, "WP_Post");
+                $localizedHomePage = $tree->getLocalizationIn($this->currentLocale);
+                if ((int)$postAttempingToTranslate->ID === (int)$localizedHomePage->getObjectId()) {
+                    $permalink = Utility::replaceFirstOccurence(
+                        $localizedHomePage->getWordpressObject()->post_name . "/",
+                        "",
+                        $permalink
+                    );
+                }
+            }
         }
 
         // Translate the default Wordpress custom post type slug
