@@ -134,8 +134,8 @@ class PostPermalinkManager extends PermalinkManager {
     {
         if (preg_match('/' . Utility::getLocaleUrlsRegex() . '/', $permalink)) {
             $permalink = preg_replace(
-                '#(/' . Utility::getLocaleUrlsRegex() . '/)#',
-                '',
+                '#(/(' . Utility::getLocaleUrlsRegex() . ')/)#',
+                '/',
                 $permalink
             );
         }
