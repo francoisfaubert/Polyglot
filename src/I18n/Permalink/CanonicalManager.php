@@ -108,15 +108,7 @@ class CanonicalManager {
         $defaultLocale = Strata::i18n()->getDefaultLocale();
         $currentLocale = Strata::i18n()->getCurrentLocale();
         $permalinkManager = new PostPermalinkManager();
-
         $currentPermalink = get_permalink($currentPost->ID);
-        if ($currentLocale->hasACustomUrl()) {
-            $currentPermalink = Utility::replaceFirstOccurence(
-                $currentLocale->getHomeUrl(),
-                "",
-                $currentPermalink
-            );
-        }
 
         // Keep the default url handy
         $defaultFallbackUrl = "";
@@ -126,7 +118,6 @@ class CanonicalManager {
         }
 
         foreach (Strata::i18n()->getLocales() as $locale) {
-
             $permalinkManager->enforceLocale($locale);
             $localizedUrl = $permalinkManager->generatePermalink($currentPermalink, $currentPost->ID);
 
@@ -134,10 +125,10 @@ class CanonicalManager {
             $isNotDefaultButIsNotTheCurrent = !$locale->isDefault() && $locale->getCode() !== $currentLocale->getCode();
 
             if ($isNotDefaultButIsNotTheCurrent && $destinationIsTheSame && $shouldFallback) {
-                $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(),  $locale->getHomeUrl() . $defaultFallbackUrl);
-                $this->canonicals[] = sprintf('<link rel="canonical" href="%s">', $locale->getHomeUrl() . $defaultFallbackUrl);
+                $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $defaultFallbackUrl);
+                $this->canonicals[] = sprintf('<link rel="canonical" href="%s">', $defaultFallbackUrl);
             } else {
-                $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(),  $locale->getHomeUrl() . $localizedUrl);
+                $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $localizedUrl);
             }
         }
     }
@@ -149,26 +140,18 @@ class CanonicalManager {
         $defaultLocale = Strata::i18n()->getDefaultLocale();
         $currentLocale = Strata::i18n()->getCurrentLocale();
         $permalinkManager = new TermPermalinkManager();
-
-        $currentPermalink = get_term_link($taxonomy->term_id, $taxonomy->taxonomy);
-        if ($currentLocale->hasACustomUrl()) {
-            $currentPermalink = Utility::replaceFirstOccurence(
-                $currentLocale->getHomeUrl(),
-                "",
-                $currentPermalink
-            );
-        }
+        $currentPermalink = get_term_link($taxonomy, $taxonomy->taxonomy);
 
         // Keep the default url handy
         $defaultFallbackUrl = "";
         if ($shouldFallback) {
             $permalinkManager->enforceLocale($defaultLocale);
-            $defaultFallbackUrl = $permalinkManager->generatePermalink($currentPermalink, $taxonomy->taxonomy);
+            $defaultFallbackUrl = $permalinkManager->generatePermalink($currentPermalink, $taxonomy);
         }
 
         foreach (Strata::i18n()->getLocales() as $locale) {
             $permalinkManager->enforceLocale($locale);
-            $localizedUrl = $permalinkManager->generatePermalink($currentPermalink, $taxonomy->taxonomy);
+            $localizedUrl = $permalinkManager->generatePermalink($currentPermalink, $taxonomy);
 
             $destinationIsTheSame = $localizedUrl === $currentPermalink;
             $isNotDefaultButIsNotTheCurrent = !$locale->isDefault() && $locale->getCode() !== $currentLocale->getCode();
