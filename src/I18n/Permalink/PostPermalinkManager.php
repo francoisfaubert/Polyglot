@@ -63,14 +63,16 @@ class PostPermalinkManager extends PermalinkManager {
             $permalink = $this->translatePostName($postAttempingToTranslate, $permalink);
         }
 
-        // Translate up the tree should the post have parents.
-        $generationPointer = $postAttempingToTranslate;
-        while ($generationPointer && (int)$generationPointer->post_parent > 0) {
-            $parent = get_post($generationPointer->post_parent);
-            $parentTree = Tree::grow($parent->ID, "WP_Post");
-            if ($parentTree->isLocalized($parent->ID)) {
-                $permalink = $this->translatePostName($parent, $permalink);
-                $generationPointer = $parent;
+        if ($this->currentLocale->hasPostTranslation($postAttempingToTranslate->ID)) {
+            // Translate up the tree should the post have parents.
+            $generationPointer = $postAttempingToTranslate;
+            while ($generationPointer && (int)$generationPointer->post_parent > 0) {
+                $parent = get_post($generationPointer->post_parent);
+                $parentTree = Tree::grow($parent->ID, "WP_Post");
+                if ($parentTree->isLocalized($parent->ID)) {
+                    $permalink = $this->translatePostName($parent, $permalink);
+                    $generationPointer = $parent;
+                }
             }
         }
 

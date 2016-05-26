@@ -5,6 +5,7 @@ namespace Polyglot\Plugin\Adaptor;
 use Polyglot\I18n\Locale\ContextualManager;
 use Polyglot\I18n\Translation\TrashManager;
 use Polyglot\I18n\Translation\PostMetaManager;
+use Polyglot\I18n\Translation\TermMetaManager;
 use Polyglot\I18n\Permalink\PostPermalinkManager;
 use Polyglot\I18n\Permalink\TermPermalinkManager;
 use Polyglot\I18n\Db\QueryRewriter;
@@ -42,18 +43,15 @@ class CommonAdaptor {
         add_action("pre_get_posts", array($querier, "preGetPosts"));
         add_filter('get_previous_post_where', array($querier, 'filterAdjacentWhere'));
         add_filter('get_next_post_where', array($querier, 'filterAdjacentWhere'));
-
+        add_filter('get_terms', array($querier, 'getTerms'), 5, 3);
+        add_filter('get_terms_args', array($querier, 'getTermsArgs'), 10, 2);
 
         $metaManager = new PostMetaManager();
         add_action('save_post', array($metaManager, 'filter_onSavePost'), 1, 3);
 
-        // On the ice for the moment.
-        // add_filter('wp_insert_post_data', array($querier, 'localizeParentId'), 10, 2);
-        // add_action('created_term', array($querier, 'localizeExistingTerms'), 1, 3);
-
-
-        add_filter('get_terms', array($querier, 'getTerms'), 5, 3);
-        add_filter('get_terms_args', array($querier, 'getTermsArgs'), 10, 2);
+        $metaManager = new TermMetaManager();
+        add_action('create_term', array($metaManager, 'filter_onCreateTerm'), 1, 3);
+        add_action('edit_term', array($metaManager, 'filter_onEditTerm'), 1, 3);
     }
 
     public function filter_onInit()
@@ -77,7 +75,7 @@ class CommonAdaptor {
         $rewriter->setDefaultHomepageId($i18n->query()->getDefaultHomepageId());
         $rewriter->rewrite();
 
-        // Translate the default slugs
+        // // Translate the default slugs
         $rewriter = new DefaultWordpressRewriter($i18n, $strataRewriter);
         $rewriter->setConfiguration($configuration);
         $rewriter->rewrite();

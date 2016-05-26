@@ -7,7 +7,6 @@ use Exception;
 
 class PostMetaManager {
 
-    private $supportedTypes;
     private $post;
     private $logger;
 
@@ -35,7 +34,6 @@ class PostMetaManager {
 
     protected function distributePostFields()
     {
-
         foreach (Strata::i18n()->getLocales() as $locale) {
             if (!$locale->isDefault() && $locale->hasPostTranslation($this->post->ID)) {
 
@@ -52,7 +50,7 @@ class PostMetaManager {
                     $localization->post_parent = $parentPostId;
 
                     if ($this->logger) {
-                        $this->logger->log(sprintf("Synced #%s with #%s's post_parent and menu_order.", $localization->ID, $this->post->ID), "<magenta>Polyglot</magenta>");
+                        $this->logger->log(sprintf("Synced post #%s with #%s's post_parent and menu_order.", $localization->ID, $this->post->ID), "<magenta>Polyglot</magenta>");
                     }
 
                     wp_update_post($localization);
@@ -75,7 +73,7 @@ class PostMetaManager {
                         update_post_meta($localization->ID, '_wp_page_template', $originalTemplate);
 
                         if ($this->logger) {
-                            $this->logger->log(sprintf("Synced #%s with #%s's template.", $localization->ID, $this->post->ID), "<magenta>Polyglot</magenta>");
+                            $this->logger->log(sprintf("Synced post #%s with #%s's template.", $localization->ID, $this->post->ID), "<magenta>Polyglot</magenta>");
                         }
                     }
                 }
