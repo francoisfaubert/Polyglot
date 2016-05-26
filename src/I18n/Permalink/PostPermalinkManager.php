@@ -80,7 +80,7 @@ class PostPermalinkManager extends PermalinkManager {
                 $homepageId = Strata::i18n()->query()->getDefaultHomepageId();
                 $tree = Tree::grow($homepageId, "WP_Post");
                 $localizedHomePage = $tree->getLocalizationIn($this->currentLocale);
-                if ((int)$postAttempingToTranslate->ID === (int)$localizedHomePage->getObjectId()) {
+                if ($localizedHomePage && (int)$postAttempingToTranslate->ID === (int)$localizedHomePage->getObjectId()) {
                     $permalink = Utility::replaceFirstOccurence(
                         $localizedHomePage->getWordpressObject()->post_name . "/",
                         "",
@@ -132,9 +132,17 @@ class PostPermalinkManager extends PermalinkManager {
     // was a localization of the current locale. (ex: en_US could be the invisible fallback for en_CA).
     protected function addLocaleHomeUrl($permalink)
     {
+        if (preg_match('/' . Utility::getLocaleUrlsRegex() . '/', $permalink)) {
+            $permalink = preg_replace(
+                '#(/' . Utility::getLocaleUrlsRegex() . '/)#',
+                '',
+                $permalink
+            );
+        }
+
         if ($this->currentLocale->hasACustomUrl()) {
             return Utility::replaceFirstOccurence(
-                get_home_url() . "/",
+                get_home_url() . '/',
                 $this->currentLocale->getHomeUrl(),
                 $permalink
             );
