@@ -7,17 +7,25 @@ use Exception;
 
 class PostMetaManager {
 
+    private $isWorking = false;
     private $post;
     private $logger;
 
     public function filter_onSavePost($postId)
     {
+        if ($this->isWorking) {
+            return;
+        }
+
         $this->logger = Strata::app()->getLogger();
 
-        if ($this->isAKnownPost($postId)) {
+        if ($this->isAKnownPost($postId) && Strata::i18n()->currentLocaleIsDefault()) {
+            $this->isWorking = true;
             $this->distributePostFields();
             $this->distributeTemplate();
         }
+
+        $this->isWorking = false;
     }
 
     protected function isAKnownPost($postId = null)
