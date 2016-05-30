@@ -13,19 +13,16 @@ class PostMetaManager {
 
     public function filter_onSavePost($postId)
     {
-        if ($this->isWorking) {
-            return;
+        if (!$this->isWorking) {
+            $this->logger = Strata::app()->getLogger();
+            if ($this->isAKnownPost($postId) && Strata::i18n()->currentLocaleIsDefault()) {
+                $this->isWorking = true;
+                $this->distributePostFields();
+                $this->distributeTemplate();
+            }
+
+            $this->isWorking = false;
         }
-
-        $this->logger = Strata::app()->getLogger();
-
-        if ($this->isAKnownPost($postId) && Strata::i18n()->currentLocaleIsDefault()) {
-            $this->isWorking = true;
-            $this->distributePostFields();
-            $this->distributeTemplate();
-        }
-
-        $this->isWorking = false;
     }
 
     protected function isAKnownPost($postId = null)
@@ -47,7 +44,6 @@ class PostMetaManager {
 
                 $localization = $locale->getTranslatedPost($this->post->ID);
                 if ((int)$localization->ID !== (int)$this->post->ID) {
-                    $localization->menu_order = $this->post->menu_order;
 
                     $parentPostId = $this->post->post_parent;
                     if ($locale->hasPostTranslation($parentPostId)) {
@@ -55,13 +51,17 @@ class PostMetaManager {
                         $parentPostId = $parentTranslation->ID;
                     }
 
-                    $localization->post_parent = $parentPostId;
+                    $newData = array(
+                        "ID" => $localization->ID,
+                        "menu_order" => $this->post->menu_order,
+                        "post_parent" => $parentPostId,
+                    );
 
                     if ($this->logger) {
                         $this->logger->log(sprintf("Synced post #%s with #%s's post_parent and menu_order.", $localization->ID, $this->post->ID), "<magenta>Polyglot</magenta>");
                     }
 
-                    wp_update_post($localization);
+                    wp_update_post($newData);
                 }
             }
         }
