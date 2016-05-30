@@ -13,17 +13,7 @@ class FrontAdaptor {
 
     public static function addFilters()
     {
-        $adaptor = new self();
-        add_filter('body_class', array($adaptor, "onFilter_body_class"));
-        add_action('wp', array($adaptor, 'filter_onInit'), 10);
-
-        $navMenu = new NavMenuManager();
-        add_filter('wp_nav_menu_objects', array($navMenu, 'filter_onNavMenuObjects'), 5, 2);
-
-        $canonical = new CanonicalManager(new PermalinkManager());
-        add_action('wp_head', array($canonical, "filter_onWpHead"));
-        add_action('widgets_init', array($canonical, 'filter_onWidgetInit'));
-        add_filter('redirect_canonical', array($canonical, 'filter_onRedirectCanonical'), 5, 2);
+        add_action('wp', array(new self(), 'filter_onInit'), 10);
     }
 
     public function onFilter_body_class($classes)
@@ -34,6 +24,16 @@ class FrontAdaptor {
 
     public function filter_onInit()
     {
+        add_filter('body_class', array($this, "onFilter_body_class"));
+
+        $navMenu = new NavMenuManager();
+        add_filter('wp_nav_menu_objects', array($navMenu, 'filter_onNavMenuObjects'), 5, 2);
+
+        $canonical = new CanonicalManager(new PermalinkManager());
+        add_action('wp_head', array($canonical, "filter_onWpHead"));
+        add_action('widgets_init', array($canonical, 'filter_onWidgetInit'));
+        add_filter('redirect_canonical', array($canonical, 'filter_onRedirectCanonical'), 5, 2);
+
         add_filter('strata_on_before_url_routing', array($this, "onStrataRoute"), 5 , 1);
     }
 
