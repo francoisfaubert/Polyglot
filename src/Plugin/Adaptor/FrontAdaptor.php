@@ -15,6 +15,7 @@ class FrontAdaptor {
     {
         $adaptor = new self();
         add_filter('body_class', array($adaptor, "onFilter_body_class"));
+        add_action('wp', array($adaptor, 'filter_onInit'), 10);
 
         $navMenu = new NavMenuManager();
         add_filter('wp_nav_menu_objects', array($navMenu, 'filter_onNavMenuObjects'), 5, 2);
@@ -23,16 +24,23 @@ class FrontAdaptor {
         add_action('wp_head', array($canonical, "filter_onWpHead"));
         add_action('widgets_init', array($canonical, 'filter_onWidgetInit'));
         add_filter('redirect_canonical', array($canonical, 'filter_onRedirectCanonical'), 5, 2);
-
-        add_action('strata_on_before_url_routing', function($route) {
-            global $wp_query;
-            return PolyglotRouter::localizeRouteByQuery($wp_query, $route);
-        }, 5, 1);
     }
 
     public function onFilter_body_class($classes)
     {
         $mng = new BodyClassManager($classes);
         return $mng->localize();
+    }
+
+    public function filter_onInit()
+    {
+        add_filter('strata_on_before_url_routing', array($this, "onStrataRoute"), 5 , 1);
+    }
+
+    public function onStrataRoute($route)
+    {
+        global $wp_query;
+        $route = PolyglotRouter::localizeRouteByQuery($wp_query, $route);
+        return $route;
     }
 }

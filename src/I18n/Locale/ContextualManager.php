@@ -2,11 +2,12 @@
 
 namespace Polyglot\I18n\Locale;
 
-use Strata\Controller\Request;
 use Polyglot\I18n\Utility;
 use Polyglot\I18n\Translation\Tree;
 
 use Strata\Strata;
+use Strata\Router\Router;
+use Strata\Controller\Request;
 
 /**
  * Looks up existing values in Wordpress' query for
@@ -52,7 +53,7 @@ class ContextualManager {
             return $this->getLocaleByPostId($request->get("post"));
         }
 
-        if ($request->isPost() && $request->hasPost("post_ID")) {
+        if (!Router::isAjax() && $request->isPost() && $request->hasPost("post_ID")) {
             return $this->getLocaleByPostId($request->post("post_ID"));
         }
 

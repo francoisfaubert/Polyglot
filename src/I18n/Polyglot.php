@@ -63,23 +63,12 @@ class Polyglot extends \Strata\I18n\I18n {
         if (!$this->localized) {
             $app = Strata::app();
             if ($app->hasConfig("i18n.locales")) {
-                $orignalLocaleCode = $app->i18n->getCurrentLocaleCode();
                 $this->locales = $this->rebuildLocaleList();
                 $this->localized = true;
-
-                // Find our version of the original locale and
-                // reassign it.
-                if ($orignalLocaleCode) {
-                    $this->setLocale($this->getLocaleByCode($orignalLocaleCode));
-                } elseif (is_null($this->setCurrentLocaleByContext())) {
-                    $this->setLocale($this->getDefaultLocale());
-                }
-
                 $app->i18n = $this;
             }
         }
     }
-
 
     /**
      * Overrides the default i18n function in order to use

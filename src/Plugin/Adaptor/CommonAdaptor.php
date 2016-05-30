@@ -29,29 +29,7 @@ class CommonAdaptor {
         $trash->addFilters();
 
         $adaptor = new self();
-        add_action('init', array($adaptor, 'filter_onInit'));
-
-        $postPermalink = new PostPermalinkManager();
-        add_filter('post_link', array($postPermalink, "filter_onCptLink"), 5, 2);
-        add_filter('post_type_link', array($postPermalink, "filter_onCptLink"), 5, 2);
-        add_filter('page_link', array($postPermalink, "filter_onPostLink"), 5, 2);
-
-        $termPermalink = new TermPermalinkManager();
-        add_filter('term_link', array($termPermalink, 'filter_onTermLink'), 5, 3);
-
-        $querier = new QueryRewriter();
-        add_action("pre_get_posts", array($querier, "preGetPosts"));
-        add_filter('get_previous_post_where', array($querier, 'filterAdjacentWhere'));
-        add_filter('get_next_post_where', array($querier, 'filterAdjacentWhere'));
-        add_filter('get_terms', array($querier, 'getTerms'), 5, 3);
-        add_filter('get_terms_args', array($querier, 'getTermsArgs'), 10, 2);
-
-        $metaManager = new PostMetaManager();
-        add_action('save_post', array($metaManager, 'filter_onSavePost'), 20);
-
-        $metaManager = new TermMetaManager();
-        add_action('create_term', array($metaManager, 'filter_onCreateTerm'), 1, 3);
-        add_action('edit_term', array($metaManager, 'filter_onEditTerm'), 1, 3);
+        add_action(is_admin() ? 'admin_init' : 'wp', array($adaptor, 'filter_onInit'), 10);
     }
 
     public function filter_onInit()
@@ -75,9 +53,31 @@ class CommonAdaptor {
         $rewriter->setDefaultHomepageId($i18n->query()->getDefaultHomepageId());
         $rewriter->rewrite();
 
-        // // Translate the default slugs
+        // Translate the default slugs
         $rewriter = new DefaultWordpressRewriter($i18n, $strataRewriter);
         $rewriter->setConfiguration($configuration);
         $rewriter->rewrite();
+
+        $postPermalink = new PostPermalinkManager();
+        add_filter('post_link', array($postPermalink, "filter_onCptLink"), 5, 2);
+        add_filter('post_type_link', array($postPermalink, "filter_onCptLink"), 5, 2);
+        add_filter('page_link', array($postPermalink, "filter_onPostLink"), 5, 2);
+
+        $termPermalink = new TermPermalinkManager();
+        add_filter('term_link', array($termPermalink, 'filter_onTermLink'), 5, 3);
+
+        $querier = new QueryRewriter();
+        add_action("pre_get_posts", array($querier, "preGetPosts"));
+        add_filter('get_previous_post_where', array($querier, 'filterAdjacentWhere'));
+        add_filter('get_next_post_where', array($querier, 'filterAdjacentWhere'));
+        add_filter('get_terms', array($querier, 'getTerms'), 5, 3);
+        add_filter('get_terms_args', array($querier, 'getTermsArgs'), 10, 2);
+
+        $metaManager = new PostMetaManager();
+        add_action('save_post', array($metaManager, 'filter_onSavePost'), 20);
+
+        $metaManager = new TermMetaManager();
+        add_action('create_term', array($metaManager, 'filter_onCreateTerm'), 1, 3);
+        add_action('edit_term', array($metaManager, 'filter_onEditTerm'), 1, 3);
     }
 }

@@ -24,6 +24,7 @@ class QueryRewriter {
     {
         $this->logger = new Logger();
 
+
         $i18n = Strata::i18n();
         $this->currentLocale = $i18n->getCurrentLocale();
         $this->defaultLocale = $i18n->getDefaultLocale();
@@ -61,10 +62,8 @@ class QueryRewriter {
         // In the backend of when we are in the default locale,
         // prevent non-localized posts to show up. The correct way
         // to access these would be through the Locale objects.
+        if ($this->currentLocale->isDefault()) {
 
-        $isAdmin = (is_admin() && !Router::isFrontendAjax());
-
-        if  ($isAdmin && !is_search()) {
             $localizedPostIds = $this->query->listTranslatedEntitiesIds("WP_Post");
             if (count($localizedPostIds)) {
                 $query->set("post__not_in", array_merge($query->get("post__not_in"), $localizedPostIds));

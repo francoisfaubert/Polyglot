@@ -23,8 +23,6 @@ class PluginAdaptor {
             $query->createTable();
         });
 
-
-
         $polyglot = new Polyglot();
         // We need to rehook into setCurrentLocaleByContext because we need to
         // try again once global post objects are loaded.

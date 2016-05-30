@@ -21,7 +21,6 @@ abstract class PolyglotRouter {
             $router = new PostRouter(Strata::i18n(), $wp_query);
         }
 
-
         return $router->localizeRoute($route);
     }
 
