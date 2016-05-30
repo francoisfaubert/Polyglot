@@ -14,8 +14,8 @@ class TaxonomyRouter extends PolyglotRouter {
         global $wp_query;
 
         if ((bool)$wp_query->is_tax) {
-            $taxonomy = get_taxonomy($wp_query->query_vars['taxonomy']);
-            return $this->replaceTermLevel($taxonomy, $route);
+            $term = get_term_by("slug", $wp_query->query_vars['term'], $wp_query->query_vars['taxonomy']);
+            return $this->replaceTermLevel($term, $route);
         }
 
         if ($wp_query->queried_object && get_class($wp_query->queried_object) === "WP_Term") {
@@ -44,6 +44,7 @@ class TaxonomyRouter extends PolyglotRouter {
         if ($this->taxonomyWasLocalizedInStrata($term->taxonomy)) {
             $localizedRoute = $this->replaceDefaultTaxonomySlug($localizedRoute, get_taxonomy($term->taxonomy));
         }
+
 
         // Remove the locale code
         return Utility::replaceFirstOccurence($this->currentLocale->getHomeUrl(false), "/", $localizedRoute);
