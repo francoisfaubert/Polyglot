@@ -38,11 +38,11 @@ class TermPermalinkManager extends PermalinkManager {
     {
         $taxonomyDetails = get_taxonomy($taxonomy);
 
-        if ($this->currentLocale->hasACustomUrl($taxonomy->taxonomy)) {
+        if ($this->currentLocale->hasACustomUrl($taxonomy)) {
             $url = $this->replaceLocaleHomeUrl($url, $taxonomyDetails);
         }
 
-        if ($this->taxonomyWasLocalizedInStrata($taxonomy->taxonomy)) {
+        if ($this->taxonomyWasLocalizedInStrata($taxonomy)) {
             $url = $this->replaceDefaultTaxonomySlug($url, $taxonomyDetails);
         }
 
