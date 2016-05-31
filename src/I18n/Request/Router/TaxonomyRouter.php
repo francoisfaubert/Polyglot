@@ -5,6 +5,7 @@ namespace Polyglot\I18n\Request\Router;
 use Polyglot\I18n\Utility;
 use Strata\Utility\Hash;
 use Strata\Strata;
+use Strata\Model\Taxonomy\Taxonomy;
 use WP_Term;
 
 class TaxonomyRouter extends PolyglotRouter {
@@ -23,6 +24,15 @@ class TaxonomyRouter extends PolyglotRouter {
         }
 
         return $route;
+    }
+
+    protected function getModelEntityByString($taxonomy)
+    {
+        try {
+            return Taxonomy::factoryFromKey($taxonomy);
+        } catch (Exception $e) {
+            // don't care, not a strata model.
+        }
     }
 
     protected function replaceTermLevel(WP_Term $term, $route)
@@ -45,6 +55,7 @@ class TaxonomyRouter extends PolyglotRouter {
             $localizedRoute = $this->replaceDefaultTaxonomySlug($localizedRoute, get_taxonomy($term->taxonomy));
         }
 
+        $localizedRoute = $this->removeLocalizedRoutedSlugs($localizedRoute, $this->getModelEntityByString($term->taxonomy));
 
         // Remove the locale code
         return Utility::replaceFirstOccurence($this->currentLocale->getHomeUrl(false), "/", $localizedRoute);
@@ -55,7 +66,7 @@ class TaxonomyRouter extends PolyglotRouter {
         return !is_null(Strata::config("runtime.taxonomy.query_vars.$wordpressKey"));
     }
 
-     private function replaceDefaultTaxonomySlug($url, $taxonomyDetails)
+    private function replaceDefaultTaxonomySlug($url, $taxonomyDetails)
     {
         $localeCode = $this->currentLocale->getCode();
 

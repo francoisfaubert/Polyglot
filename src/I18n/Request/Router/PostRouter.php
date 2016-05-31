@@ -3,10 +3,9 @@
 namespace Polyglot\I18n\Request\Router;
 
 use Strata\Strata;
+use Strata\Utility\Hash;
 use Strata\Model\CustomPostType\CustomPostType;
-use Strata\Model\CustomPostType\ModelEntity;
 use Polyglot\I18n\Utility;
-use Exception;
 
 class PostRouter extends PolyglotRouter {
 
@@ -20,7 +19,10 @@ class PostRouter extends PolyglotRouter {
         $originalPost = $this->defaultLocale->getTranslatedPost();
 
         if ($originalPost) {
-            $route = $this->removeLocalizedModelSlug($route, $originalPost->post_type);
+
+            $model = $this->getModelEntityByString($originalPost->post_type);
+            $route = $this->removeLocalizedModelSlug($route, $model);
+            $route = $this->removeLocalizedRoutedSlugs($route, $model);
 
             if ($localizedPost && $this->isTranslatedContent($localizedPost, $originalPost)) {
                 return $this->localizeContentRoute($route, $localizedPost, $originalPost);
@@ -32,23 +34,15 @@ class PostRouter extends PolyglotRouter {
         return $this->makeUrlFragment($route, $this->currentLocale);
     }
 
-    private function removeLocalizedModelSlug($route, $postType)
-    {
-        if (preg_match('/^cpt_/', $postType)) {
-            try {
-                $modelEntity = ModelEntity::factoryFromString($postType);
-                $model = $modelEntity->getModel();
 
-                if ($this->shouldRewriteModelSlug($model)) {
-                    return Utility::replaceFirstOccurence(
-                        $model->getConfig("i18n." . $this->currentLocale->getCode() . ".rewrite.slug"),
-                        $model->getConfig("rewrite.slug"),
-                        $route
-                    );
-                }
-            } catch (Exception $e) {
-                // don't care, not a strata model.
-            }
+    private function removeLocalizedModelSlug($route, $model)
+    {
+        if ($this->shouldRewriteModelSlug($model)) {
+            return Utility::replaceFirstOccurence(
+                $model->getConfig("i18n." . $this->currentLocale->getCode() . ".rewrite.slug"),
+                $model->getConfig("rewrite.slug"),
+                $route
+            );
         }
 
         return $route;

@@ -5,7 +5,10 @@ namespace Polyglot\I18n\Request\Router;
 use Strata\Strata;
 use Strata\I18n\I18n;
 use Polyglot\I18n\Utility;
+use Strata\Utility\Hash;
+use Strata\Model\CustomPostType\ModelEntity;
 use WP_Query;
+use Exception;
 
 abstract class PolyglotRouter {
 
@@ -51,5 +54,37 @@ abstract class PolyglotRouter {
         return $path .
             (empty($query) ? $query : '?' . $query) .
             (empty($fragment) ? $fragment : '#' . $fragment);
+    }
+
+    protected function getModelEntityByString($postType)
+    {
+        try {
+            $modelEntity = ModelEntity::factoryFromString($postType);
+            return $modelEntity->getModel();
+        } catch (Exception $e) {
+            // don't care, not a strata model.
+        }
+    }
+
+    protected function removeLocalizedRoutedSlugs($route, $model)
+    {
+        if (!$this->currentLocale->isDefault() && is_array($model->routed)) {
+            $key = "i18n." . $this->currentLocale->getCode() . ".rewrite";
+            if (Hash::check($model->routed, $key)) {
+                foreach (Hash::get($model->routed, $key) as $rewriteKey => $rewriteUrl) {
+                    if (Hash::check($model->routed, "rewrite.$rewriteKey")) {
+                        $defaultValue = Hash::get($model->routed, "rewrite.$rewriteKey");
+
+                        $route = Utility::replaceFirstOccurence(
+                            $rewriteUrl,
+                            $defaultValue,
+                            $route
+                        );
+                    }
+                }
+            }
+        }
+
+        return $route;
     }
 }
