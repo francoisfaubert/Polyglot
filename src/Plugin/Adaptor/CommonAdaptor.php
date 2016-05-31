@@ -29,7 +29,7 @@ class CommonAdaptor {
         $trash->addFilters();
 
         $adaptor = new self();
-        add_action(is_admin() ? 'admin_init' : 'wp', array($adaptor, 'filter_onInit'), 10);
+        add_action('init', array($adaptor, 'filter_onInit'), 15);
     }
 
     public function filter_onInit()

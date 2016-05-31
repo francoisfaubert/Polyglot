@@ -13,7 +13,9 @@ class FrontAdaptor {
 
     public static function addFilters()
     {
-        add_action('wp', array(new self(), 'filter_onInit'), 10);
+        $ref = new self();
+        add_action('wp_loaded', array($ref, 'filter_onInit'), 20);
+        add_filter('strata_on_before_url_routing', array($ref, "onStrataRoute"), 5 , 1);
     }
 
     public function onFilter_body_class($classes)
@@ -33,8 +35,6 @@ class FrontAdaptor {
         add_action('wp_head', array($canonical, "filter_onWpHead"));
         add_action('widgets_init', array($canonical, 'filter_onWidgetInit'));
         add_filter('redirect_canonical', array($canonical, 'filter_onRedirectCanonical'), 5, 2);
-
-        add_filter('strata_on_before_url_routing', array($this, "onStrataRoute"), 5 , 1);
     }
 
     public function onStrataRoute($route)
