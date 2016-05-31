@@ -155,7 +155,11 @@ class Query {
             return array_values($data);
         }
 
-        $notIn = count($data) ? 'AND polyglot_ID NOT IN ('.implode(array_keys($data)).')' : '';
+        $notIn = "";
+        if (count($data)) {
+            $keys = array_keys($data);
+            $notIn = 'AND polyglot_ID NOT IN ('. implode(',', $keys ) . ')';
+        }
 
         global $wpdb;
         $this->logger->logQueryStart();
@@ -310,7 +314,6 @@ class Query {
         return $this->findTranlationsOfId($translated->translation_of, $translated->obj_kind);
     }
 
-
     public function findLocaleTranslations($locale, $kind = "WP_Post", $type = null)
     {
         $data = array();
@@ -332,7 +335,7 @@ class Query {
             return array_values($data);
         }
 
-        $notIn = count($data) ? 'AND polyglot_ID NOT IN ('.implode(array_keys($data)).')' : '';
+        $notIn = count($data) ? 'AND polyglot_ID NOT IN ('.implode(', ', array_keys($data)).')' : '';
 
         global $wpdb;
         $this->logger->logQueryStart();
@@ -412,7 +415,11 @@ class Query {
             return array_values($entities);
         }
 
-        $notIn = count($entities) ? 'AND obj_id NOT IN ('.implode(array_keys($entities)).')' : '';
+        $notIn = "";
+        if (count($entities)) {
+            $keys = array_keys($entities);
+            $notIn = 'AND obj_id NOT IN ('. implode(',', $keys ) . ')';
+        }
 
         global $wpdb;
 
@@ -511,7 +518,7 @@ class Query {
 
         // Don't reload the same ids, if we have already cached rows.
         $count = count($this->cachedIds);
-        $notIn = $count > 0 ?  "NOT IN (".implode(",", $this->cachedIds) .")" : "";
+        $notIn = $count > 0 ?  "NOT IN (".implode(", ", $this->cachedIds) .")" : "";
 
         $records = $wpdb->get_results($wpdb->prepare("
             SELECT *
