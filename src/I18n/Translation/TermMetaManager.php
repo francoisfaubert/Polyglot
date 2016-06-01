@@ -14,20 +14,16 @@ class TermMetaManager {
 
     public function filter_onCreateTerm($term_id, $tt_id, $taxonomy)
     {
-        if ($this->isWorking) {
-            return;
+        if (!$this->isWorking && Strata::i18n()->currentLocaleIsDefault()) {
+            $this->onTermSave($term_id, $tt_id, $taxonomy);
         }
-
-        $this->onTermSave($term_id, $tt_id, $taxonomy);
     }
 
     public function filter_onEditTerm($term_id, $tt_id, $taxonomy)
     {
-        if ($this->isWorking) {
-            return;
+        if (!$this->isWorking && Strata::i18n()->currentLocaleIsDefault()) {
+            $this->onTermSave($term_id, $tt_id, $taxonomy);
         }
-
-        $this->onTermSave($term_id, $tt_id, $taxonomy);
     }
 
     public function onTermSave($term_id, $tt_id, $taxonomy)
