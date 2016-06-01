@@ -74,10 +74,10 @@ class CommonAdaptor {
         add_filter('get_terms_args', array($querier, 'getTermsArgs'), 10, 2);
 
         $metaManager = new PostMetaManager();
-        add_action('save_post', array($metaManager, 'filter_onSavePost'), 20);
+        add_action('save_post', array($metaManager, 'filter_onSavePost'), 100);
 
         $metaManager = new TermMetaManager();
-        add_action('create_term', array($metaManager, 'filter_onCreateTerm'), 1, 3);
-        add_action('edit_term', array($metaManager, 'filter_onEditTerm'), 1, 3);
+        add_action('create_term', array($metaManager, 'filter_onCreateTerm'), 100);
+        add_action('edit_term', array($metaManager, 'filter_onEditTerm'), 100);
     }
 }
