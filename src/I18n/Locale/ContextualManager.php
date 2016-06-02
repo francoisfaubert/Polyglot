@@ -99,16 +99,18 @@ class ContextualManager {
 
         // By Taxonomy
         global $wp_query;
-        $taxonomy = $wp_query->queried_object;
-        if (is_a($taxonomy, "WP_Term")) {
-            $suspectedLocale = $this->getLocaleByTaxonomyId($taxonomy->term_id, $taxonomy->taxonomy);
-            if ($suspectedLocale && !$suspectedLocale->isDefault() && $i18n->shouldFallbackToDefaultLocale()) {
-                $defaultPost = $defaultLocale->getTranslatedTerm($taxonomy->term_id, $taxonomy->taxonomy);
-                $localizedPost = $suspectedLocale->getTranslatedTerm($taxonomy->term_id, $taxonomy->taxonomy);
+        if ($wp_query) {
+            $taxonomy = $wp_query->queried_object;
+            if (is_a($taxonomy, "WP_Term")) {
+                $suspectedLocale = $this->getLocaleByTaxonomyId($taxonomy->term_id, $taxonomy->taxonomy);
+                if ($suspectedLocale && !$suspectedLocale->isDefault() && $i18n->shouldFallbackToDefaultLocale()) {
+                    $defaultPost = $defaultLocale->getTranslatedTerm($taxonomy->term_id, $taxonomy->taxonomy);
+                    $localizedPost = $suspectedLocale->getTranslatedTerm($taxonomy->term_id, $taxonomy->taxonomy);
 
-                if ($localizedPost && $defaultPost) {
-                    if ((int)$defaultPost->term_id !== (int)$localizedPost->term_id) {
-                        return $suspectedLocale;
+                    if ($localizedPost && $defaultPost) {
+                        if ((int)$defaultPost->term_id !== (int)$localizedPost->term_id) {
+                            return $suspectedLocale;
+                        }
                     }
                 }
             }
