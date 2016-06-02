@@ -20,6 +20,10 @@ class Query {
 
     private $numberOfRecords = 0;
     private $cachedIds = array();
+    private $pageSize = 200;
+    private $defaultPageSize = 200;
+    private $nbPageSaved = 0;
+
 
     function __construct()
     {
@@ -27,6 +31,15 @@ class Query {
         $this->cache = new Cache();
 
         $this->numberOfRecords = $this->countTranslations();
+
+        if ($this->numberOfRecords > $this->defaultPageSize) {
+            $this->pageSize =  ceil($this->numberOfRecords / 3);
+
+            if ($this->pageSize < $this->defaultPageSize) {
+                $this->pageSize = $this->defaultPageSize;
+            }
+        }
+
         $this->cachePageAtId(0);
     }
 
@@ -155,11 +168,7 @@ class Query {
             return array_values($data);
         }
 
-        $notIn = "";
-        if (count($data)) {
-            $keys = array_keys($data);
-            $notIn = 'AND polyglot_ID NOT IN ('. implode(',', $keys ) . ')';
-        }
+        $notIn = count($data) ? 'AND polyglot_ID NOT IN ('.implode(',', array_keys($data)).')' : '';
 
         global $wpdb;
         $this->logger->logQueryStart();
@@ -167,42 +176,23 @@ class Query {
             SELECT *
             FROM {$wpdb->prefix}polyglot
             WHERE translation_of = %d
-            AND obj_kind = %s
-            ORDER BY polyglot_ID",
+            AND obj_kind = %s",
             $id,
             $kind
         ));
         $this->logger->logQueryCompletion($wpdb->last_query);
 
+        // Because we're starting to hit records that aren't cached,
+        // cache a page around this id.
+        $this->cachePageAtId($this->pageSize * $this->nbPageSaved);
+
         if (!is_null($results) && count($results)) {
-            // Because we're starting to hit records that aren't cached,
-            // cache a page around this id.
-            $this->cachePageAtId($results[0]->polyglot_ID);
             foreach ($this->rowsToEntities($results) as $entity) {
                 $data[(int)$entity->getId()] = $entity;
             }
         }
 
         return array_values($data);
-    }
-
-    /**
-     * Returns a cached reference of a loaded term.
-     * @param  int $id
-     * @param  string $type The type of the term (ex: category)
-     * @return array       An array of TermTranslationEntities
-     */
-    public function findTermById($id, $type)
-    {
-        $cached = $this->cache->findByOriginalObject($id, 'Term');
-        if (!is_null($cached)) {
-            return $cached;
-        }
-
-        $entity = new TermTranslationEntity((object)["obj_id" => (int)$id, "obj_type" => $type]);
-        $this->cache->addEntity($entity);
-
-        return $entity;
     }
 
     /**
@@ -223,7 +213,7 @@ class Query {
      */
     public function findDetailsById($id, $kind = "WP_Post")
     {
-        if($this->cacheIsComplete() || $this->cache->idWasCached($id, $kind)) {
+        if ($this->cacheIsComplete() || $this->cache->idWasCached($id, $kind)) {
             return $this->cache->findDetailsById($id, $kind);
         }
 
@@ -240,10 +230,19 @@ class Query {
         ));
         $this->logger->logQueryCompletion($wpdb->last_query);
 
+        // Because we're starting to hit records that aren't cached,
+        // cache a page around this id.
+        $this->cachePageAtId($this->pageSize * $this->nbPageSaved);
+
         if (!is_null($result) && $result != '') {
+            // Because we're starting to hit records that aren't cached,
+            // cache a page around this id.
+            $this->cachePageAtId($result->polyglot_ID);
             $entity = TranslationEntity::factory($result);
             $this->cache->addEntity($entity);
             return $entity;
+        } else {
+            $this->cache->addNullEntity($id, $kind);
         }
     }
 
@@ -283,7 +282,8 @@ class Query {
             foreach ($entities as $entity) {
                 $this->cache->addEntity($entity);
             }
-            return $entities;
+
+            return $details + $entities;
         }
     }
 
@@ -314,6 +314,7 @@ class Query {
         return $this->findTranlationsOfId($translated->translation_of, $translated->obj_kind);
     }
 
+
     public function findLocaleTranslations($locale, $kind = "WP_Post", $type = null)
     {
         $data = array();
@@ -335,7 +336,7 @@ class Query {
             return array_values($data);
         }
 
-        $notIn = count($data) ? 'AND polyglot_ID NOT IN ('.implode(', ', array_keys($data)).')' : '';
+        $notIn = count($data) ? 'AND polyglot_ID NOT IN ('.implode(',', array_keys($data)).')' : '';
 
         global $wpdb;
         $this->logger->logQueryStart();
@@ -415,11 +416,7 @@ class Query {
             return array_values($entities);
         }
 
-        $notIn = "";
-        if (count($entities)) {
-            $keys = array_keys($entities);
-            $notIn = 'AND obj_id NOT IN ('. implode(',', $keys ) . ')';
-        }
+        $notIn = count($entities) ? 'AND obj_id NOT IN ('.implode(',', array_keys($entities)).')' : '';
 
         global $wpdb;
 
@@ -514,17 +511,17 @@ class Query {
 
         $app = Strata::app();
         $configValue = (int)$app->getConfig("i18n.cache_page_size");
-        $cachePageSize = $configValue > 0 ? $configValue : 200;
+        $cachePageSize = $configValue > 0 ? $configValue : $this->pageSize;
 
         // Don't reload the same ids, if we have already cached rows.
         $count = count($this->cachedIds);
-        $notIn = $count > 0 ?  "NOT IN (".implode(", ", $this->cachedIds) .")" : "";
+        $notIn = $count > 0 ?  " AND polyglot_ID NOT IN (".implode(",", $this->cachedIds) .")" : "";
 
         $records = $wpdb->get_results($wpdb->prepare("
             SELECT *
             FROM {$wpdb->prefix}polyglot
             WHERE polyglot_ID > %d
-            AND polyglot_ID $notIn
+            $notIn
             ORDER BY polyglot_ID
             LIMIT $cachePageSize",
             $id
@@ -535,6 +532,8 @@ class Query {
         foreach ($records as $record) {
             $this->cache->addEntity(TranslationEntity::factory($record));
         }
+
+        $this->nbPageSaved++;
     }
 
     private function cacheIsComplete()
