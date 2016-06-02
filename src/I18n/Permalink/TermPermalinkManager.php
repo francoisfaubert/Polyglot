@@ -41,8 +41,6 @@ class TermPermalinkManager extends PermalinkManager {
             if ($this->taxonomyWasLocalizedInStrata($taxonomy)) {
                 $url = $this->replaceLocalizedTaxonomySlug($url, $taxonomyDetails);
             }
-        } else {
-            debug($taxonomy);
         }
 
         if ($this->currentLocale->hasACustomUrl()) {
