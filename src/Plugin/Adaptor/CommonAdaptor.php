@@ -30,6 +30,13 @@ class CommonAdaptor {
 
         $adaptor = new self();
         add_action('init', array($adaptor, 'filter_onInit'), 15);
+
+        $querier = new QueryRewriter();
+        add_action("pre_get_posts", array($querier, "preGetPosts"));
+        add_filter('get_previous_post_where', array($querier, 'filterAdjacentWhere'));
+        add_filter('get_next_post_where', array($querier, 'filterAdjacentWhere'));
+        add_filter('get_terms', array($querier, 'getTerms'), 5, 3);
+        add_filter('get_terms_args', array($querier, 'getTermsArgs'), 10, 2);
     }
 
     public function filter_onInit()
@@ -65,13 +72,6 @@ class CommonAdaptor {
 
         $termPermalink = new TermPermalinkManager();
         add_filter('term_link', array($termPermalink, 'filter_onTermLink'), 5, 3);
-
-        $querier = new QueryRewriter();
-        add_action("pre_get_posts", array($querier, "preGetPosts"));
-        add_filter('get_previous_post_where', array($querier, 'filterAdjacentWhere'));
-        add_filter('get_next_post_where', array($querier, 'filterAdjacentWhere'));
-        add_filter('get_terms', array($querier, 'getTerms'), 5, 3);
-        add_filter('get_terms_args', array($querier, 'getTermsArgs'), 10, 2);
 
         $metaManager = new PostMetaManager();
         add_action('save_post', array($metaManager, 'filter_onSavePost'), 100);
