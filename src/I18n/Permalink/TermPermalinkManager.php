@@ -37,27 +37,38 @@ class TermPermalinkManager extends PermalinkManager {
     public function generatePermalink($url, $taxonomy)
     {
         $taxonomyDetails = get_taxonomy($taxonomy);
-
-        if ($this->currentLocale->hasACustomUrl($taxonomy)) {
-            $url = $this->replaceLocaleHomeUrl($url, $taxonomyDetails);
+        if ($taxonomyDetails) {
+            if ($this->taxonomyWasLocalizedInStrata($taxonomy)) {
+                $url = $this->replaceLocalizedTaxonomySlug($url, $taxonomyDetails);
+            }
+        } else {
+            debug($taxonomy);
         }
 
-        if ($this->taxonomyWasLocalizedInStrata($taxonomy)) {
-            $url = $this->replaceDefaultTaxonomySlug($url, $taxonomyDetails);
+        if ($this->currentLocale->hasACustomUrl()) {
+            $url = $this->replaceLocaleHomeUrl($url);
         }
 
         return $url;
     }
 
-    private function replaceLocaleHomeUrl($permalink, $taxonomyDetails)
+    private function replaceLocaleHomeUrl($permalink)
     {
-        $taxonomyRootSlug = $taxonomyDetails->rewrite['slug'];
+        if (preg_match('/' . Utility::getLocaleUrlsRegex() . '/', $permalink)) {
+            $permalink = preg_replace(
+                '#(/(' . Utility::getLocaleUrlsRegex() . ')/)#',
+                '/',
+                $permalink
+            );
+        }
 
-        return Utility::replaceFirstOccurence(
-            "/" . $taxonomyRootSlug,
-            $this->currentLocale->getHomeUrl(false) . $taxonomyRootSlug,
-            $permalink
-        );
+        if ($this->currentLocale->hasACustomUrl()) {
+            return Utility::replaceFirstOccurence(
+                get_home_url() . '/',
+                $this->currentLocale->getHomeUrl(),
+                $permalink
+            );
+        }
     }
 
     private function taxonomyWasLocalizedInStrata($wordpressKey)
@@ -65,7 +76,24 @@ class TermPermalinkManager extends PermalinkManager {
         return !is_null(Strata::config("runtime.taxonomy.query_vars.$wordpressKey"));
     }
 
+
     private function replaceDefaultTaxonomySlug($url, $taxonomyDetails)
+    {
+        $localeCode = $this->currentLocale->getCode();
+
+        if (Hash::check((array)$taxonomyDetails->i18n, "$localeCode.rewrite.slug")) {
+            return Utility::replaceFirstOccurence(
+                $taxonomyDetails->rewrite['slug'],
+                Hash::get($taxonomyDetails->i18n, "$localeCode.rewrite.slug"),
+                $url
+            );
+        }
+
+        return $url;
+    }
+
+
+    private function replaceLocalizedTaxonomySlug($url, $taxonomyDetails)
     {
         $localeCode = $this->currentLocale->getCode();
 
