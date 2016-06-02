@@ -61,8 +61,11 @@ class ContextualManager {
             return $this->getLocaleByTaxonomyId($request->get("tag_ID"), $request->get("taxonomy"));
         }
 
-
         if ($request->hasGet("taxonomy") && !$request->hasGet("locale")) {
+            return Strata::i18n()->getDefaultLocale();
+        }
+
+        if ($request->hasGet("post_type") && !$request->hasGet("locale")) {
             return Strata::i18n()->getDefaultLocale();
         }
     }
