@@ -15,6 +15,7 @@ use Polyglot\I18n\Request\Rewriter\DefaultWordpressRewriter;
 use Polyglot\I18n\Request\Rewriter\HomepageRewriter;
 use Polyglot\I18n\Utility;
 use Strata\Strata;
+use Strata\Router\Router;
 
 class CommonAdaptor {
 
@@ -29,7 +30,11 @@ class CommonAdaptor {
         $trash->addFilters();
 
         $adaptor = new self();
-        add_action('init', array($adaptor, 'filter_onInit'), 15);
+        if (is_admin()) {
+            $adaptor->filter_onEarlyInit();
+        } else {
+            add_action('init', array($adaptor, "filter_onInit"), 15);
+        }
 
         $querier = new QueryRewriter();
         add_action("pre_get_posts", array($querier, "preGetPosts"));
@@ -79,5 +84,10 @@ class CommonAdaptor {
         $metaManager = new TermMetaManager();
         add_action('create_term', array($metaManager, 'filter_onCreateTerm'), 100);
         add_action('edit_term', array($metaManager, 'filter_onEditTerm'), 100);
+    }
+
+    public function filter_onEarlyInit()
+    {
+        $this->filter_onInit();
     }
 }

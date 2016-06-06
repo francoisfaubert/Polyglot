@@ -90,9 +90,11 @@ class CanonicalManager {
 
     protected function generateMetaTags()
     {
-        $currentPost = get_post();
-        if ($currentPost) {
-            return $this->generatePostTags($currentPost);
+        if (!is_archive() && !is_search()) {
+            $currentPost = get_post();
+            if ($currentPost) {
+                return $this->generatePostTags($currentPost);
+            }
         }
 
         global $wp_query;
