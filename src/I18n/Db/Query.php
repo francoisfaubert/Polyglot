@@ -338,6 +338,11 @@ class Query {
 
         $notIn = count($data) ? 'AND polyglot_ID NOT IN ('.implode(',', array_keys($data)).')' : '';
 
+        $andType = "";
+        if (!is_null($type)) {
+            $andType = $wpdb->prepare(" AND obj_type = %s ", $type);
+        }
+
         global $wpdb;
         $this->logger->logQueryStart();
         $results = $wpdb->get_results($wpdb->prepare("
@@ -345,7 +350,8 @@ class Query {
             FROM {$wpdb->prefix}polyglot
             WHERE translation_locale = %s
             $notIn
-            AND  obj_kind = %s",
+            $andType
+            AND obj_kind = %s",
             $localeCode,
             $kind
         ));
