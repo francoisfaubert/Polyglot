@@ -96,7 +96,7 @@ class PostRouter extends PolyglotRouter {
         // Get permalink will append the current locale url when
         // the configuration allows locales to present content form
         // the default.
-        $routedUrl = Utility::replaceFirstOccurence("/". $localizedPost->post_name, "/". $originalPost->post_name, $route);
+        $routedUrl = Utility::replaceFirstOccurence("/". $localizedPost->post_name . "/", "/". $originalPost->post_name . "/", $route);
         $originalUrl = Utility::replaceFirstOccurence($this->currentLocale->getHomeUrl(false), "/", $routedUrl);
 
         // Translate each parent url parts based on the default locale
