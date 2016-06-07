@@ -20,13 +20,14 @@ class PostRouter extends PolyglotRouter {
 
         if ($originalPost) {
             $model = $this->getModelEntityByString($originalPost->post_type);
-            $route = $this->removeLocalizedModelSlug($route, $model);
-            $route = $this->removeLocalizedRoutedSlugs($route, $model);
+            if ($model) {
+                $route = $this->removeLocalizedModelSlug($route, $model);
+                $route = $this->removeLocalizedRoutedSlugs($route, $model);
 
-            if ($localizedPost && $this->isTranslatedContent($localizedPost, $originalPost)) {
-                return $this->localizeContentRoute($route, $localizedPost, $originalPost);
+                if ($localizedPost && $this->isTranslatedContent($localizedPost, $originalPost)) {
+                    return $this->localizeContentRoute($route, $localizedPost, $originalPost);
+                }
             }
-
             return $this->removeCurrentLocaleHomeUrl($route);
         }
 
