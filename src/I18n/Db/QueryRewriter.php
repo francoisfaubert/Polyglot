@@ -19,6 +19,7 @@ class QueryRewriter {
     protected $defaultLocale;
     protected $query;
     protected $configuration;
+    protected $wpIsCaching = false;
 
     function __construct()
     {
@@ -142,7 +143,7 @@ class QueryRewriter {
      */
     public function getTerms($terms, $taxonomies)
     {
-        if (!$this->taxonomyGroupIsSupported($taxonomies)) {
+        if (!$this->taxonomyGroupIsSupported($taxonomies) || (bool)$this->wpIsCaching) {
             return $terms;
         }
 
@@ -183,6 +184,10 @@ class QueryRewriter {
 
     public function getTermsArgs($args, $taxonomies)
     {
+        if (!$this->taxonomyGroupIsSupported($taxonomies) || $this->wordpressIsCaching($args)) {
+            return $args;
+        }
+
         $notIn = array();
         $i18n = Strata::i18n();
         $locales = $i18n->getLocales();
@@ -234,5 +239,11 @@ class QueryRewriter {
     private function postTypeIsSupported($postType)
     {
         return $this->configuration->isTypeEnabled($postType);
+    }
+
+    private function wordpressIsCaching($args = array())
+    {
+        $this->wpIsCaching = $args['fields'] === "id=>parent" && $args['cache_domain'] === "core";
+        return $this->wpIsCaching;
     }
 }
