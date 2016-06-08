@@ -33,6 +33,10 @@ class PostMetaManager {
 
         $this->post = get_post($postId);
 
+        if (!$this->post || $this->post->post_status === "trash")  {
+            return false;
+        }
+
         $configuration = Strata::i18n()->getConfiguration();
         return $configuration->isTypeEnabled($this->post->post_type);
     }
