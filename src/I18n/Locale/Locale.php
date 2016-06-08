@@ -129,7 +129,7 @@ class Locale extends StrataLocale {
     public function getEditTermUrl($termId, $taxonomy, $contextualPostType = null)
     {
         $object = $this->getTranslatedTerm($termId, $taxonomy);
-        $url = 'edit-tags.php?action=edit&taxonomy='.$object->taxonomy.'&tag_ID='.$object->term_id;
+        $url = 'edit-tags.php?action=edit&taxonomy='.$object->taxonomy.'&tag_ID='.$object->term_id.'&locale='.$this->getCode();
 
         if (is_null($contextualPostType)) {
             return admin_url($url);
