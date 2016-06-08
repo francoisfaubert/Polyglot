@@ -51,7 +51,9 @@ class PostRouter extends PolyglotRouter {
     private function shouldRewriteModelSlug($model)
     {
         if (!$this->currentLocale->isDefault() || Strata::i18n()->shouldFallbackToDefaultLocale()) {
-            return $model->hasConfig("i18n." . $this->currentLocale->getCode() . ".rewrite.slug");
+            if (is_a($model, "Strata\Model\WordpressEntity")) {
+                return $model->hasConfig("i18n." . $this->currentLocale->getCode() . ".rewrite.slug");
+            }
         }
 
         return false;
