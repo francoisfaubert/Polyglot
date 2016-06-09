@@ -7,6 +7,7 @@ use Strata\Strata;
 class TrashManager {
 
     private $querier;
+    private $isWorking = false;
 
     public function setQuerier($querier)
     {
@@ -41,19 +42,21 @@ class TrashManager {
 
     public function onTrashTerm($termId)
     {
-        // We need to remove the listener because it would start infinite loops.
-        $this->removeTermTrash();
-        $this->querier->unlinkTranslationFor($termId, "Term");
-        $this->querier->unlinkTranslation($termId, "Term");
-        $this->setupTermTrash();
+        if (!$this->isWorking) {
+            $this->isWorking = true;
+            $this->querier->unlinkTranslationFor($termId, "Term");
+            $this->querier->unlinkTranslation($termId, "Term");
+        }
+        $this->isWorking = false;
     }
 
     public function onTrashPost($postId)
     {
-        // We need to remove the listener because it would start infinite loops.
-        $this->removePostTrash();
-        $this->querier->unlinkTranslationFor($postId, "WP_Post");
-        $this->querier->unlinkTranslation($postId, "WP_Post");
-        $this->setupPostTrash();
+        if (!$this->isWorking) {
+            $this->isWorking = true;
+            $this->querier->unlinkTranslationFor($postId, "WP_Post");
+            $this->querier->unlinkTranslation($postId, "WP_Post");
+        }
+        $this->isWorking = false;
     }
 }

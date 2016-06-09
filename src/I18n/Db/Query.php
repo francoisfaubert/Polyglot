@@ -84,7 +84,12 @@ class Query {
         // Trash the translations' WP_Post first
         global $wpdb;
 
-        foreach (Strata::i18n()->getLocales() as $locale) {
+        $this->logger->logQueryStart();
+
+        $locales = Strata::i18n()->getLocales();
+        $app = Strata::app();
+
+        foreach ($locales as $locale) {
             if ($objectKind === "WP_Post" && $locale->isTranslationOfPost($objectId)) {
                 $translation = $locale->getTranslatedPost($objectId);
                 if (!is_null($translation)) {
@@ -100,10 +105,15 @@ class Query {
 
         // Then delete all the polyglot references
         // to that original post.
-        return $wpdb->delete($wpdb->prefix . 'polyglot', array(
+
+        $result = $wpdb->delete($wpdb->prefix . 'polyglot', array(
             "translation_of" => $objectId,
             "obj_kind" => $objectKind
         ));
+
+        $this->logger->logQueryCompletion($wpdb->last_query);
+
+        return $result;
     }
 
     public function unlinkTranslation($translationId, $objectKind)
