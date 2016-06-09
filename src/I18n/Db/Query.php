@@ -251,8 +251,6 @@ class Query {
             $entity = TranslationEntity::factory($result);
             $this->cache->addEntity($entity);
             return $entity;
-        } else {
-            $this->cache->addNullEntity($id, $kind);
         }
     }
 
