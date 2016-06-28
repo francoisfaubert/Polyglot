@@ -86,6 +86,13 @@ class TermPermalinkManager extends PermalinkManager {
                 '/' . $translation->slug . '/',
                 $permalink
             );
+        } elseif($this->shouldLocalizeByFallback) {
+            $translation = $this->defaultLocale->getTranslatedTerm($termAttemptingToTranslate->term_id, $termAttemptingToTranslate->taxonomy);
+            return Utility::replaceFirstOccurence(
+                '/' .  $termAttemptingToTranslate->slug . '/',
+                '/' . $translation->slug . '/',
+                $permalink
+            );
         }
 
         return $permalink;
