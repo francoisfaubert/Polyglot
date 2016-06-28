@@ -119,9 +119,10 @@ class PostPermalinkManager extends PermalinkManager {
     {
         if ($this->currentLocale->hasPostTranslation($post->ID)) {
             $translation = $this->currentLocale->getTranslatedPost($post->ID);
+
             return Utility::replaceFirstOccurence(
-                $post->post_name,
-                $translation->post_name,
+                '/' .  $post->post_name . '/',
+                '/' . $translation->post_name . '/',
                 $permalink
             );
         }

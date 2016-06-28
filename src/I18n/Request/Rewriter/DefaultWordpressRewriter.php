@@ -53,7 +53,7 @@ class DefaultWordpressRewriter extends PolyglotRewriter {
             foreach ($locales as $locale) {
                 if ($locale->hasConfig("rewrite." . $key)) {
                     $possibleValues[] = $locale->getConfig("rewrite." . $key);
-                } elseif ($locale->hasACustomUrl() && property_exists($wp_rewrite, $key)) {
+                } elseif (isset($wp_rewrite) && $locale->hasACustomUrl() && property_exists($wp_rewrite, $key)) {
                     $possibleValues[] = $wp_rewrite->{$key};
                 }
             }
