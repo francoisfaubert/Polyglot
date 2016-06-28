@@ -90,8 +90,6 @@ class PostPermalinkManager extends PermalinkManager {
             }
         }
 
-        $avant = $permalink;
-
         // Translate the default Wordpress custom post type slug
         $model = $this->getStrataModel($postAttempingToTranslate);
         if (!is_null($model)) {

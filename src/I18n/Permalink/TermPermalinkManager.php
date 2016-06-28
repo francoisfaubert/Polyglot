@@ -3,6 +3,7 @@
 namespace Polyglot\I18n\Permalink;
 
 use Strata\Strata;
+use Polyglot\I18n\Translation\Tree;
 use Polyglot\I18n\Utility;
 use Strata\Utility\Hash;
 use WP_Term;
@@ -21,7 +22,7 @@ class TermPermalinkManager extends PermalinkManager {
     {
         $configuration = Strata::i18n()->getConfiguration();
         if ($configuration->isTaxonomyEnabled($taxonomy)) {
-            return $this->generatePermalink($url, $taxonomy);
+            return $this->generatePermalink($url, $term, $taxonomy);
         }
 
         return $url;
@@ -34,8 +35,10 @@ class TermPermalinkManager extends PermalinkManager {
         }
     }
 
-    public function generatePermalink($url, $taxonomy)
+    public function generatePermalink($url, $term, $taxonomy)
     {
+        $url = $this->localizeTermSlug($url, $term);
+
         $taxonomyDetails = get_taxonomy($taxonomy);
         if ($taxonomyDetails) {
             if ($this->taxonomyWasLocalizedInStrata($taxonomy)) {
@@ -52,7 +55,7 @@ class TermPermalinkManager extends PermalinkManager {
 
     private function replaceLocaleHomeUrl($permalink)
     {
-        if (preg_match('#' . Utility::getLocaleUrlsRegex() . '#', $permalink)) {
+        if (preg_match('/' . Utility::getLocaleUrlsRegex() . '/', $permalink)) {
             $permalink = preg_replace(
                 '#(/(' . Utility::getLocaleUrlsRegex() . ')/)#',
                 '/',
@@ -74,6 +77,19 @@ class TermPermalinkManager extends PermalinkManager {
         return !is_null(Strata::config("runtime.taxonomy.query_vars.$wordpressKey"));
     }
 
+    private function localizeTermSlug($permalink, $termAttemptingToTranslate)
+    {
+        if ($this->currentLocale->hasTermTranslation($termAttemptingToTranslate->term_id)) {
+            $translation = $this->currentLocale->getTranslatedTerm($termAttemptingToTranslate->term_id, $termAttemptingToTranslate->taxonomy);
+            return Utility::replaceFirstOccurence(
+                '/' .  $termAttemptingToTranslate->slug . '/',
+                '/' . $translation->slug . '/',
+                $permalink
+            );
+        }
+
+        return $permalink;
+    }
 
     private function replaceDefaultTaxonomySlug($url, $taxonomyDetails)
     {
@@ -89,7 +105,6 @@ class TermPermalinkManager extends PermalinkManager {
 
         return $url;
     }
-
 
     private function replaceLocalizedTaxonomySlug($url, $taxonomyDetails)
     {
