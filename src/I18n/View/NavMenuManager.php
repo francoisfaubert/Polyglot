@@ -20,37 +20,19 @@ class NavMenuManager {
 
     public function filter_onNavMenuObjects($sortedMenuItems, $args)
     {
-
         if (!$this->currentLocale->isDefault()) {
             $count = 1; // it really does start at 1...
-            $currentPageId = (int)get_the_ID();
 
-            foreach ($sortedMenuItems as $wpPost) {
-                if (is_a($wpPost, '\WP_Post')) {
-                    if ($this->currentLocale->hasPostTranslation($wpPost->object_id)) {
 
-                        $translatedInfo = $this->currentLocale->getTranslatedPost($wpPost->object_id);
-                        $defaultInfo = $this->defaultLocale->getTranslatedPost($wpPost->object_id);
-
-                        // The title isn't carried away, if it matches the post title,
-                        // then use the translation. Otherwise, pass it along gettext
-                        if ($defaultInfo->post_title === htmlspecialchars_decode($wpPost->title)) {
-                            $sortedMenuItems[$count]->title = $translatedInfo->post_title;
-                        } else {
-                            $sortedMenuItems[$count]->title = __($sortedMenuItems[$count]->title, $this->textdomain);
+            foreach ($sortedMenuItems as $wpObject) {
+                if (is_a($wpObject, '\WP_Post')) {
+                    if ($wpObject->type === "post_type") {
+                        if ($this->currentLocale->hasPostTranslation($wpObject->object_id)) {
+                            $sortedMenuItems[$count] = $this->updateFromPostTitle($sortedMenuItems[$count], $wpObject);
                         }
-
-                        $sortedMenuItems[$count]->url = get_permalink($translatedInfo->ID);
-
-                        // Because we don't want to lose the added menu data of the previous item,
-                        // replace every matching key from this translation.
-                        foreach ($translatedInfo as $key => $data) {
-                            $sortedMenuItems[$count]->{$key} = $data;
-                        }
-
-                        if ($currentPageId === (int)$translatedInfo->ID) {
-                            $sortedMenuItems[$count]->current = true;
-                            $sortedMenuItems[$count]->classes[] = "active";
+                    } elseif ($wpObject->type === "taxonomy") {
+                        if ($this->currentLocale->hasTermTranslation($wpObject->object_id)) {
+                            $sortedMenuItems[$count] = $this->updateFromTermTitle($sortedMenuItems[$count], $wpObject);
                         }
                     }
                 }
@@ -59,5 +41,58 @@ class NavMenuManager {
         }
 
         return $sortedMenuItems;
+    }
+
+    protected function updateFromPostTitle($menuItem, $wpPost)
+    {
+        $translatedInfo = $this->currentLocale->getTranslatedPost($wpPost->object_id);
+        $defaultInfo = $this->defaultLocale->getTranslatedPost($wpPost->object_id);
+
+        // The title isn't carried away, if it matches the post title,
+        // then use the translation. Otherwise, pass it along gettext
+        if ($defaultInfo->post_title === htmlspecialchars_decode($wpPost->title)) {
+            $menuItem->title = $translatedInfo->post_title;
+        } else {
+            $menuItem->title = __($menuItem->title, $this->textdomain);
+        }
+
+        $menuItem->url = get_permalink($translatedInfo->ID);
+
+        // Because we don't want to lose the added menu data of the previous item,
+        // replace every matching key from this translation.
+        foreach ($translatedInfo as $key => $data) {
+            $menuItem->{$key} = $data;
+        }
+
+        if ((int)get_the_ID() === (int)$translatedInfo->ID) {
+            $menuItem->current = true;
+            $menuItem->classes[] = "active";
+        }
+
+        return $menuItem;
+    }
+
+    protected function updateFromTermTitle($menuItem, $wpPost)
+    {
+        $translatedInfo = $this->currentLocale->getTranslatedTerm($wpPost->object_id, $wpPost->object);
+        $defaultInfo = $this->defaultLocale->getTranslatedTerm($wpPost->object_id, $wpPost->object);
+
+        // The title isn't carried away, if it matches the post title,
+        // then use the translation. Otherwise, pass it along gettext
+        if ($defaultInfo->name === htmlspecialchars_decode($wpPost->title)) {
+            $menuItem->title = $translatedInfo->name;
+        } else {
+            $menuItem->title = __($menuItem->title, $this->textdomain);
+        }
+
+        $menuItem->url = get_term_link($translatedInfo->ID);
+
+        // Because we don't want to lose the added menu data of the previous item,
+        // replace every matching key from this translation.
+        foreach ($translatedInfo as $key => $data) {
+            $menuItem->{$key} = $data;
+        }
+
+        return $menuItem;
     }
 }
