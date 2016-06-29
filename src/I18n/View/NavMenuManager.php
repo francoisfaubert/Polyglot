@@ -85,7 +85,7 @@ class NavMenuManager {
             $menuItem->title = __($menuItem->title, $this->textdomain);
         }
 
-        $menuItem->url = get_term_link($translatedInfo->ID);
+        $menuItem->url = get_term_link($translatedInfo->term_id, $wpPost->object);
 
         // Because we don't want to lose the added menu data of the previous item,
         // replace every matching key from this translation.
