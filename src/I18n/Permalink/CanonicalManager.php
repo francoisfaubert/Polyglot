@@ -6,6 +6,7 @@ use Strata\Strata;
 use Strata\I18n\I18n;
 use Polyglot\I18n\Locale\Locale;
 use Polyglot\I18n\Utility;
+use Exception;
 
 class CanonicalManager {
 
@@ -121,16 +122,21 @@ class CanonicalManager {
 
         foreach (Strata::i18n()->getLocales() as $locale) {
             $permalinkManager->enforceLocale($locale);
-            $localizedUrl = $permalinkManager->generatePermalink($currentPermalink, $currentPost->ID);
 
-            $destinationIsTheSame = $localizedUrl === $currentPermalink;
-            $isNotDefaultButIsNotTheCurrent = !$locale->isDefault() && $locale->getCode() !== $currentLocale->getCode();
+            try {
+                $localizedUrl = $permalinkManager->generatePermalink($currentPermalink, $currentPost->ID);
 
-            if ($isNotDefaultButIsNotTheCurrent && $destinationIsTheSame && $shouldFallback) {
-                $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $defaultFallbackUrl);
-                $this->canonicals[] = sprintf('<link rel="canonical" href="%s">', $defaultFallbackUrl);
-            } else {
-                $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $localizedUrl);
+                $destinationIsTheSame = $localizedUrl === $currentPermalink;
+                $isNotDefaultButIsNotTheCurrent = !$locale->isDefault() && $locale->getCode() !== $currentLocale->getCode();
+
+                if ($isNotDefaultButIsNotTheCurrent && $destinationIsTheSame && $shouldFallback) {
+                    $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $defaultFallbackUrl);
+                    $this->canonicals[] = sprintf('<link rel="canonical" href="%s">', $defaultFallbackUrl);
+                } else {
+                    $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $localizedUrl);
+                }
+            } catch (Exception $e) {
+
             }
         }
     }
@@ -153,16 +159,21 @@ class CanonicalManager {
 
         foreach (Strata::i18n()->getLocales() as $locale) {
             $permalinkManager->enforceLocale($locale);
-            $localizedUrl = $permalinkManager->generatePermalink($currentPermalink, $taxonomy);
 
-            $destinationIsTheSame = $localizedUrl === $currentPermalink;
-            $isNotDefaultButIsNotTheCurrent = !$locale->isDefault() && $locale->getCode() !== $currentLocale->getCode();
+            try {
+                $localizedUrl = $permalinkManager->generatePermalink($currentPermalink, $taxonomy);
 
-            if ($isNotDefaultButIsNotTheCurrent && $destinationIsTheSame && $shouldFallback) {
-                $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $defaultFallbackUrl);
-                $this->canonicals[] = sprintf('<link rel="canonical" href="%s">', $defaultFallbackUrl);
-            } else {
-                $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $localizedUrl);
+                $destinationIsTheSame = $localizedUrl === $currentPermalink;
+                $isNotDefaultButIsNotTheCurrent = !$locale->isDefault() && $locale->getCode() !== $currentLocale->getCode();
+
+                if ($isNotDefaultButIsNotTheCurrent && $destinationIsTheSame && $shouldFallback) {
+                    $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $defaultFallbackUrl);
+                    $this->canonicals[] = sprintf('<link rel="canonical" href="%s">', $defaultFallbackUrl);
+                } else {
+                    $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $localizedUrl);
+                }
+            } catch (Exception $e) {
+
             }
         }
     }
