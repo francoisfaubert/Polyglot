@@ -7,6 +7,7 @@ use Polyglot\I18n\Translation\Tree;
 use Polyglot\I18n\Utility;
 use Strata\Utility\Hash;
 use WP_Term;
+use WP_Error;
 
 class TermPermalinkManager extends PermalinkManager {
 
@@ -40,10 +41,10 @@ class TermPermalinkManager extends PermalinkManager {
         $url = $this->localizeTermSlug($url, $term);
 
         $taxonomyDetails = get_taxonomy($taxonomy);
-        if ($taxonomyDetails) {
-            if ($this->taxonomyWasLocalizedInStrata($taxonomy)) {
-                $url = $this->replaceLocalizedTaxonomySlug($url, $taxonomyDetails);
-            }
+        if ($taxonomyDetails && $this->taxonomyWasLocalizedInStrata($taxonomy)) {
+            $url = $this->replaceParentTaxonomySlug($url, $term);
+            $url = $this->replaceLocalizedTaxonomySlug($url, $taxonomyDetails);
+            $url = $this->replaceDefaultTaxonomySlug($url, $taxonomyDetails);
         }
 
         if ($this->currentLocale->hasACustomUrl()) {
@@ -79,15 +80,14 @@ class TermPermalinkManager extends PermalinkManager {
 
     private function localizeTermSlug($permalink, $termAttemptingToTranslate)
     {
+        $translation = null;
         if ($this->currentLocale->hasTermTranslation($termAttemptingToTranslate->term_id)) {
             $translation = $this->currentLocale->getTranslatedTerm($termAttemptingToTranslate->term_id, $termAttemptingToTranslate->taxonomy);
-            return Utility::replaceFirstOccurence(
-                '/' .  $termAttemptingToTranslate->slug . '/',
-                '/' . $translation->slug . '/',
-                $permalink
-            );
         } elseif($this->shouldLocalizeByFallback) {
             $translation = $this->defaultLocale->getTranslatedTerm($termAttemptingToTranslate->term_id, $termAttemptingToTranslate->taxonomy);
+        }
+
+        if (!is_null($translation)) {
             return Utility::replaceFirstOccurence(
                 '/' .  $termAttemptingToTranslate->slug . '/',
                 '/' . $translation->slug . '/',
@@ -98,16 +98,40 @@ class TermPermalinkManager extends PermalinkManager {
         return $permalink;
     }
 
+    private function replaceParentTaxonomySlug($permalink, $term)
+    {
+        if ((int)$term->parent > 0) {
+            $pointer = get_term($term->parent, $term->taxonomy);
+            if (!is_a($pointer, 'WP_Error')) {
+                $permalink = $this->localizeTermSlug($permalink, $pointer);
+                return $this->replaceParentTaxonomySlug($permalink, $pointer);
+            }
+        }
+        return $permalink;
+    }
+
     private function replaceDefaultTaxonomySlug($url, $taxonomyDetails)
     {
-        $localeCode = $this->currentLocale->getCode();
+        if ($this->currentLocale->isDefault()) {
+            $localizedSlugs = Hash::extract((array)$taxonomyDetails->i18n, "{s}.rewrite.slug");
+            foreach ($localizedSlugs as $slug) {
+                $url = Utility::replaceFirstOccurence(
+                    $slug,
+                    $taxonomyDetails->rewrite['slug'],
+                    $url
+                );
+            }
 
-        if (Hash::check((array)$taxonomyDetails->i18n, "$localeCode.rewrite.slug")) {
-            return Utility::replaceFirstOccurence(
-                $taxonomyDetails->rewrite['slug'],
-                Hash::get($taxonomyDetails->i18n, "$localeCode.rewrite.slug"),
-                $url
-            );
+            return $url;
+        } else {
+            $localeCode = $this->currentLocale->getCode();
+            if (Hash::check((array)$taxonomyDetails->i18n, "$localeCode.rewrite.slug")) {
+                return Utility::replaceFirstOccurence(
+                    $taxonomyDetails->rewrite['slug'],
+                    Hash::get($taxonomyDetails->i18n, "$localeCode.rewrite.slug"),
+                    $url
+                );
+            }
         }
 
         return $url;
