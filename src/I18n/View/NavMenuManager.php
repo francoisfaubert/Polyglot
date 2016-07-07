@@ -66,7 +66,7 @@ class NavMenuManager {
 
         if ((int)get_the_ID() === (int)$translatedInfo->ID) {
             $menuItem->current = true;
-            $menuItem->classes[] = "active";
+            $menuItem->classes[] = "current-menu-item";
         }
 
         return $menuItem;
