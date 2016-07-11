@@ -55,17 +55,16 @@ class PostMetaManager {
                         $parentPostId = $parentTranslation->ID;
                     }
 
-                    $newData = array(
-                        "ID" => $localization->ID,
-                        "menu_order" => $this->post->menu_order,
-                        "post_parent" => $parentPostId,
-                    );
-
                     if ($this->logger) {
                         $this->logger->log(sprintf("Synced post #%s with #%s's post_parent and menu_order.", $localization->ID, $this->post->ID), "<magenta>Polyglot</magenta>");
                     }
 
-                    wp_update_post($newData);
+                    global $wpdb;
+                    $newData = array(
+                        "menu_order" => $this->post->menu_order,
+                        "post_parent" => $parentPostId,
+                    );
+                    $wpdb->update($wpdb->posts, $newData, array("ID" => $localization->ID));
                 }
             }
         }
