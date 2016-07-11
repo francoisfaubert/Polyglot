@@ -112,18 +112,16 @@ class TermPermalinkManager extends PermalinkManager {
 
     private function replaceDefaultTaxonomySlug($url, $taxonomyDetails)
     {
-        if ($this->currentLocale->isDefault()) {
-            $localizedSlugs = Hash::extract((array)$taxonomyDetails->i18n, "{s}.rewrite.slug");
-            foreach ($localizedSlugs as $slug) {
-                $url = Utility::replaceFirstOccurence(
-                    $slug,
-                    $taxonomyDetails->rewrite['slug'],
-                    $url
-                );
-            }
+        $localizedSlugs = Hash::extract((array)$taxonomyDetails->i18n, "{s}.rewrite.slug");
+        foreach ($localizedSlugs as $slug) {
+            $url = Utility::replaceFirstOccurence(
+                $slug,
+                $taxonomyDetails->rewrite['slug'],
+                $url
+            );
+        }
 
-            return $url;
-        } else {
+        if (!$this->currentLocale->isDefault()) {
             $localeCode = $this->currentLocale->getCode();
             if (Hash::check((array)$taxonomyDetails->i18n, "$localeCode.rewrite.slug")) {
                 return Utility::replaceFirstOccurence(

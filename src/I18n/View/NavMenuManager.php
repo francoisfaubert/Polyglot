@@ -50,7 +50,7 @@ class NavMenuManager {
 
         // The title isn't carried away, if it matches the post title,
         // then use the translation. Otherwise, pass it along gettext
-        if ($defaultInfo->post_title === htmlspecialchars_decode($wpPost->title)) {
+        if (htmlspecialchars_decode($defaultInfo->post_title) === htmlspecialchars_decode($wpPost->title)) {
             $menuItem->title = $translatedInfo->post_title;
         } else {
             $menuItem->title = __($menuItem->title, $this->textdomain);
@@ -79,7 +79,7 @@ class NavMenuManager {
 
         // The title isn't carried away, if it matches the post title,
         // then use the translation. Otherwise, pass it along gettext
-        if ($defaultInfo->name === htmlspecialchars_decode($wpPost->title)) {
+        if (htmlspecialchars_decode($defaultInfo->post_title) === htmlspecialchars_decode($wpPost->title)) {
             $menuItem->title = $translatedInfo->name;
         } else {
             $menuItem->title = __($menuItem->title, $this->textdomain);
