@@ -9,14 +9,13 @@
     function registerEvents(scope)
     {
         if (scope) {
-            scope.find('*[data-polyglot-ajax="click-popup"]').click(triggerPopupClickEventAjaxCall);
-            scope.find('*[data-polyglot-ajax="click"]').click(triggerClickEventAjaxCall);
+            scope.on("click", '*[data-polyglot-ajax="click-popup"]', triggerPopupClickEventAjaxCall);
+            scope.on("click", '*[data-polyglot-ajax="click"]', triggerClickEventAjaxCall);
             scope.find('*[data-ajax="autoload"]').each(triggerAjaxCall);
         } else {
-            $('*[data-polyglot-ajax="click-popup"]').click(triggerPopupClickEventAjaxCall);
-            $('*[data-polyglot-ajax="click"]').click(triggerClickEventAjaxCall);
+            $('.wrap').on("click", '*[data-polyglot-ajax="click-popup"]', triggerPopupClickEventAjaxCall);
+            $('.wrap').on("click", '*[data-polyglot-ajax="click"]', triggerClickEventAjaxCall);
             $('*[data-polyglot-ajax="autoload"]').each(triggerAjaxCall);
-
         }
     }
 
