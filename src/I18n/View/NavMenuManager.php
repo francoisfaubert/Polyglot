@@ -79,7 +79,8 @@ class NavMenuManager {
 
         // The title isn't carried away, if it matches the post title,
         // then use the translation. Otherwise, pass it along gettext
-        if (htmlspecialchars_decode($defaultInfo->post_title) === htmlspecialchars_decode($wpPost->title)) {
+
+        if (htmlspecialchars_decode($defaultInfo->name) === htmlspecialchars_decode($menuItem->title)) {
             $menuItem->title = $translatedInfo->name;
         } else {
             $menuItem->title = __($menuItem->title, $this->textdomain);
