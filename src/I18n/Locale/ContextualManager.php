@@ -81,7 +81,7 @@ class ContextualManager {
         $i18n = Strata::i18n();
         $defaultLocale = $i18n->getDefaultLocale();
 
-        if (!is_search() && !is_404()) {
+        if (!Strata::isCommandLineInterface() && !is_search() && !is_404()) {
             // By Post
             $postId = get_the_ID();
             if ($postId) {
