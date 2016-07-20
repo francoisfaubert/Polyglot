@@ -86,10 +86,18 @@ class PostRouter extends PolyglotRouter {
         global $wp_rewrite;
 
         $impliedUrl = Utility::replaceFirstOccurence(
-            $this->defaultLocale->getHomeUrl(false) . $wp_rewrite->search_base . "/",
             $this->currentLocale->getHomeUrl(false) . $this->currentLocale->getConfig("rewrite.search_base") . "/",
+            $this->defaultLocale->getHomeUrl(false) . $wp_rewrite->search_base . "/",
             $route
         );
+
+        if (!$this->currentLocale->isDefault()) {
+            $impliedUrl = Utility::replaceFirstOccurence(
+                $this->defaultLocale->getHomeUrl(false) . $wp_rewrite->search_base . "/",
+                $this->currentLocale->getHomeUrl(false) . $this->currentLocale->getConfig("rewrite.search_base") . "/",
+                $impliedUrl
+            );
+        }
 
         return $this->makeUrlFragment($impliedUrl, $this->defaultLocale);
     }
