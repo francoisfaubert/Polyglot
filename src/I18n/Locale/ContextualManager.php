@@ -81,35 +81,37 @@ class ContextualManager {
         $i18n = Strata::i18n();
         $defaultLocale = $i18n->getDefaultLocale();
 
-        // By Post
-        $postId = get_the_ID();
-        if ($postId) {
-            $suspectedLocale = $this->getLocaleByPostId($postId);
-            if ($suspectedLocale && !$suspectedLocale->isDefault() && $i18n->shouldFallbackToDefaultLocale()) {
-                $defaultPost = $defaultLocale->getTranslatedPost($postId);
-                $localizedPost = $suspectedLocale->getTranslatedPost($postId);
+        if (!is_search() && !is_404()) {
+            // By Post
+            $postId = get_the_ID();
+            if ($postId) {
+                $suspectedLocale = $this->getLocaleByPostId($postId);
+                if ($suspectedLocale && !$suspectedLocale->isDefault() && $i18n->shouldFallbackToDefaultLocale()) {
+                    $defaultPost = $defaultLocale->getTranslatedPost($postId);
+                    $localizedPost = $suspectedLocale->getTranslatedPost($postId);
 
-                if ($localizedPost && $defaultPost) {
-                    if ((int)$defaultPost->ID !== (int)$localizedPost->ID) {
-                        return $suspectedLocale;
+                    if ($localizedPost && $defaultPost) {
+                        if ((int)$defaultPost->ID !== (int)$localizedPost->ID) {
+                            return $suspectedLocale;
+                        }
                     }
                 }
             }
-        }
 
-        // By Taxonomy
-        global $wp_query;
-        if ($wp_query) {
-            $taxonomy = $wp_query->queried_object;
-            if (is_a($taxonomy, "WP_Term")) {
-                $suspectedLocale = $this->getLocaleByTaxonomyId($taxonomy->term_id, $taxonomy->taxonomy);
-                if ($suspectedLocale && !$suspectedLocale->isDefault() && $i18n->shouldFallbackToDefaultLocale()) {
-                    $defaultPost = $defaultLocale->getTranslatedTerm($taxonomy->term_id, $taxonomy->taxonomy);
-                    $localizedPost = $suspectedLocale->getTranslatedTerm($taxonomy->term_id, $taxonomy->taxonomy);
+            // By Taxonomy
+            global $wp_query;
+            if ($wp_query) {
+                $taxonomy = $wp_query->queried_object;
+                if (is_a($taxonomy, "WP_Term")) {
+                    $suspectedLocale = $this->getLocaleByTaxonomyId($taxonomy->term_id, $taxonomy->taxonomy);
+                    if ($suspectedLocale && !$suspectedLocale->isDefault() && $i18n->shouldFallbackToDefaultLocale()) {
+                        $defaultPost = $defaultLocale->getTranslatedTerm($taxonomy->term_id, $taxonomy->taxonomy);
+                        $localizedPost = $suspectedLocale->getTranslatedTerm($taxonomy->term_id, $taxonomy->taxonomy);
 
-                    if ($localizedPost && $defaultPost) {
-                        if ((int)$defaultPost->term_id !== (int)$localizedPost->term_id) {
-                            return $suspectedLocale;
+                        if ($localizedPost && $defaultPost) {
+                            if ((int)$defaultPost->term_id !== (int)$localizedPost->term_id) {
+                                return $suspectedLocale;
+                            }
                         }
                     }
                 }
