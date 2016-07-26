@@ -65,7 +65,7 @@ class Polyglot extends \Strata\I18n\I18n {
             if ($app->hasConfig("i18n.locales")) {
                 $this->locales = $this->rebuildLocaleList();
                 $this->localized = true;
-                $app->i18n = $this;
+                $app->setConfig("runtime.i18n_reference", $this);
             }
         }
     }
