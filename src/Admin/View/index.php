@@ -29,9 +29,11 @@
                     <th scope="col" id="polyglot-locale" class="manage-column column-title">
                         <span><?php _e("Locale", 'polyglot'); ?></span>
                     </th>
+                    <!--
                     <th scope="col" id="polyglot-action" class="manage-column column-title">
                         <span></span>
                     </th>
+                    -->
                 </thead>
                 <tbody>
                 <?php $idx = 0; foreach ($i18n->getLocales() as $code => $locale) : ?>
@@ -58,9 +60,11 @@
                                 </strong>
                             <?php endif; ?>
                         </td>
+                        <!--
                         <td>
                             <a class="button default-button" href="<?php echo $locale->getEditUrl(); ?>"><?php _e("Edit dictionary", "polyglot"); ?></a>
                         </td>
+                        -->
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
