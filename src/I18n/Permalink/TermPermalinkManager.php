@@ -3,178 +3,151 @@
 namespace Polyglot\I18n\Permalink;
 
 use Strata\Strata;
-use Strata\I18n\I18n;
-use Polyglot\I18n\Locale\Locale;
+use Polyglot\I18n\Translation\Tree;
 use Polyglot\I18n\Utility;
-use Exception;
+use Strata\Utility\Hash;
+use WP_Term;
+use WP_Error;
 
-class TermPermalinkManager {
+class TermPermalinkManager extends PermalinkManager {
 
-    private $alternates = array();
-    private $canonicals = array();
-    private $permalinkManager;
-
-    public function __construct(PermalinkManager $permalinkManager)
-    {
-        $this->permalinkManager = $permalinkManager;
-    }
-
-    public function filter_onWpHead()
-    {
-        if (!is_404() && !is_search()) {
-            $this->printMetaTags();
-        }
-    }
-
-    public function filter_onWidgetInit()
-    {
-        $this->forwardCanonicalUrls();
-    }
-
-    public function filter_onRedirectCanonical($redirectUrl, $requestedUrl = null)
-    {
-        return $this->redirectCanonical($redirectUrl, $requestedUrl);
-    }
-
-    public function redirectCanonical($redirectUrl, $requestedUrl = null)
-    {
-        foreach (Strata::i18n()->getLocales() as $locale) {
-            // If WP wants to redirect to the root locale page, prevent the redirect
-            if ($locale->getHomeUrl() === $requestedUrl) {
-                return $requestedUrl;
-            }
-        }
-
-        return $redirectUrl;
-    }
-
-    /**
-     *
+     /**
+     * Returns the default term link to add the current locale prefix
+     * to the generated link, if applicable.
+     * @param  string $url
+     * @param  WP_Term $term
+     * @param  string $taxonomy
+     * @return string
      */
-    public function forwardCanonicalUrls()
+    public function filter_onTermLink($url, WP_Term $term, $taxonomy)
     {
-        $i18n = Strata::i18n();
-        $homepageId = $i18n->query()->getDefaultHomepageId();
-        $currentLocale = $i18n->getCurrentLocale();
+        $configuration = Strata::i18n()->getConfiguration();
+        if ($configuration->isTaxonomyEnabled($taxonomy)) {
+            return $this->generatePermalink($url, $term, $taxonomy);
+        }
 
-        // Home urls should not display the post_name slug on translated versions.
-        if ($currentLocale->isTranslationOfPost($homepageId)) {
-            $localizedPage = $currentLocale->getTranslatedPost($homepageId);
-            if ($localizedPage) {
-                if ($_SERVER['REQUEST_URI'] === '/' . $currentLocale->getUrl() . '/' .$localizedPage->post_name . '/') {
-                    wp_redirect(WP_HOME . '/' . $currentLocale->getUrl() . '/', 301);
-                    exit;
-                }
+        return $url;
+    }
+
+    public function enforceLocale($locale = null)
+    {
+        if (!is_null($locale)) {
+            $this->currentLocale = $locale;
+        }
+    }
+
+    public function generatePermalink($url, $term, $taxonomy)
+    {
+        $url = $this->localizeTermSlug($url, $term);
+
+        $taxonomyDetails = get_taxonomy($taxonomy);
+        if ($taxonomyDetails && $this->taxonomyWasLocalizedInStrata($taxonomy)) {
+            $url = $this->replaceParentTaxonomySlug($url, $term);
+            $url = $this->replaceLocalizedTaxonomySlug($url, $taxonomyDetails);
+            $url = $this->replaceDefaultTaxonomySlug($url, $taxonomyDetails);
+        }
+
+        if ($this->currentLocale->hasACustomUrl()) {
+            $url = $this->replaceLocaleHomeUrl($url);
+        }
+
+        return $url;
+    }
+
+    private function replaceLocaleHomeUrl($permalink)
+    {
+        if (preg_match('/' . Utility::getLocaleUrlsRegex() . '/', $permalink)) {
+            $permalink = preg_replace(
+                '#(/(' . Utility::getLocaleUrlsRegex() . ')/)#',
+                '/',
+                $permalink
+            );
+        }
+
+        if ($this->currentLocale->hasACustomUrl()) {
+            return Utility::replaceFirstOccurence(
+                get_home_url() . '/',
+                $this->currentLocale->getHomeUrl(),
+                $permalink
+            );
+        }
+    }
+
+    private function taxonomyWasLocalizedInStrata($wordpressKey)
+    {
+        return !is_null(Strata::config("runtime.taxonomy.query_vars.$wordpressKey"));
+    }
+
+    private function localizeTermSlug($permalink, $termAttemptingToTranslate)
+    {
+        $translation = null;
+        if ($this->currentLocale->hasTermTranslation($termAttemptingToTranslate->term_id)) {
+            $translation = $this->currentLocale->getTranslatedTerm($termAttemptingToTranslate->term_id, $termAttemptingToTranslate->taxonomy);
+        } elseif($this->shouldLocalizeByFallback) {
+            $translation = $this->defaultLocale->getTranslatedTerm($termAttemptingToTranslate->term_id, $termAttemptingToTranslate->taxonomy);
+        }
+
+        if (!is_null($translation)) {
+            return Utility::replaceFirstOccurence(
+                '/' .  $termAttemptingToTranslate->slug . '/',
+                '/' . $translation->slug . '/',
+                $permalink
+            );
+        }
+
+        return $permalink;
+    }
+
+    private function replaceParentTaxonomySlug($permalink, $term)
+    {
+        if ((int)$term->parent > 0) {
+            $pointer = get_term($term->parent, $term->taxonomy);
+            if (!is_a($pointer, 'WP_Error')) {
+                $permalink = $this->localizeTermSlug($permalink, $pointer);
+                return $this->replaceParentTaxonomySlug($permalink, $pointer);
             }
         }
+        return $permalink;
     }
 
-
-   /**
-     * Appends meta tags with additional localization information and links to localized versions.
-     * @return html (it actually echoes it)
-     * @see wp_head
-     * @filters strata_polyglot_canonicals_meta_before_print, strata_polyglot_alternates_meta_before_print.
-     */
-    public function printMetaTags()
+    private function replaceDefaultTaxonomySlug($url, $taxonomyDetails)
     {
-        $this->generateMetaTags();
+        $localizedSlugs = Hash::extract((array)$taxonomyDetails->i18n, "{s}.rewrite.slug");
+        foreach ($localizedSlugs as $slug) {
+            $url = Utility::replaceFirstOccurence(
+                $slug,
+                $taxonomyDetails->rewrite['slug'],
+                $url
+            );
+        }
 
-        $alternates = apply_filters("strata_polyglot_alternates_meta_before_print", $this->alternates);
-        $canonicals = apply_filters("strata_polyglot_canonicals_meta_before_print", $this->canonicals);
-
-        echo
-            implode("\n", $alternates) . "\n" .
-            implode("\n", $canonicals) . "\n";
-    }
-
-
-    protected function generateMetaTags()
-    {
-        if (!is_archive() && !is_search()) {
-            $currentPost = get_post();
-            if ($currentPost) {
-                return $this->generatePostTags($currentPost);
+        if (!$this->currentLocale->isDefault()) {
+            $localeCode = $this->currentLocale->getCode();
+            if (Hash::check((array)$taxonomyDetails->i18n, "$localeCode.rewrite.slug")) {
+                return Utility::replaceFirstOccurence(
+                    $taxonomyDetails->rewrite['slug'],
+                    Hash::get($taxonomyDetails->i18n, "$localeCode.rewrite.slug"),
+                    $url
+                );
             }
         }
 
-        global $wp_query;
-        $taxonomy = $wp_query->queried_object;
-        if (is_a($taxonomy, "WP_Term")) {
-            return $this->generateTaxonomyTags($taxonomy);
-        }
+        return $url;
     }
 
-    private function generatePostTags($currentPost)
+    private function replaceLocalizedTaxonomySlug($url, $taxonomyDetails)
     {
-        $shouldFallback = (bool)Strata::config("i18n.default_locale_fallback");
-        $defaultLocale = Strata::i18n()->getDefaultLocale();
-        $currentLocale = Strata::i18n()->getCurrentLocale();
-        $permalinkManager = new PostPermalinkManager();
-        $currentPermalink = get_permalink($currentPost->ID);
+        $localeCode = $this->currentLocale->getCode();
 
-        // Keep the default url handy
-        $defaultFallbackUrl = "";
-        if ($shouldFallback) {
-            $permalinkManager->enforceLocale($defaultLocale);
-            $defaultFallbackUrl = $permalinkManager->generatePermalink($currentPermalink, $currentPost->ID);
+        if (Hash::check((array)$taxonomyDetails->i18n, "$localeCode.rewrite.slug")) {
+            return Utility::replaceFirstOccurence(
+                $taxonomyDetails->rewrite['slug'],
+                Hash::get($taxonomyDetails->i18n, "$localeCode.rewrite.slug"),
+                $url
+            );
         }
 
-        foreach (Strata::i18n()->getLocales() as $locale) {
-            $permalinkManager->enforceLocale($locale);
-
-            try {
-                $localizedUrl = $permalinkManager->generatePermalink($currentPermalink, $currentPost->ID);
-
-                $destinationIsTheSame = $localizedUrl === $currentPermalink;
-                $isNotDefaultButIsNotTheCurrent = !$locale->isDefault() && $locale->getCode() !== $currentLocale->getCode();
-
-                if ($isNotDefaultButIsNotTheCurrent && $destinationIsTheSame && $shouldFallback) {
-                    $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $defaultFallbackUrl);
-                    $this->canonicals[] = sprintf('<link rel="canonical" href="%s">', $defaultFallbackUrl);
-                } else {
-                    $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $localizedUrl);
-                }
-            } catch (Exception $e) {
-
-            }
-        }
+        return $url;
     }
 
-
-    private function generateTaxonomyTags($taxonomy)
-    {
-        $shouldFallback = (bool)Strata::config("i18n.default_locale_fallback");
-        $defaultLocale = Strata::i18n()->getDefaultLocale();
-        $currentLocale = Strata::i18n()->getCurrentLocale();
-        $permalinkManager = new TermPermalinkManager();
-        $currentPermalink = get_term_link($taxonomy, $taxonomy->taxonomy);
-
-        // Keep the default url handy
-        $defaultFallbackUrl = "";
-        if ($shouldFallback) {
-            $permalinkManager->enforceLocale($defaultLocale);
-            $defaultFallbackUrl = $permalinkManager->generatePermalink($currentPermalink, $taxonomy, $taxonomy->taxonomy);
-        }
-
-        foreach (Strata::i18n()->getLocales() as $locale) {
-            $permalinkManager->enforceLocale($locale);
-
-            try {
-                $localizedUrl = $permalinkManager->generatePermalink($currentPermalink, $taxonomy, $taxonomy->taxonomy);
-
-                $destinationIsTheSame = $localizedUrl === $currentPermalink;
-                $isNotDefaultButIsNotTheCurrent = !$locale->isDefault() && $locale->getCode() !== $currentLocale->getCode();
-
-                if ($isNotDefaultButIsNotTheCurrent && $destinationIsTheSame && $shouldFallback) {
-                    $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $defaultFallbackUrl);
-                    $this->canonicals[] = sprintf('<link rel="canonical" href="%s">', $defaultFallbackUrl);
-                } else {
-                    $this->alternates[] = sprintf('<link rel="alternate" hreflang="%s" href="%s">', $locale->getCode(), $localizedUrl);
-                }
-            } catch (Exception $e) {
-
-            }
-        }
-    }
 }
