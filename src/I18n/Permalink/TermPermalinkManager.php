@@ -8,7 +8,7 @@ use Polyglot\I18n\Locale\Locale;
 use Polyglot\I18n\Utility;
 use Exception;
 
-class CanonicalManager {
+class TermPermalinkManager {
 
     private $alternates = array();
     private $canonicals = array();
