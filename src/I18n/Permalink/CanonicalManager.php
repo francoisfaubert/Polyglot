@@ -154,14 +154,14 @@ class CanonicalManager {
         $defaultFallbackUrl = "";
         if ($shouldFallback) {
             $permalinkManager->enforceLocale($defaultLocale);
-            $defaultFallbackUrl = $permalinkManager->generatePermalink($currentPermalink, $taxonomy);
+            $defaultFallbackUrl = $permalinkManager->generatePermalink($currentPermalink, $taxonomy, $taxonomy->taxonomy);
         }
 
         foreach (Strata::i18n()->getLocales() as $locale) {
             $permalinkManager->enforceLocale($locale);
 
             try {
-                $localizedUrl = $permalinkManager->generatePermalink($currentPermalink, $taxonomy);
+                $localizedUrl = $permalinkManager->generatePermalink($currentPermalink, $taxonomy, $taxonomy->taxonomy);
 
                 $destinationIsTheSame = $localizedUrl === $currentPermalink;
                 $isNotDefaultButIsNotTheCurrent = !$locale->isDefault() && $locale->getCode() !== $currentLocale->getCode();
