@@ -80,8 +80,10 @@ class ContextualManager {
     {
         $i18n = Strata::i18n();
         $defaultLocale = $i18n->getDefaultLocale();
+        global $wp_query;
 
-        if (!Strata::isCommandLineInterface() && !is_search() && !is_404()) {
+        // Prevents 'xyz was called incorrectly' messages.
+        if (!is_null($wp_query) && !Strata::isCommandLineInterface() && !is_search() && !is_404()) {
             // By Post
             $postId = get_the_ID();
             if ($postId) {
