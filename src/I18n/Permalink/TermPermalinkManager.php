@@ -56,7 +56,7 @@ class TermPermalinkManager extends PermalinkManager {
 
     private function replaceLocaleHomeUrl($permalink)
     {
-        if (preg_match('/' . Utility::getLocaleUrlsRegex() . '/', $permalink)) {
+        if (preg_match('#' . Utility::getLocaleUrlsRegex() . '#', $permalink)) {
             $permalink = preg_replace(
                 '#(/(' . Utility::getLocaleUrlsRegex() . ')/)#',
                 '/',
