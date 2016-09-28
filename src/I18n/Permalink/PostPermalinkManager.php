@@ -133,7 +133,7 @@ class PostPermalinkManager extends PermalinkManager {
     // was a localization of the current locale. (ex: en_US could be the invisible fallback for en_CA).
     protected function addLocaleHomeUrl($permalink)
     {
-        if (preg_match('/' . Utility::getLocaleUrlsRegex() . '/', $permalink)) {
+        if (preg_match('#' . Utility::getLocaleUrlsRegex() . '#', $permalink)) {
             $permalink = preg_replace(
                 '#(/(' . Utility::getLocaleUrlsRegex() . ')/)#',
                 '/',
