@@ -150,6 +150,6 @@ class PostRouter extends PolyglotRouter {
             }
         }
 
-        return $originalUrl;
+        return trailingslashit($originalUrl);
     }
 }
