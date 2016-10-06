@@ -58,7 +58,9 @@ class QueryRewriter {
 
     public function preGetPosts($query)
     {
-        // $this->logger->logQueryStart();
+        if ($query->get("polyglot_locale")) {
+            $this->currentLocale = Strata::i18n()->getLocaleByCode($query->get("polyglot_locale"));
+        }
 
         // In the backend of when we are in the default locale,
         // prevent non-localized posts to show up. The correct way
@@ -68,7 +70,6 @@ class QueryRewriter {
             $localizedPostIds = $this->query->listTranslatedEntitiesIds("WP_Post");
             if (count($localizedPostIds)) {
                 $query->set("post__not_in", array_merge($query->get("post__not_in"), $localizedPostIds));
-                #$this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $localizedPostIds) . ")");
             }
 
         } else {
@@ -113,7 +114,6 @@ class QueryRewriter {
 
                     if (count($notIn)) {
                         $query->set("post__not_in", array_merge($query->get("post__not_in"), $notIn));
-                        #$this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID NOT IN (" . implode(", ", $notIn) . ")");
                     }
 
                 // When we don't have to fallback, force the posts from the current locale.
@@ -126,7 +126,6 @@ class QueryRewriter {
                     }
                     if (count($in)) {
                         $query->set("post__in", array_merge($query->get("post__in"), $in));
-                       # $this->logger->logQueryCompletion("Injected from pre_get_post: WHERE ID IN (" . implode(", ", $in) . ")");
                     }
                 }
             }
