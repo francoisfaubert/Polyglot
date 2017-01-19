@@ -82,13 +82,13 @@ class AdminAdaptor {
     protected function getAdminJsPath()
     {
         $paths = array('src', 'Admin', 'assets', 'polyglot.js');
-        return  plugin_dir_url(Strata::config('runtime.polyglot.loaderPath')) . implode(DIRECTORY_SEPARATOR, $paths);
+        return  plugin_dir_url(Strata::config('runtime.polyglot.loaderPath')) . implode("/", $paths);
     }
 
     protected function getAdminCSSPath()
     {
         $paths = array('src', 'Admin', 'assets', 'polyglot.css');
-        return  plugin_dir_url(Strata::config('runtime.polyglot.loaderPath')) . implode(DIRECTORY_SEPARATOR, $paths);
+        return  plugin_dir_url(Strata::config('runtime.polyglot.loaderPath')) . implode("/", $paths);
     }
 
     /**
@@ -102,6 +102,7 @@ class AdminAdaptor {
         wp_enqueue_script('jquery-ui-draggable');
         wp_enqueue_script('jquery-ui-droppable');
     }
+    
 
     /**
      * @see admin_enqueue_scripts
