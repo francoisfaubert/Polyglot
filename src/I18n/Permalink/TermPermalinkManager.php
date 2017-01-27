@@ -89,7 +89,7 @@ class TermPermalinkManager extends PermalinkManager {
 
         if (!is_null($translation)) {
             return Utility::replaceFirstOccurence(
-                '/' .  $termAttemptingToTranslate->slug . '/',
+                '#(/(' .  $termAttemptingToTranslate->slug . ')/)#',
                 '/' . $translation->slug . '/',
                 $permalink
             );
