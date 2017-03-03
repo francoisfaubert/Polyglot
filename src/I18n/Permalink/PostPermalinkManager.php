@@ -14,9 +14,6 @@ use WP_Post;
 use WP_Term;
 use Exception;
 
-use Polyglot\I18n\Locale\ContextualManager;
-use Strata\Router\Router;
-
 class PostPermalinkManager extends PermalinkManager {
 
     /**
@@ -97,20 +94,6 @@ class PostPermalinkManager extends PermalinkManager {
         }
 
         return $this->addLocaleHomeUrl($permalink);
-    }
-
-    public function enforceLocale($locale = null)
-    {
-        // The current locale gets lost in metabox queries.
-        // in the admin
-        if (is_null($locale) && is_admin() && !Router::isAjax()) {
-            $context = new ContextualManager();
-            $locale = $context->getByAdminContext();
-        }
-
-        if (!is_null($locale)) {
-            $this->currentLocale = $locale;
-        }
     }
 
     private function translatePostName($post, $permalink)

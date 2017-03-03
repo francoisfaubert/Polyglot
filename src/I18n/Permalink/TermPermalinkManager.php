@@ -23,17 +23,11 @@ class TermPermalinkManager extends PermalinkManager {
     {
         $configuration = Strata::i18n()->getConfiguration();
         if ($configuration->isTaxonomyEnabled($taxonomy)) {
+            $this->enforceLocale();
             return $this->generatePermalink($url, $term, $taxonomy);
         }
 
         return $url;
-    }
-
-    public function enforceLocale($locale = null)
-    {
-        if (!is_null($locale)) {
-            $this->currentLocale = $locale;
-        }
     }
 
     public function generatePermalink($url, $term, $taxonomy)

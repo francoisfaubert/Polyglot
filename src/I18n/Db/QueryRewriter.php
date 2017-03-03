@@ -134,13 +134,7 @@ class QueryRewriter {
         return $query;
     }
 
-
-    /**
-     * @param  [type] $terms      [description]
-     * @param  [type] $taxonomies [description]
-     * @return [type]             [description]
-     */
-    public function getTerms($terms, $taxonomies)
+    public function getTerms($terms, $taxonomies, $query)
     {
         if (!$this->taxonomyGroupIsSupported($taxonomies) || (bool)$this->wpIsCaching) {
             return $terms;
@@ -176,6 +170,10 @@ class QueryRewriter {
                     }
                 }
             }
+        }
+
+        if ($shouldFallback && !count($localized)) {
+            return $terms;
         }
 
         return $localized;
