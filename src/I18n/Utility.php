@@ -15,7 +15,7 @@ class Utility {
      */
     public static function replaceFirstOccurence($from, $to, $subject)
     {
-        $from = '/' . preg_quote($from, '/') . '/';
+        $from = '#(' . preg_quote($from) . ')#';
         return preg_replace($from, $to, $subject, 1);
     }
 

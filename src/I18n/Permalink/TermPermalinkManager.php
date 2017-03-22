@@ -32,18 +32,18 @@ class TermPermalinkManager extends PermalinkManager {
 
     public function generatePermalink($url, $term, $taxonomy)
     {
-        $url = $this->localizeTermSlug($url, $term);
-
         $taxonomyDetails = get_taxonomy($taxonomy);
-        if ($taxonomyDetails && $this->taxonomyWasLocalizedInStrata($taxonomy)) {
+        if ($taxonomyDetails && $this->taxonomyWasLocalizedInStrata($taxonomy)) {           
             $url = $this->replaceParentTaxonomySlug($url, $term);
-            $url = $this->replaceLocalizedTaxonomySlug($url, $taxonomyDetails);
             $url = $this->replaceDefaultTaxonomySlug($url, $taxonomyDetails);
+            $url = $this->replaceLocalizedTaxonomySlug($url, $taxonomyDetails);
         }
 
         if ($this->currentLocale->hasACustomUrl()) {
             $url = $this->replaceLocaleHomeUrl($url);
         }
+
+        $url = $this->localizeTermSlug($url, $term);
 
         return $url;
     }
@@ -75,6 +75,7 @@ class TermPermalinkManager extends PermalinkManager {
     private function localizeTermSlug($permalink, $termAttemptingToTranslate)
     {
         $translation = null;
+
         if ($this->currentLocale->hasTermTranslation($termAttemptingToTranslate->term_id)) {
             $translation = $this->currentLocale->getTranslatedTerm($termAttemptingToTranslate->term_id, $termAttemptingToTranslate->taxonomy);
         } elseif($this->shouldLocalizeByFallback) {
@@ -83,7 +84,7 @@ class TermPermalinkManager extends PermalinkManager {
 
         if (!is_null($translation)) {
             return Utility::replaceFirstOccurence(
-                '#(/(' .  $termAttemptingToTranslate->slug . ')/)#',
+                '/' .  $termAttemptingToTranslate->slug . '/',
                 '/' . $translation->slug . '/',
                 $permalink
             );
