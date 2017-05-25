@@ -1,6 +1,6 @@
 <?php
 /*
-Plugin Name: Polyglot
+Plugin Name: Strata Polyglot
 Plugin URI: http://polyglot.francoisfaubert.com/
 Description: Wordpress localization
 Version: 1.1
